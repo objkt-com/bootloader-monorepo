@@ -1,0 +1,7 @@
+{
+    "python-envs.defaultEnvManager": "ms-python.python:system",
+    "python-envs.pythonProjects": [],
+    "python.analysis.extraPaths": [
+        "/home/timothy/.local/share/virtualenvs/tezos-svg-onchain-aS3hwPkm/lib/python3.12/site-packages"
+    ]
+}
