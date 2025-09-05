@@ -3,6 +3,7 @@ import { BeaconWallet } from "@taquito/beacon-wallet";
 import { NetworkType, BeaconEvent } from "@airgap/beacon-dapp";
 import { getNetworkConfig, getContractAddress, CONFIG } from "../config.js";
 import { tzktService } from "./tzkt.js";
+import { escapeJavaScriptForSvg } from "../utils/xmlEscape.js";
 
 class TezosService {
   constructor() {
@@ -314,8 +315,11 @@ class TezosService {
 
   generateSVG(code, seed = 555555, tokenId = 0) {
     try {
-      // Create the SVG content with proper encoding for data URI
-      const svgContent = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg"><script><![CDATA[const SEED=${seed}n;function sfc32(t,e,n,$){return function(){n|=0;var r=((t|=0)+(e|=0)|0)+($|=0)|0;return $=$+1|0,t=e^e>>>9,e=n+(n<<3)|0,n=(n=n<<21|n>>>11)+r|0,(r>>>0)/4294967296}}function splitBigInt(t,e=4){let n=[];for(let $=0n;$<e;$++)n.push(Number(t>>32n*$&4294967295n));return n}const[a,b,c,d]=splitBigInt(SEED,4),rnd=sfc32(a,b,c,d),svg=document.documentElement,${code}]]></script></svg>`;
+      // Escape the user code for safe embedding in SVG
+      const escapedCode = escapeJavaScriptForSvg(code);
+      
+      // Create the SVG content with proper character escaping instead of CDATA
+      const svgContent = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg"><script>const SEED=${seed}n;function sfc32(t,e,n,$){return function(){n|=0;var r=((t|=0)+(e|=0)|0)+($|=0)|0;return $=$+1|0,t=e^e&gt;&gt;&gt;9,e=n+(n&lt;&lt;3)|0,n=(n=n&lt;&lt;21|n&gt;&gt;&gt;11)+r|0,(r&gt;&gt;&gt;0)/4294967296}}function splitBigInt(t,e=4){let n=[];for(let $=0n;$&lt;e;$++)n.push(Number(t&gt;&gt;32n*$&amp;4294967295n));return n}const[a,b,c,d]=splitBigInt(SEED,4),rnd=sfc32(a,b,c,d),svg=document.documentElement,${escapedCode}</script></svg>`;
 
       return svgContent;
     } catch (error) {
