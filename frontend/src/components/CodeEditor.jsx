@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Editor from '@monaco-editor/react';
 
 export default function CodeEditor({ 
@@ -8,6 +9,7 @@ export default function CodeEditor({
   height = '400px',
   forkButton = null
 }) {
+  const navigate = useNavigate();
   const handleEditorChange = (newValue) => {
     onChange(newValue || '');
   };
@@ -31,9 +33,13 @@ export default function CodeEditor({
       <div className="editor-header">
         <span>Generator Code</span>
         <div className="editor-environment">
-          <span>Environment:</span>
-          <span className="env-var" title="Deterministic random function based on seed. Returns float 0-1, same seed always produces same sequence">rnd()</span>
-          <span className="env-var" title="SVG document element">svg</span>
+          <button 
+            className="help-btn"
+            onClick={() => navigate('/help')}
+            title="View help documentation"
+          >
+            ?
+          </button>
           {forkButton}
         </div>
       </div>

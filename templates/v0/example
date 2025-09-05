@@ -1,1 +1,0 @@
-W=400,H=400,NS="http://www.w3.org/2000/svg";for(let i=0;i<80;i++){let t=5+(90*rnd()|0),e=t+(rnd()*(400-2*t)|0),n=t+(rnd()*(400-2*t)|0),$=document.createElementNS(NS,"circle");$.setAttribute("cx",e),$.setAttribute("cy",n),$.setAttribute("r",t),$.setAttribute("fill","black"),svg.appendChild($)}

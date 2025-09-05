@@ -97,7 +97,9 @@ class TzKTService {
           author: generator.author,
           code: this.bytesToString(generator.code),
           created: new Date(generator.created),
-          lastUpdate: new Date(generator.last_update)
+          lastUpdate: new Date(generator.last_update),
+          nTokens: parseInt(generator.n_tokens || 0),
+          sale: generator.sale || null
         };
       });
 

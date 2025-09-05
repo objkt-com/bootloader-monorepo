@@ -2,11 +2,11 @@ export default function Help() {
   return (
     <div className="help-container">
       <div className="help-content">
-        <h1>How SVJKT Works</h1>
-        
-        <h2>What is SVJKT?</h2>
+        <h1>How svgKT Works</h1>
+
+        <h2>What is svgKT?</h2>
         <p>
-          SVJKT is an on-chain SVG generator platform built on Tezos. It allows artists and developers 
+          svgKT is an on-chain SVG generator platform built on Tezos. It allows artists and developers
           to create generative art algorithms that produce unique SVG images directly on the blockchain.
         </p>
 
@@ -44,7 +44,7 @@ svg.appendChild(circle);`}</pre>
 
         <h2>Technical Details</h2>
         <p>
-          SVJKT uses SmartPy contracts on Tezos to store generator code and metadata. 
+          svgKT uses SmartPy contracts on Tezos to store generator code and metadata. 
           The SVG generation happens client-side using the stored code and blockchain-provided 
           entropy, ensuring each piece is truly unique and verifiable.
         </p>
@@ -67,7 +67,7 @@ svg.appendChild(circle);`}</pre>
 
         <h2>Community</h2>
         <p>
-          SVJKT is an open-source project. You can find the code, report issues, and contribute 
+          svgKT is an open-source project. You can find the code, report issues, and contribute 
           on <a href="https://github.com/tsmcalister/svjkt-monorepo" target="_blank" rel="noopener noreferrer">GitHub</a>.
         </p>
       </div>

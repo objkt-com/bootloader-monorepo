@@ -99,22 +99,79 @@ export default function Profile() {
     navigate(`/generator/${generator.id}`);
   };
 
-  // Mock function to determine generator status - will be replaced with real data later
+  // Function to determine generator status based on real contract data
   const getGeneratorStatus = (generator) => {
-    // For now, cycle through different states based on generator ID for demo
-    const statusTypes = ['active', 'scheduled', 'finished', 'created'];
-    const statusIndex = generator.id % 4;
-    
-    const mockData = {
-      active: { minted: 9, total: 21, price: '0.5 XTZ', progress: 43 },
-      scheduled: { minted: 0, total: 100, countdown: '2d 3h 4m', progress: 0 },
-      finished: { minted: 255, total: 255, price: '1.2 XTZ', progress: 100 },
-      created: { minted: 0, total: 50, progress: 100 }
-    };
-    
+    if (!generator.sale) {
+      // No sale configured - generator is just created
+      return {
+        type: 'created',
+        minted: generator.nTokens || 0,
+        total: 0,
+        progress: 100
+      };
+    }
+
+    const sale = generator.sale;
+    const minted = generator.nTokens || 0;
+    const total = sale.editions || 0;
+    const progress = total > 0 ? Math.round((minted / total) * 100) : 0;
+    const priceInTez = sale.price ? (sale.price / 1000000).toFixed(2) : '0';
+
+    // Check if sale is paused
+    if (sale.paused) {
+      return {
+        type: 'paused',
+        minted,
+        total,
+        price: `${priceInTez} XTZ`,
+        progress
+      };
+    }
+
+    // Check if sold out
+    if (minted >= total) {
+      return {
+        type: 'finished',
+        minted,
+        total,
+        price: `${priceInTez} XTZ`,
+        progress: 100
+      };
+    }
+
+    // Check if scheduled for future
+    if (sale.start_time) {
+      const startTime = new Date(sale.start_time);
+      const now = new Date();
+      
+      if (now < startTime) {
+        const timeDiff = startTime - now;
+        const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+        
+        let countdown = '';
+        if (days > 0) countdown += `${days}d `;
+        if (hours > 0) countdown += `${hours}h `;
+        if (minutes > 0) countdown += `${minutes}m`;
+        
+        return {
+          type: 'scheduled',
+          minted,
+          total,
+          countdown: countdown.trim() || '< 1m',
+          progress: 0
+        };
+      }
+    }
+
+    // Sale is active
     return {
-      type: statusTypes[statusIndex],
-      ...mockData[statusTypes[statusIndex]]
+      type: 'active',
+      minted,
+      total,
+      price: `${priceInTez} XTZ`,
+      progress
     };
   };
 
@@ -131,6 +188,11 @@ export default function Profile() {
             </>
           ) : status.type === 'created' ? (
             <span className="generator-card-editions">(-)</span>
+          ) : status.type === 'paused' ? (
+            <>
+              <span className="generator-card-editions">{status.minted} / {status.total} minted</span>
+              <span className="generator-card-price">PAUSED</span>
+            </>
           ) : (
             <>
               <span className="generator-card-editions">{status.minted} / {status.total} minted</span>
@@ -287,11 +349,12 @@ export default function Profile() {
                   className="token-card"
                 >
                   <div className="token-preview-container">
-                    <SVGPreview 
-                      code={token.generatorCode}
-                      seed={token.seed}
-                      width={200}
-                      height={200}
+                    <iframe
+                      src={token.artifactUri}
+                      width="200"
+                      height="200"
+                      style={{ border: '1px solid var(--color-black)' }}
+                      title={token.name}
                     />
                   </div>
                   <div className="token-card-info">

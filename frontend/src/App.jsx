@@ -29,7 +29,7 @@ function Navigation() {
     <header className="header">
       <div className="header-content">
         <div className="logo">
-          <Link to="/">svjkt</Link>
+          <Link to="/">svgKT</Link>
         </div>
         
         <nav className="nav">

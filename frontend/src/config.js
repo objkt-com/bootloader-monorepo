@@ -17,13 +17,13 @@ export const CONFIG = {
   
   // Contract addresses (generator contract is also the FA2 contract)
   contracts: {
-    ghostnet: 'KT1AqyXgCqAeibWeGZkYnLPuABRfm9HB7zje',
+    ghostnet: 'KT1AuTtQwCjDHzxLxsTyfsH5bPNvuYbeSmVj',
     mainnet: null // To be deployed
   },
   
   // App branding
   branding: {
-    projectName: 'SVJKT',
+    projectName: 'svgKT',
     tagline: 'On-chain SVG Generator Platform'
   },
   

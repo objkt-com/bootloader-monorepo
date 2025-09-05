@@ -1,4 +1,4 @@
-from svjkt import svjkt
+from svgkt import svgkt
 from randomiser import randomiser
 
 import smartpy as sp
@@ -17,7 +17,7 @@ def test():
     r = randomiser.Randomiser()
     scenario += r
     # Instantiate the FA2 NFT contract
-    contract = svjkt.SVJKT(
+    contract = svgkt.SvgKT(
         admin.address, r.address, sp.big_map({}), {}, []
     )
     scenario += contract

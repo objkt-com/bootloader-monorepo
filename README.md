@@ -1,4 +1,4 @@
-# SVJKT
+# svgKT
 
 Long form on-chain svg GM.
 
@@ -7,7 +7,7 @@ Long form on-chain svg GM.
 ```sh
 pipenv shell
 pip install pytezos tezos-smartpy
-python contracts/svjkt.py
+python contracts/svgkt.py
 ```
 
 ## Deploy to ghostnet (hardcoded ghostnet address)
