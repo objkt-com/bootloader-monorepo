@@ -1,5 +1,7 @@
 # Project specific
 svjkt/
+svjkt_test/
+randomiser/
 
 # Python
 __pycache__/

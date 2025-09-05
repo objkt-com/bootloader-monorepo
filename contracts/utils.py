@@ -79,3 +79,25 @@ def bytes_utils():
             # Concatenate in correct order thanks to push semantics
             out = sp.concat(pieces)
         return out
+    
+    def to_nat(b: sp.bytes) -> sp.nat:
+        n_bytes = sp.len(b)
+        bit_masks = [
+            sp.bytes("0x01"),
+            sp.bytes("0x02"),
+            sp.bytes("0x04"),
+            sp.bytes("0x08"),
+            sp.bytes("0x10"),
+            sp.bytes("0x20"),
+            sp.bytes("0x40"),
+            sp.bytes("0x80"),
+        ]
+        res = 0
+        for i in range(n_bytes):
+            byte = sp.slice(i, 1, b).unwrap_some()
+            for bit_mask in bit_masks:
+                if sp.and_bytes(byte, bit_mask) == bit_mask:
+                    res = (res << 1) + 1
+                else:
+                    res = res << 1
+        return res
