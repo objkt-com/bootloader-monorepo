@@ -265,6 +265,10 @@ class TezosService {
 
       const salePrice = generator.sale.price; // Price is already in mutez
 
+      // Get the current next_token_id before minting
+      const storageBefore = await this.getContractStorage();
+      const nextTokenId = parseInt(storageBefore.next_token_id);
+
       // Generate random entropy (16 bytes) and convert to hex string
       const entropy = new Uint8Array(16);
       crypto.getRandomValues(entropy);
@@ -283,7 +287,16 @@ class TezosService {
         .send({ amount: salePrice, mutez: true });
 
       await operation.confirmation();
-      return { success: true, hash: operation.hash };
+      
+      // The token ID that was minted is the nextTokenId we captured before the mint
+      const mintedTokenId = nextTokenId;
+      
+      return { 
+        success: true, 
+        hash: operation.hash, 
+        tokenId: mintedTokenId,
+        entropy: entropyHex
+      };
     } catch (error) {
       console.error("Failed to mint token:", error);
       return { success: false, error: error.message };

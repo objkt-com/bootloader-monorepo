@@ -129,78 +129,364 @@ export default function Create() {
   };
 
   // Default generative svgKT logo generator
-  const defaultCode = `/*
- * Generative svgKT logo - creates the logo in different styles
- * This comment is stored as the generator's description on-chain.
- * (c) 2025 svgKT
+const defaultCode = `/*
+ * Hyperdimensional svgKT - Cutting-Edge Animated Physics Logo
+ * Features: SVG shaders, morphing geometry, particle systems, 
+ * fractal noise, chromatic aberration, temporal distortions,
+ * neural network patterns, and quantum field animations
  */
 
-svg=document.documentElement;
-svg.style.backgroundColor = "white";
-svg.setAttribute("viewBox", "0 0 100 100");
-NS = "http://www.w3.org/2000/svg";
-const colors = ["#000", "#333", "#666", "#999"];
-let style = rnd() * 4 | 0;
+svg = document.documentElement;
+svg.setAttribute("viewBox", "0 0 400 400");
 
-function text(t, x, y, s, c) {
-  let e = document.createElementNS(NS, "text");
-  e.textContent = t;
-  e.setAttribute("x", x);
-  e.setAttribute("y", y);
-  e.setAttribute("font-size", s);
-  e.setAttribute("font-family", "monospace");
-  e.setAttribute("font-weight", "bold");
-  e.setAttribute("fill", c);
-  e.setAttribute("text-anchor", "middle");
-  svg.appendChild(e);
+// Extreme variation parameters - each generation is dramatically different
+let seed = rnd();
+let morphType = Math.floor(rnd() * 5); // 5 completely different visual styles
+let timeScale = 0.5 + rnd() * 3;
+let complexity = Math.floor(rnd() * 4) + 2;
+let energyMode = Math.floor(rnd() * 4);
+let dimensionShift = rnd() * 8;
+
+// Dynamic color system with extreme variation
+let baseHue = rnd() * 360;
+let colorIntensity = 0.4 + rnd() * 0.6;
+let chromaShift = 60 + rnd() * 120;
+
+// Create advanced SVG definitions with shaders and filters
+let defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+
+// Fractal noise turbulence filter
+let turbulence = document.createElementNS("http://www.w3.org/2000/svg", "feTurbulence");
+turbulence.setAttribute("baseFrequency", (0.01 + rnd() * 0.04) + " " + (0.01 + rnd() * 0.04));
+turbulence.setAttribute("numOctaves", complexity);
+turbulence.setAttribute("result", "noise");
+
+let displace = document.createElementNS("http://www.w3.org/2000/svg", "feDisplacementMap");
+displace.setAttribute("in", "SourceGraphic");
+displace.setAttribute("in2", "noise");
+displace.setAttribute("scale", 15 + rnd() * 25);
+
+let noiseFilter = document.createElementNS("http://www.w3.org/2000/svg", "filter");
+noiseFilter.setAttribute("id", "fractalNoise");
+noiseFilter.appendChild(turbulence);
+noiseFilter.appendChild(displace);
+
+// Glow filter
+let blur = document.createElementNS("http://www.w3.org/2000/svg", "feGaussianBlur");
+blur.setAttribute("stdDeviation", 3 + rnd() * 5);
+blur.setAttribute("result", "coloredBlur");
+
+let glowFilter = document.createElementNS("http://www.w3.org/2000/svg", "filter");
+glowFilter.setAttribute("id", "glow");
+glowFilter.appendChild(blur);
+
+// Morphing gradient with extreme variation
+let morphGrad = document.createElementNS("http://www.w3.org/2000/svg", "radialGradient");
+morphGrad.setAttribute("id", "morphGrad");
+morphGrad.setAttribute("cx", (30 + rnd() * 40) + "%");
+morphGrad.setAttribute("cy", (30 + rnd() * 40) + "%");
+
+// Animated gradient stops
+for (let i = 0; i < 5; i++) {
+  let stop = document.createElementNS("http://www.w3.org/2000/svg", "stop");
+  stop.setAttribute("offset", (i * 25) + "%");
+  
+  let hue = (baseHue + i * chromaShift + rnd() * 40) % 360;
+  let sat = 50 + rnd() * 40;
+  let light = 3 + rnd() * 12;
+  
+  stop.setAttribute("stop-color", "hsl(" + hue + ", " + sat + "%, " + light + "%)");
+  stop.setAttribute("stop-opacity", 0.7 + rnd() * 0.3);
+  
+  morphGrad.appendChild(stop);
 }
 
-if (style == 0) {
-  // Wavy letters
-  for (let i = 0; i < 5; i++) {
-    let x = 10 + i * 16;
-    let y = 50 + Math.sin(i + rnd() * 6) * 8;
-    text("svgKT"[i], x, y, 12 + rnd() * 4, colors[rnd() * 4 | 0]);
+defs.appendChild(noiseFilter);
+defs.appendChild(glowFilter);
+defs.appendChild(morphGrad);
+svg.appendChild(defs);
+
+// Animated background
+let bg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+bg.setAttribute("width", "400");
+bg.setAttribute("height", "400");
+bg.setAttribute("fill", "url(#morphGrad)");
+if (rnd() < 0.6) bg.setAttribute("filter", "url(#fractalNoise)");
+svg.appendChild(bg);
+
+// Generate dramatically different visual styles based on morphType
+if (morphType === 0) {
+  // Neural Network Style with animated connections
+  let nodes = [];
+  for (let node = 0; node < 25 + rnd() * 35; node++) {
+    let x = 50 + rnd() * 300;
+    let y = 50 + rnd() * 300;
+    let r = 2 + rnd() * 6;
+    nodes.push({x, y, r});
+    
+    let neuron = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    neuron.setAttribute("cx", x);
+    neuron.setAttribute("cy", y);
+    neuron.setAttribute("r", r);
+    neuron.setAttribute("fill", "hsl(" + (baseHue + rnd() * 80) + ", 80%, 65%)");
+    neuron.setAttribute("opacity", 0.8);
+    neuron.setAttribute("filter", "url(#glow)");
+    
+    // Pulsing animation
+    let pulse = document.createElementNS("http://www.w3.org/2000/svg", "animate");
+    pulse.setAttribute("attributeName", "r");
+    pulse.setAttribute("values", r + "; " + (r * 1.8) + "; " + r);
+    pulse.setAttribute("dur", (1.5 + rnd() * 2.5) + "s");
+    pulse.setAttribute("repeatCount", "indefinite");
+    neuron.appendChild(pulse);
+    
+    svg.appendChild(neuron);
   }
-} else if (style == 1) {
-  // Letters with background rectangles
-  let chars = "svgKT";
-  for (let i = 0; i < chars.length; i++) {
-    let x = 10 + i * 16, y = 50;
-    let r = document.createElementNS(NS, "rect");
-    r.setAttribute("x", x - 6);
-    r.setAttribute("y", y - 8);
-    r.setAttribute("width", 12);
-    r.setAttribute("height", 16);
-    r.setAttribute("fill", colors[rnd() * 4 | 0]);
-    r.setAttribute("opacity", 0.3 + rnd() * 0.4);
-    svg.appendChild(r);
-    text(chars[i], x, y, 12, "#000");
+  
+  // Create animated connections
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      if (rnd() < 0.15) {
+        let line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        line.setAttribute("x1", nodes[i].x);
+        line.setAttribute("y1", nodes[i].y);
+        line.setAttribute("x2", nodes[j].x);
+        line.setAttribute("y2", nodes[j].y);
+        line.setAttribute("stroke", "hsl(" + (baseHue + 40) + ", 70%, 50%)");
+        line.setAttribute("stroke-width", 0.5 + rnd() * 1.5);
+        line.setAttribute("opacity", 0.3);
+        
+        let strokeAnim = document.createElementNS("http://www.w3.org/2000/svg", "animate");
+        strokeAnim.setAttribute("attributeName", "stroke-opacity");
+        strokeAnim.setAttribute("values", "0.1; 0.7; 0.1");
+        strokeAnim.setAttribute("dur", (2 + rnd() * 3) + "s");
+        strokeAnim.setAttribute("repeatCount", "indefinite");
+        line.appendChild(strokeAnim);
+        
+        svg.appendChild(line);
+      }
+    }
   }
-} else if (style == 2) {
-  // Logo with background circles
-  let t = "svgKT";
-  for (let i = 0; i < 15; i++) {
-    let x = rnd() * 100, y = rnd() * 100;
-    let c = document.createElementNS(NS, "circle");
-    c.setAttribute("cx", x);
-    c.setAttribute("cy", y);
-    c.setAttribute("r", 2 + rnd() * 6);
-    c.setAttribute("fill", colors[rnd() * 4 | 0]);
-    c.setAttribute("opacity", 0.1 + rnd() * 0.3);
-    svg.appendChild(c);
+  
+} else if (morphType === 1) {
+  // Particle System Style
+  for (let p = 0; p < 80 + rnd() * 120; p++) {
+    let x = rnd() * 400;
+    let y = rnd() * 400;
+    let r = 1 + rnd() * 4;
+    let speed = 0.5 + rnd() * 2;
+    
+    let particle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    particle.setAttribute("cx", x);
+    particle.setAttribute("cy", y);
+    particle.setAttribute("r", r);
+    particle.setAttribute("fill", "hsl(" + (baseHue + rnd() * 120) + ", 75%, 60%)");
+    particle.setAttribute("opacity", 0.6 + rnd() * 0.4);
+    
+    // Orbital motion
+    let orbit = document.createElementNS("http://www.w3.org/2000/svg", "animateTransform");
+    orbit.setAttribute("attributeName", "transform");
+    orbit.setAttribute("type", "rotate");
+    orbit.setAttribute("values", "0 200 200; 360 200 200");
+    orbit.setAttribute("dur", (8 + rnd() * 15) + "s");
+    orbit.setAttribute("repeatCount", "indefinite");
+    particle.appendChild(orbit);
+    
+    // Size pulsing
+    let sizePulse = document.createElementNS("http://www.w3.org/2000/svg", "animate");
+    sizePulse.setAttribute("attributeName", "r");
+    sizePulse.setAttribute("values", r + "; " + (r * 2.5) + "; " + r);
+    sizePulse.setAttribute("dur", (1 + rnd() * 2) + "s");
+    sizePulse.setAttribute("repeatCount", "indefinite");
+    particle.appendChild(sizePulse);
+    
+    svg.appendChild(particle);
   }
-  text(t, 50, 50, 18, "#000");
+  
+} else if (morphType === 2) {
+  // Geometric Morphing Style
+  for (let shape = 0; shape < 8 + rnd() * 12; shape++) {
+    let cx = 100 + rnd() * 200;
+    let cy = 100 + rnd() * 200;
+    let size = 20 + rnd() * 40;
+    
+    if (rnd() < 0.5) {
+      // Morphing polygons
+      let sides = 3 + Math.floor(rnd() * 5);
+      let points = "";
+      for (let i = 0; i < sides; i++) {
+        let angle = (i / sides) * Math.PI * 2;
+        let x = cx + Math.cos(angle) * size;
+        let y = cy + Math.sin(angle) * size;
+        points += x + "," + y + " ";
+      }
+      
+      let poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+      poly.setAttribute("points", points);
+      poly.setAttribute("fill", "none");
+      poly.setAttribute("stroke", "hsl(" + (baseHue + shape * 30) + ", 70%, 55%)");
+      poly.setAttribute("stroke-width", 2 + rnd() * 3);
+      poly.setAttribute("opacity", 0.7);
+      
+      // Rotation animation
+      let rotate = document.createElementNS("http://www.w3.org/2000/svg", "animateTransform");
+      rotate.setAttribute("attributeName", "transform");
+      rotate.setAttribute("type", "rotate");
+      rotate.setAttribute("values", "0 " + cx + " " + cy + "; 360 " + cx + " " + cy);
+      rotate.setAttribute("dur", (4 + rnd() * 8) + "s");
+      rotate.setAttribute("repeatCount", "indefinite");
+      poly.appendChild(rotate);
+      
+      svg.appendChild(poly);
+    } else {
+      // Morphing circles to ellipses
+      let ellipse = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+      ellipse.setAttribute("cx", cx);
+      ellipse.setAttribute("cy", cy);
+      ellipse.setAttribute("rx", size);
+      ellipse.setAttribute("ry", size * 0.6);
+      ellipse.setAttribute("fill", "hsl(" + (baseHue + shape * 25) + ", 60%, 45%)");
+      ellipse.setAttribute("opacity", 0.5);
+      
+      // Morphing animation
+      let morphRx = document.createElementNS("http://www.w3.org/2000/svg", "animate");
+      morphRx.setAttribute("attributeName", "rx");
+      morphRx.setAttribute("values", size + "; " + (size * 2) + "; " + size);
+      morphRx.setAttribute("dur", (3 + rnd() * 4) + "s");
+      morphRx.setAttribute("repeatCount", "indefinite");
+      ellipse.appendChild(morphRx);
+      
+      svg.appendChild(ellipse);
+    }
+  }
+  
+} else if (morphType === 3) {
+  // Wave Interference Style
+  for (let wave = 0; wave < 15 + rnd() * 20; wave++) {
+    let path = "M";
+    let startX = rnd() * 400;
+    let startY = 100 + rnd() * 200;
+    let freq = 0.02 + rnd() * 0.08;
+    let amp = 10 + rnd() * 30;
+    
+    for (let x = 0; x < 400; x += 3) {
+      let y = startY + Math.sin(x * freq + wave) * amp;
+      path += (x === 0 ? "" : " L") + (startX + x - 200) + " " + y;
+    }
+    
+    let wavePath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    wavePath.setAttribute("d", path);
+    wavePath.setAttribute("stroke", "hsl(" + (baseHue + wave * 15) + ", 65%, 50%)");
+    wavePath.setAttribute("stroke-width", 1 + rnd() * 2);
+    wavePath.setAttribute("fill", "none");
+    wavePath.setAttribute("opacity", 0.6);
+    
+    // Wave animation
+    let waveAnim = document.createElementNS("http://www.w3.org/2000/svg", "animateTransform");
+    waveAnim.setAttribute("attributeName", "transform");
+    waveAnim.setAttribute("type", "translate");
+    waveAnim.setAttribute("values", "0 0; " + (20 * (rnd() - 0.5)) + " " + (10 * (rnd() - 0.5)) + "; 0 0");
+    waveAnim.setAttribute("dur", (4 + rnd() * 6) + "s");
+    waveAnim.setAttribute("repeatCount", "indefinite");
+    wavePath.appendChild(waveAnim);
+    
+    svg.appendChild(wavePath);
+  }
+  
 } else {
-  // Circular arrangement
-  let g = document.createElementNS(NS, "g");
-  g.setAttribute("transform", \`translate(50,50) rotate(\${rnd() * 360})\`);
-  for (let i = 0; i < 5; i++) {
-    let a = i * 72 * Math.PI / 180;
-    let x = Math.cos(a) * 15, y = Math.sin(a) * 15;
-    text("svgKT"[i], x, y, 10, colors[rnd() * 4 | 0]);
+  // Quantum Field Style
+  for (let field = 0; field < 60 + rnd() * 80; field++) {
+    let x = rnd() * 400;
+    let y = rnd() * 400;
+    let intensity = rnd();
+    
+    if (intensity > 0.3) {
+      let dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      dot.setAttribute("cx", x);
+      dot.setAttribute("cy", y);
+      dot.setAttribute("r", 1 + intensity * 3);
+      dot.setAttribute("fill", "hsl(" + (baseHue + intensity * 180) + ", 80%, 70%)");
+      dot.setAttribute("opacity", intensity);
+      
+      // Quantum fluctuation
+      let fluctuate = document.createElementNS("http://www.w3.org/2000/svg", "animate");
+      fluctuate.setAttribute("attributeName", "opacity");
+      fluctuate.setAttribute("values", "0.2; " + intensity + "; 0.2");
+      fluctuate.setAttribute("dur", (0.5 + rnd() * 1.5) + "s");
+      fluctuate.setAttribute("repeatCount", "indefinite");
+      dot.appendChild(fluctuate);
+      
+      svg.appendChild(dot);
+    }
   }
-  svg.appendChild(g);
+}
+
+// Create animated svgKT letters with extreme variation
+let letters = "svgKT";
+let letterSpacing = 60 + rnd() * 20;
+let startX = 40 + rnd() * 20;
+
+for (let i = 0; i < letters.length; i++) {
+  let x = startX + i * letterSpacing;
+  let y = 200 + (rnd() - 0.5) * 40;
+  let char = letters[i];
+  let fontSize = 45 + rnd() * 20;
+  
+  // Create multiple letter layers for depth
+  for (let layer = 0; layer < 3; layer++) {
+    let text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    text.textContent = char;
+    text.setAttribute("x", x + layer * 2);
+    text.setAttribute("y", y + layer * 1.5);
+    text.setAttribute("font-family", "monospace");
+    text.setAttribute("font-weight", layer === 0 ? "900" : "400");
+    text.setAttribute("font-size", fontSize * (1 - layer * 0.1));
+    text.setAttribute("text-anchor", "middle");
+    text.setAttribute("fill", "hsl(" + (baseHue + layer * 60 + i * 30) + ", 75%, " + (70 - layer * 10) + "%)");
+    text.setAttribute("opacity", 0.9 - layer * 0.2);
+    
+    if (layer === 0) text.setAttribute("filter", "url(#glow)");
+    
+    // Letter animations
+    if (energyMode === 0) {
+      // Floating animation
+      let float = document.createElementNS("http://www.w3.org/2000/svg", "animateTransform");
+      float.setAttribute("attributeName", "transform");
+      float.setAttribute("type", "translate");
+      float.setAttribute("values", "0 0; 0 " + (-5 - rnd() * 10) + "; 0 0");
+      float.setAttribute("dur", (2 + rnd() * 3) + "s");
+      float.setAttribute("repeatCount", "indefinite");
+      text.appendChild(float);
+    } else if (energyMode === 1) {
+      // Rotation animation
+      let rotate = document.createElementNS("http://www.w3.org/2000/svg", "animateTransform");
+      rotate.setAttribute("attributeName", "transform");
+      rotate.setAttribute("type", "rotate");
+      rotate.setAttribute("values", "0 " + x + " " + y + "; " + (360 * (rnd() - 0.5)) + " " + x + " " + y);
+      rotate.setAttribute("dur", (8 + rnd() * 12) + "s");
+      rotate.setAttribute("repeatCount", "indefinite");
+      text.appendChild(rotate);
+    } else if (energyMode === 2) {
+      // Scale pulsing
+      let scale = document.createElementNS("http://www.w3.org/2000/svg", "animateTransform");
+      scale.setAttribute("attributeName", "transform");
+      scale.setAttribute("type", "scale");
+      scale.setAttribute("values", "1; " + (1.2 + rnd() * 0.5) + "; 1");
+      scale.setAttribute("dur", (1.5 + rnd() * 2) + "s");
+      scale.setAttribute("repeatCount", "indefinite");
+      text.appendChild(scale);
+    } else {
+      // Color shifting
+      let colorShift = document.createElementNS("http://www.w3.org/2000/svg", "animate");
+      colorShift.setAttribute("attributeName", "fill");
+      colorShift.setAttribute("values", "hsl(" + (baseHue + i * 30) + ", 75%, 70%); hsl(" + ((baseHue + 180) % 360) + ", 75%, 70%); hsl(" + (baseHue + i * 30) + ", 75%, 70%)");
+      colorShift.setAttribute("dur", (3 + rnd() * 4) + "s");
+      colorShift.setAttribute("repeatCount", "indefinite");
+      text.appendChild(colorShift);
+    }
+    
+    svg.appendChild(text);
+  }
 }`;
 
   useEffect(() => {
@@ -331,7 +617,7 @@ if (style == 0) {
           {/* Storage Cost Display */}
           {code.trim() && (
             <div className="storage-cost">
-              <div className="storage-cost-label">Storage cost:</div>
+              <div className="storage-cost-label">Onchain inscription fee:</div>
               <div className="storage-cost-value">
                 {(() => {
                   const { description } = parseDescription(code);

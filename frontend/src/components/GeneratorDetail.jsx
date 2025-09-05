@@ -369,25 +369,26 @@ export default function GeneratorDetail() {
       const result = await tezosService.mintToken(parseInt(id));
       
       if (result.success) {
-        // Calculate the new token ID (current minted count + 1)
-        const newTokenId = (generator.nTokens || 0) + 1;
+        // Use the actual token ID returned from the mint operation
+        const mintedTokenId = result.tokenId;
         
-        // Generate a random seed for the minted token (same logic as in tezos service)
-        const entropy = new Uint8Array(16);
-        crypto.getRandomValues(entropy);
-        const seed = Array.from(entropy).reduce((acc, byte, i) => acc + (byte << (8 * (i % 4))), 0);
+        // Extract seed from the entropy returned by the mint operation
+        const entropyHex = result.entropy;
+        // Convert hex entropy to seed (same logic as contract)
+        const entropyBytes = entropyHex.slice(2); // Remove '0x' prefix
+        const seed = parseInt(entropyBytes.slice(0, 8), 16); // Use first 4 bytes as seed
         
         // Generate SVG data URI for the minted token
-        const svgDataUri = tezosService.generateSVG(generator.code, Math.abs(seed), newTokenId);
+        const svgDataUri = tezosService.generateSVG(generator.code, Math.abs(seed), mintedTokenId);
         
         // Prepare token data for success popup
         const tokenData = {
-          tokenId: newTokenId,
-          tokenName: `${generator.name || `Generator #${generator.id}`} #${newTokenId}`,
+          tokenId: mintedTokenId,
+          tokenName: `${generator.name || `Generator #${generator.id}`} #${mintedTokenId}`,
           generatorName: generator.name || `Generator #${generator.id}`,
           authorTwitter: authorProfile?.twitter,
           svgDataUri: svgDataUri,
-          objktUrl: `https://${getObjktDomain()}/tokens/${getTokenContractAddress()}/${newTokenId}`
+          objktUrl: `https://${getObjktDomain()}/tokens/${getTokenContractAddress()}/${mintedTokenId}`
         };
         
         setMintedTokenData(tokenData);
@@ -396,7 +397,7 @@ export default function GeneratorDetail() {
         // Update local generator state to reflect the new mint count
         setGenerator(prevGenerator => ({
           ...prevGenerator,
-          nTokens: newTokenId
+          nTokens: (prevGenerator.nTokens || 0) + 1
         }));
         
         // Refresh the latest tokens list to include the new mint
@@ -779,7 +780,7 @@ export default function GeneratorDetail() {
             {/* Storage Cost Display for Minting */}
             {generator.sale && (
               <div className="storage-cost">
-                <div className="storage-cost-label">Storage cost:</div>
+                <div className="storage-cost-label">Onchain inscription fee:</div>
                 <div className="storage-cost-value">
                   {(() => {
                     const nameBytes = getByteLength(generator.name || `Generator #${generator.id}`);
