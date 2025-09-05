@@ -328,7 +328,7 @@ if (style == 0) {
             {isCreating ? 'Creating...' : 'Create Generator'}
           </button>
           {/* Storage Cost Display */}
-          {name.trim() && code.trim() && (
+          {code.trim() && (
             <div className="storage-cost">
               <div className="storage-cost-label">Storage cost:</div>
               <div className="storage-cost-value">
