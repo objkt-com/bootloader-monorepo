@@ -48,11 +48,11 @@ token_id = nft.storage()['next_token_id']
 print("adding fragments")
 ops = []
 for i, fragment in enumerate(fragments):
-    ops.append(nft.add_fragment(frag_id=i, frag=fragment.encode()))
+    ops.append(nft.add_fragment(frag_id=i, frag=fragment.strip().encode()))
 print(pt.bulk(*ops).send(min_confirmations=1).hash())
 
-print(nft.create_generator(name="Test".encode(), description="Test".encode(), code=code.encode(), author_bytes=wallet.public_key_hash().encode()).send(min_confirmations=1).hash())
-print(nft.set_sale(generator_id=0, start_time=None, price=1_000_000, paused=False, editions=256).send(min_confirmations=1).hash())
-for i in range(3):
-    print(nft.mint(generator_id=0, entropy=os.urandom(16)).with_amount(1_000_000).send(min_confirmations=1).hash())
-    print(f'https://ghostnet.objkt.com/tokens/{nft_address}/{token_id+i}')
+# print(nft.create_generator(name="Test".encode(), description="Test".encode(), code=code.encode(), author_bytes=wallet.public_key_hash().encode()).send(min_confirmations=1).hash())
+# print(nft.set_sale(generator_id=0, start_time=None, price=1_000_000, paused=False, editions=256).send(min_confirmations=1).hash())
+# for i in range(3):
+#     print(nft.mint(generator_id=0, entropy=os.urandom(16)).with_amount(1_000_000).send(min_confirmations=1).hash())
+#     print(f'https://ghostnet.objkt.com/tokens/{nft_address}/{token_id+i}')
