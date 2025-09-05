@@ -1,1 +1,0 @@
-sp.record(administrator = sp.address('tz1SfRoaCkrBkXqTzhz67QYVPJAU9Y2g48kq'), frags = {}, ledger = {}, metadata = {}, next_token_id = 0, operators = {}, token_metadata = {})

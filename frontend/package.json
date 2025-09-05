@@ -1,0 +1,29 @@
+{
+  "name": "svjkt-frontend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "SVJKT - On-chain SVG Generator Platform",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@airgap/beacon-dapp": "^4.6.0",
+    "@taquito/beacon-wallet": "^20.0.1",
+    "@taquito/taquito": "^20.0.1",
+    "@taquito/utils": "^20.0.1",
+    "@monaco-editor/react": "^4.6.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^6.0.5",
+    "vite-plugin-node-polyfills": "^0.24.0"
+  }
+}

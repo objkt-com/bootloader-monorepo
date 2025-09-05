@@ -1,1 +1,0 @@
-sp.bytes('0xca15c7c561fb5ab4bfa0db7a66366eda')

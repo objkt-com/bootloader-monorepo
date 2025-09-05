@@ -52,3 +52,30 @@ def bytes_utils():
             return out
         else:
             return sp.bytes("0x2d") + out
+
+    def from_nat(n):
+        """Convert an integer to ASCII-encoded decimal bytes.
+
+        Examples:
+        from_nat(0)  == sp.bytes("0x30")
+        from_nat(7)  == sp.bytes("0x37")
+        from_nat(10) == sp.bytes("0x3130")
+        from_nat(99) == sp.bytes("0x3939")
+        """
+        sp.cast(n, sp.nat)
+        out = sp.bytes("0x")
+        v=n
+
+        # Special-case zero
+        if v == 0:
+            out = sp.bytes("0x30")
+        else:
+            pieces = []
+            # Collect digits least-significant to most-significant
+            while v > 0:
+                (q, r) = sp.ediv(v, 10).unwrap_some()  # q, r are nat
+                pieces.push(_digit_to_byte(sp.to_int(r)))
+                v = q
+            # Concatenate in correct order thanks to push semantics
+            out = sp.concat(pieces)
+        return out
