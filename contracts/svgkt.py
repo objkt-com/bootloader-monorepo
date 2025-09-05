@@ -8,7 +8,7 @@ main = fa2.main
 
 
 @sp.module
-def svjkt():
+def svgkt():
     import main
     import bytes_utils
 
@@ -17,7 +17,7 @@ def svjkt():
             self.data = ()
 
     # Order of inheritance: [Admin], [<policy>], <base class>, [<other mixins>].
-    class SVJKT(
+    class SvgKT(
         main.Admin,
         main.Nft,
         main.MintNft,
@@ -167,9 +167,9 @@ def svjkt():
 def test():
     # Create and configure the test scenario
     # Import the types from the FA2 library, the library itself, and the contract module, in that order.
-    scenario = sp.test_scenario("svjkt")
+    scenario = sp.test_scenario("svgkt")
     admin = sp.test_account("admin")
-    contract = svjkt.SVJKT(
+    contract = svgkt.SvgKT(
         admin.address, admin.address, sp.big_map({}), {}, []
     )
     scenario += contract

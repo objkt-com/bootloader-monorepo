@@ -1,6 +1,6 @@
-# SVJKT - On-chain SVG Generator Platform
+# svgKT - On-chain SVG Generator Platform
 
-A minimalist web interface for the SVJKT smart contract that allows users to create, edit, and mint generative SVG art on the Tezos blockchain.
+A minimalist web interface for the svgKT smart contract that allows users to create, edit, and mint generative SVG art on the Tezos blockchain.
 
 ## Features
 
@@ -34,7 +34,7 @@ npm run dev
 
 ### Configuration
 
-The app is configured to work with the SVJKT contract at:
+The app is configured to work with the svgKT contract at:
 - **Contract Address**: `KT1DZrTdXKU35MzLygZkmyWHDuEu1hJhm4qn`
 - **Network**: Mainnet (configurable in `src/config.js`)
 
@@ -122,7 +122,7 @@ frontend/
 
 ## Design Philosophy
 
-SVJKT follows a minimalist design inspired by hicetnunc.xyz:
+svgKT follows a minimalist design inspired by hicetnunc.xyz:
 
 - **Monospace typography** (Courier New)
 - **Black and white color scheme**
@@ -132,7 +132,7 @@ SVJKT follows a minimalist design inspired by hicetnunc.xyz:
 
 ## Smart Contract Integration
 
-The frontend interacts with the SVJKT smart contract through:
+The frontend interacts with the svgKT smart contract through:
 
 - **create_generator**: Submit new generators
 - **update_generator**: Modify existing generators (author only)

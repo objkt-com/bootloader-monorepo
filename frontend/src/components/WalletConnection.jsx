@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { tezosService } from '../services/tezos.js';
 
 export default function WalletConnection() {
@@ -8,6 +9,22 @@ export default function WalletConnection() {
 
   useEffect(() => {
     initializeWallet();
+    
+    // Set up account change callback
+    tezosService.setAccountChangeCallback((address) => {
+      setUserAddress(address);
+      setIsConnected(!!address);
+    });
+    
+    // Poll for connection status changes
+    const interval = setInterval(() => {
+      if (tezosService.isConnected !== isConnected || tezosService.userAddress !== userAddress) {
+        setIsConnected(tezosService.isConnected);
+        setUserAddress(tezosService.userAddress);
+      }
+    }, 1000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   const initializeWallet = async () => {
@@ -57,7 +74,9 @@ export default function WalletConnection() {
   if (isConnected) {
     return (
       <div className="wallet-info">
-        <span>{formatAddress(userAddress)}</span>
+        <Link to={`/profile/${userAddress}`} className="user-address-link">
+          {formatAddress(userAddress)}
+        </Link>
         <button onClick={handleDisconnect}>disconnect</button>
       </div>
     );

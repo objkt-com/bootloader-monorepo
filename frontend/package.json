@@ -1,9 +1,9 @@
 {
-  "name": "svjkt-frontend",
+  "name": "svgkt-frontend",
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "description": "SVJKT - On-chain SVG Generator Platform",
+  "description": "svgKT - On-chain SVG Generator Platform",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

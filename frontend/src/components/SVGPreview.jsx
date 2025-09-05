@@ -1,13 +1,28 @@
 import { useState, useEffect, useRef } from 'react';
 import { tezosService } from '../services/tezos.js';
 
-export default function SVGPreview({ code, seed = 12345, width = 400, height = 300, showHeader = false, onRefresh = null }) {
+export default function SVGPreview({ code, seed = 12345, width = 400, height = 300, showHeader = false, onRefresh = null, noPadding = false, useObjktCDN = false, contractAddress = null, tokenId = null }) {
   const [svgUrl, setSvgUrl] = useState(null);
   const [error, setError] = useState(null);
   const [isReloading, setIsReloading] = useState(false);
   const debounceRef = useRef(null);
 
   useEffect(() => {
+    if (useObjktCDN && contractAddress && tokenId) {
+      // Use objkt CDN for token previews with network-specific URL format
+      const isGhostnet = window.location.hostname.includes('ghostnet') || 
+                        process.env.NODE_ENV === 'development'; // Assume ghostnet for development
+      
+      const objktUrl = isGhostnet 
+        ? `https://assets.ghostnet.objkt.media/file/assets-ghostnet/${contractAddress}/${tokenId}/thumb400`
+        : `https://assets.objkt.media/file/assets-003/${contractAddress}/${tokenId}/thumb400`;
+      
+      setSvgUrl(objktUrl);
+      setError(null);
+      setIsReloading(false);
+      return;
+    }
+
     // Clear existing timeout
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
@@ -26,7 +41,7 @@ export default function SVGPreview({ code, seed = 12345, width = 400, height = 3
         clearTimeout(debounceRef.current);
       }
     };
-  }, [code, seed]);
+  }, [code, seed, useObjktCDN, contractAddress, tokenId]);
 
   const generatePreview = () => {
     try {
@@ -70,11 +85,9 @@ export default function SVGPreview({ code, seed = 12345, width = 400, height = 3
   }
 
   return (
-    <div className={`preview-content ${isReloading ? 'preview-loading' : ''}`}>
+    <div className={`preview-content ${isReloading ? 'preview-loading' : ''} ${noPadding ? 'no-padding' : ''}`}>
       <iframe
         src={svgUrl}
-        width={width}
-        height={height}
         style={{ 
           border: '1px solid #ccc', 
           background: 'white',
@@ -82,6 +95,8 @@ export default function SVGPreview({ code, seed = 12345, width = 400, height = 3
         }}
         scrolling="no"
         title="SVG Preview"
+        sandbox="allow-scripts allow-downloads"
+        allow="accelerometer; camera; gyroscope; microphone; xr-spatial-tracking; midi;"
       />
     </div>
   );
