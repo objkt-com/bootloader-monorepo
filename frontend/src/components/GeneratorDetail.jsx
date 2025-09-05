@@ -7,6 +7,7 @@ import CodeEditor from './CodeEditor.jsx';
 import SVGPreview from './SVGPreview.jsx';
 import PreviewControls from './PreviewControls.jsx';
 import MintSuccessPopup from './MintSuccessPopup.jsx';
+import { estimateMint, getByteLength, formatStorageCost } from '../utils/storageCost.js';
 
 export default function GeneratorDetail() {
   const { id } = useParams();
@@ -767,13 +768,29 @@ export default function GeneratorDetail() {
         </div>
 
         <div className="actions-right">
-          <button 
-            onClick={handleMint}
-            disabled={isMintDisabled()}
-            className="mint-button"
-          >
-            {isMinting ? 'Minting...' : getMintButtonText()}
-          </button>
+          <div className="action-with-cost">
+            <button 
+              onClick={handleMint}
+              disabled={isMintDisabled()}
+              className="mint-button"
+            >
+              {isMinting ? 'Minting...' : getMintButtonText()}
+            </button>
+            {/* Storage Cost Display for Minting */}
+            {generator.sale && (
+              <div className="storage-cost">
+                <div className="storage-cost-label">Storage cost:</div>
+                <div className="storage-cost-value">
+                  {(() => {
+                    const nameBytes = getByteLength(generator.name || `Generator #${generator.id}`);
+                    const codeBytes = getByteLength(generator.code);
+                    const cost = estimateMint(nameBytes, codeBytes);
+                    return formatStorageCost(cost);
+                  })()}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

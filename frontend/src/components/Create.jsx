@@ -4,6 +4,7 @@ import { tezosService } from '../services/tezos.js';
 import CodeEditor from './CodeEditor.jsx';
 import SVGPreview from './SVGPreview.jsx';
 import PreviewControls from './PreviewControls.jsx';
+import { estimateCreateGenerator, getByteLength, formatStorageCost } from '../utils/storageCost.js';
 
 export default function Create() {
   const [name, setName] = useState('');
@@ -319,12 +320,30 @@ if (style == 0) {
 
       <div className="actions">
         <button onClick={() => navigate('/')}>Cancel</button>
-        <button 
-          onClick={handleCreate}
-          disabled={isCreating || !tezosService.isConnected}
-        >
-          {isCreating ? 'Creating...' : 'Create Generator'}
-        </button>
+        <div className="action-with-cost">
+          <button 
+            onClick={handleCreate}
+            disabled={isCreating || !tezosService.isConnected}
+          >
+            {isCreating ? 'Creating...' : 'Create Generator'}
+          </button>
+          {/* Storage Cost Display */}
+          {name.trim() && code.trim() && (
+            <div className="storage-cost">
+              <div className="storage-cost-label">Storage cost:</div>
+              <div className="storage-cost-value">
+                {(() => {
+                  const { description } = parseDescription(code);
+                  const nameBytes = getByteLength(name.trim());
+                  const descriptionBytes = getByteLength(description);
+                  const codeBytes = getByteLength(parseDescription(code).code);
+                  const cost = estimateCreateGenerator(nameBytes, descriptionBytes, codeBytes);
+                  return formatStorageCost(cost);
+                })()}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {!tezosService.isConnected && (
