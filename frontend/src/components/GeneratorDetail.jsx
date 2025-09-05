@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { tezosService } from '../services/tezos.js';
+import { tzktService } from '../services/tzkt.js';
+import { getNetworkConfig, getContractAddress } from '../config.js';
 import CodeEditor from './CodeEditor.jsx';
 import SVGPreview from './SVGPreview.jsx';
 import PreviewControls from './PreviewControls.jsx';
@@ -9,6 +11,7 @@ export default function GeneratorDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [generator, setGenerator] = useState(null);
+  const [authorProfile, setAuthorProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -18,10 +21,71 @@ export default function GeneratorDetail() {
   const [isMinting, setIsMinting] = useState(false);
   const [success, setSuccess] = useState(null);
   const [previewSeed, setPreviewSeed] = useState(Math.floor(Math.random() * 1000000));
+  const [latestTokens, setLatestTokens] = useState([]);
+  const [tokensLoading, setTokensLoading] = useState(false);
 
   useEffect(() => {
     loadGenerator();
   }, [id]);
+
+  useEffect(() => {
+    if (generator) {
+      loadLatestTokens();
+      loadAuthorProfile();
+    }
+  }, [generator]);
+
+  const loadAuthorProfile = async () => {
+    if (!generator?.author) return;
+    
+    try {
+      const query = `
+        query GetHolder($address: String!) {
+          holder(where: {address: {_eq: $address}}) {
+            address
+            alias
+            description
+            twitter
+            tzdomain
+          }
+        }
+      `;
+      
+      const response = await fetch('https://data.objkt.com/v3/graphql', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query,
+          variables: { address: generator.author }
+        })
+      });
+      
+      const data = await response.json();
+      if (data.data?.holder) {
+        setAuthorProfile(data.data.holder);
+      }
+    } catch (err) {
+      console.error('Failed to load author profile:', err);
+    }
+  };
+
+  const loadLatestTokens = async () => {
+    try {
+      setTokensLoading(true);
+      if (generator) {
+        // Use TzKT API to get real mints for this generator
+        const tokens = await tzktService.getGeneratorMints(generator.id, 6); // Get 6 latest mints
+        setLatestTokens(tokens);
+      }
+    } catch (err) {
+      console.error('Failed to load latest tokens:', err);
+      setLatestTokens([]); // Set empty array on error
+    } finally {
+      setTokensLoading(false);
+    }
+  };
 
   const loadGenerator = async () => {
     try {
@@ -150,6 +214,28 @@ export default function GeneratorDetail() {
 
   const isAuthor = generator && tezosService.userAddress === generator.author;
 
+  const formatAddress = (addr) => {
+    return `${addr.slice(0, 8)}...${addr.slice(-8)}`;
+  };
+
+  const getAuthorDisplayName = () => {
+    if (authorProfile?.alias) {
+      return authorProfile.alias;
+    }
+    return formatAddress(generator.author);
+  };
+
+  // Helper function to get the correct objkt domain based on network
+  const getObjktDomain = () => {
+    const networkConfig = getNetworkConfig();
+    return networkConfig.tzktApi.includes('ghostnet') ? 'ghostnet.objkt.com' : 'objkt.com';
+  };
+
+  // Helper function to get the contract address for token links
+  const getTokenContractAddress = () => {
+    return getContractAddress();
+  };
+
   if (loading) {
     return (
       <div className="container">
@@ -178,9 +264,22 @@ export default function GeneratorDetail() {
 
   return (
     <div className="container">
-      <h1>{generator.name || `Generator #${generator.id}`}</h1>
-      <p>by {generator.author}</p>
-      {generator.description && <p>{generator.description}</p>}
+      <div className="generator-header">
+        <h1>{generator.name || `Generator #${generator.id}`}</h1>
+        <p className="generator-author">
+          by{' '}
+          <a 
+            href={`/profile/${generator.author}`}
+            onClick={(e) => {
+              e.preventDefault();
+              navigate(`/profile/${generator.author}`);
+            }}
+            className="author-link"
+          >
+            {getAuthorDisplayName()}
+          </a>
+        </p>
+      </div>
       
       {isEditing && (
         <div className="form-group">
@@ -230,6 +329,7 @@ export default function GeneratorDetail() {
             seed={previewSeed}
             width={400}
             height={400}
+            noPadding={true}
           />
         </div>
       </div>
@@ -266,6 +366,46 @@ export default function GeneratorDetail() {
           Please connect your wallet to mint or edit
         </div>
       )}
+
+      <div className="latest-mints">
+        <h3>Latest Mints</h3>
+        {tokensLoading ? (
+          <div className="loading">Loading latest tokens...</div>
+        ) : latestTokens.length === 0 ? (
+          <div className="empty-state">
+            <p>No tokens minted yet.</p>
+          </div>
+        ) : (
+          <div className="tokens-grid">
+            {latestTokens.map((token) => (
+              <a
+                key={token.tokenId}
+                href={`https://${getObjktDomain()}/tokens/${getTokenContractAddress()}/${token.tokenId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="token-card"
+              >
+                <div className="token-preview-container">
+                  <SVGPreview 
+                    code={generator.code}
+                    seed={token.seed}
+                    width={200}
+                    height={200}
+                  />
+                </div>
+                <div className="token-card-info">
+                  <div className="token-card-name">
+                    {token.name}
+                  </div>
+                  <div className="token-card-owner">
+                    owned by {token.owner.slice(0, 6)}...{token.owner.slice(-4)}
+                  </div>
+                </div>
+              </a>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

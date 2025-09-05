@@ -15,8 +15,11 @@ export const CONFIG = {
   // Network configuration
   network: 'ghostnet',
   
-  // SVJKT contract address
-  contractAddress: 'KT1AqyXgCqAeibWeGZkYnLPuABRfm9HB7zje',
+  // Contract addresses (generator contract is also the FA2 contract)
+  contracts: {
+    ghostnet: 'KT1AqyXgCqAeibWeGZkYnLPuABRfm9HB7zje',
+    mainnet: null // To be deployed
+  },
   
   // App branding
   branding: {
@@ -36,5 +39,5 @@ export const getNetworkConfig = () => {
 };
 
 export const getContractAddress = () => {
-  return CONFIG.contractAddress;
+  return CONFIG.contracts[CONFIG.network];
 };

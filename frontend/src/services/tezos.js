@@ -2,6 +2,7 @@ import { TezosToolkit } from '@taquito/taquito';
 import { BeaconWallet } from '@taquito/beacon-wallet';
 import { NetworkType, BeaconEvent } from '@airgap/beacon-dapp';
 import { getNetworkConfig, getContractAddress, CONFIG } from '../config.js';
+import { tzktService } from './tzkt.js';
 
 class TezosService {
   constructor() {
@@ -121,36 +122,8 @@ class TezosService {
 
   async getGenerators() {
     try {
-      const storage = await this.getContractStorage();
-      const generators = [];
-      
-      // Get all generators from the big_map
-      const generatorsBigMap = storage.generators;
-      const nextGeneratorId = storage.next_generator_id.toNumber();
-      
-      for (let i = 0; i < nextGeneratorId; i++) {
-        try {
-          const generator = await generatorsBigMap.get(i);
-          if (generator) {
-            generators.push({
-              id: i,
-              name: this.bytesToString(generator.name),
-              description: this.bytesToString(generator.description),
-              author: generator.author,
-              code: this.bytesToString(generator.code),
-              created: new Date(generator.created),
-              lastUpdate: new Date(generator.last_update)
-            });
-          }
-        } catch (error) {
-          console.warn(`Failed to get generator ${i}:`, error);
-        }
-      }
-      
-      // Sort by creation time (newest first)
-      generators.sort((a, b) => b.created - a.created);
-      
-      return generators;
+      // Use TzKT service instead of RPC calls
+      return await tzktService.getGenerators();
     } catch (error) {
       console.error('Failed to get generators:', error);
       throw error;
@@ -159,39 +132,60 @@ class TezosService {
 
   async getFragments() {
     try {
-      const storage = await this.getContractStorage();
-      const fragments = [];
-      
-      // Get fragments 0-3 (based on the template structure)
-      for (let i = 0; i < 4; i++) {
-        try {
-          const fragment = await storage.frags.get(i);
-          if (fragment) {
-            fragments[i] = this.bytesToString(fragment);
-          }
-        } catch (error) {
-          console.warn(`Failed to get fragment ${i}:`, error);
-        }
-      }
-      
-      return fragments;
+      // Use TzKT service instead of RPC calls
+      return await tzktService.getFragments();
     } catch (error) {
       console.error('Failed to get fragments:', error);
       throw error;
     }
   }
 
-  async createGenerator(name, code) {
+  async getGenerator(generatorId) {
+    try {
+      // Use TzKT service to get a specific generator
+      return await tzktService.getGenerator(generatorId);
+    } catch (error) {
+      console.error(`Failed to get generator ${generatorId}:`, error);
+      throw error;
+    }
+  }
+
+  async getNextGeneratorId() {
+    try {
+      // Use TzKT service to get the next generator ID
+      return await tzktService.getNextGeneratorId();
+    } catch (error) {
+      console.error('Failed to get next generator ID:', error);
+      throw error;
+    }
+  }
+
+  async getContractBigMaps() {
+    try {
+      // Use TzKT service to get all bigmaps for the contract
+      return await tzktService.getContractBigMaps();
+    } catch (error) {
+      console.error('Failed to get contract bigmaps:', error);
+      throw error;
+    }
+  }
+
+  async createGenerator(name, code, description = '', royaltyAddress = null) {
     try {
       if (!this.contract) {
-        throw new Error('Contract not loaded');
+        await this.loadContract();
       }
       
-      const operation = await this.contract.methods.create_generator(
-        this.stringToBytes(code),
-        this.stringToBytes(''), // empty description for now
-        this.stringToBytes(name),
-      ).send();
+      // Use user's address as default royalty address
+      const defaultRoyaltyAddress = royaltyAddress || this.userAddress || '';
+      
+      // Use methodsObject with named parameters matching the contract signature
+      const operation = await this.contract.methodsObject.create_generator({
+        name: this.stringToBytes(name),
+        description: this.stringToBytes(description),
+        code: this.stringToBytes(code),
+        royalty_address: this.stringToBytes(defaultRoyaltyAddress)
+      }).send();
       
       await operation.confirmation();
       return { success: true, hash: operation.hash };
@@ -201,18 +195,23 @@ class TezosService {
     }
   }
 
-  async updateGenerator(generatorId, name, code) {
+  async updateGenerator(generatorId, name, code, description = '', royaltyAddress = null) {
     try {
       if (!this.contract) {
-        throw new Error('Contract not loaded');
+        await this.loadContract();
       }
       
-      const operation = await this.contract.methods.update_generator(
-        generatorId,
-        this.stringToBytes(code),
-        this.stringToBytes(''), // empty description for now
-        this.stringToBytes(name),
-      ).send();
+      // Use user's address as default royalty address
+      const defaultRoyaltyAddress = royaltyAddress || this.userAddress || '';
+      
+      // Use methodsObject with named parameters
+      const operation = await this.contract.methodsObject.update_generator({
+        generator_id: generatorId,
+        name: this.stringToBytes(name),
+        description: this.stringToBytes(description),
+        code: this.stringToBytes(code),
+        royalty_address: this.stringToBytes(defaultRoyaltyAddress)
+      }).send();
       
       await operation.confirmation();
       return { success: true, hash: operation.hash };
@@ -225,18 +224,19 @@ class TezosService {
   async mintToken(generatorId) {
     try {
       if (!this.contract) {
-        throw new Error('Contract not loaded');
+        await this.loadContract();
       }
       
-      // Generate random entropy (16 bytes)
+      // Generate random entropy (16 bytes) and convert to hex string
       const entropy = new Uint8Array(16);
       crypto.getRandomValues(entropy);
       const entropyHex = '0x' + Array.from(entropy).map(b => b.toString(16).padStart(2, '0')).join('');
       
-      const operation = await this.contract.methods.mint(
-        generatorId,
-        entropyHex
-      ).send();
+      // Use methodsObject with named parameters
+      const operation = await this.contract.methodsObject.mint({
+        generator_id: generatorId,
+        entropy: entropyHex
+      }).send();
       
       await operation.confirmation();
       return { success: true, hash: operation.hash };

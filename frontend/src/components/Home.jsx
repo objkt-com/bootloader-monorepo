@@ -31,6 +31,55 @@ export default function Home() {
     navigate(`/generator/${generator.id}`);
   };
 
+  // Mock function to determine generator status - will be replaced with real data later
+  const getGeneratorStatus = (generator) => {
+    // For now, cycle through different states based on generator ID for demo
+    const statusTypes = ['active', 'scheduled', 'finished', 'created'];
+    const statusIndex = generator.id % 4;
+    
+    const mockData = {
+      active: { minted: 9, total: 21, price: '0.5 XTZ', progress: 43 },
+      scheduled: { minted: 0, total: 100, countdown: '2d 3h 4m', progress: 0 },
+      finished: { minted: 255, total: 255, price: '1.2 XTZ', progress: 100 },
+      created: { minted: 0, total: 50, progress: 100 }
+    };
+    
+    return {
+      type: statusTypes[statusIndex],
+      ...mockData[statusTypes[statusIndex]]
+    };
+  };
+
+  const renderGeneratorStatus = (generator) => {
+    const status = getGeneratorStatus(generator);
+    
+    return (
+      <>
+        <div className="generator-card-status">
+          {status.type === 'scheduled' ? (
+            <>
+              <span className="generator-card-editions">{status.minted} / {status.total}</span>
+              <span className="generator-card-countdown">{status.countdown}</span>
+            </>
+          ) : status.type === 'created' ? (
+            <span className="generator-card-editions">(-)</span>
+          ) : (
+            <>
+              <span className="generator-card-editions">{status.minted} / {status.total} minted</span>
+              <span className="generator-card-price">{status.price}</span>
+            </>
+          )}
+        </div>
+        <div className="progress-bar">
+          <div 
+            className={`progress-fill ${status.type}`}
+            style={{ width: `${status.progress}%` }}
+          ></div>
+        </div>
+      </>
+    );
+  };
+
   if (loading) {
     return (
       <div className="container">
@@ -53,38 +102,31 @@ export default function Home() {
       {generators.length === 0 ? (
         <div className="empty-state">
           <p>No generators found.</p>
-          <button onClick={() => navigate('/create')}>Create the first generator</button>
         </div>
       ) : (
         <div className="generators-grid">
           {generators.map((generator) => (
             <div 
               key={generator.id} 
-              className="generator-grid-item"
+              className="generator-card"
               onClick={() => handleGeneratorClick(generator)}
             >
               <div className="generator-preview-container">
                 <SVGPreview 
                   code={generator.code} 
                   seed={12345} 
-                  width={400}
-                  height={400}
+                  width={320}
+                  height={320}
                 />
-                <div className="generator-name-always">
+              </div>
+              <div className="generator-card-info">
+                <div className="generator-card-title">
                   {generator.name || `Generator #${generator.id}`}
                 </div>
-                <div className="generator-overlay">
-                  <div className="generator-details">
-                    <div className="generator-author">
-                      by {generator.author.slice(0, 6)}...{generator.author.slice(-4)}
-                    </div>
-                    {generator.description && (
-                      <div className="generator-description">
-                        {generator.description}
-                      </div>
-                    )}
-                  </div>
+                <div className="generator-card-author">
+                  by {generator.author.slice(0, 6)}...{generator.author.slice(-4)}
                 </div>
+                {renderGeneratorStatus(generator)}
               </div>
             </div>
           ))}
