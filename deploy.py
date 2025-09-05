@@ -14,8 +14,11 @@ pt = pytezos.using(key=wallet.secret_key(), shell="https://ghostnet.smartpy.io")
 
 
 nft_deployer = ContractDeployment.from_name('svg_nft')
+nft_deployer.update_storage({
+    "administrator": wallet.public_key_hash()
+})
 nft_deployer.set_pytezos_client(pt)
-nft_deployer.use_cache()
+# nft_deployer.use_cache()
 nft_deployer.set_network(Network.ghostnet)
 nft_address = nft_deployer.deploy()
 nft = pt.contract(nft_address)
@@ -30,8 +33,8 @@ fragments = [prefix, circle_1, circle_2, circle_3, circle_4, svg_end]
 print("adding fragments")
 ops = []
 for i, fragment in enumerate(fragments):
-    ops.append(nft.add_fragment(i, fragment.encode()))
-print(pt.bulk(*ops).send(min_confirmation=1).hash())
+    ops.append(nft.add_fragment(frag_id=i, frag=fragment.encode()))
+print(pt.bulk(*ops).send(min_confirmations=1).hash())
 
 print(nft.mint(os.urandom(16)).send(min_confirmations=1).hash())
 print(f'https://ghostnet.objkt.com/tokens/{nft_address}/{token_id}')

@@ -59,53 +59,6 @@ def svg_nft():
             assert self.data.administrator == sp.sender
             self.data.frags[frag_id] = frag
 
-        @sp.private(with_storage="read-only")
-        def rand(self, data) -> sp.nat:
-            entropy = data.entropy
-            n = data.n
-            entropy_index = 0
-            result = 0
-            drawn = False
-            bit_masks = [
-                sp.bytes("0x01"),
-                sp.bytes("0x02"),
-                sp.bytes("0x04"),
-                sp.bytes("0x08"),
-                sp.bytes("0x10"),
-                sp.bytes("0x20"),
-                sp.bytes("0x40"),
-                sp.bytes("0x80"),
-            ]
-            # edge-case: n ≤ 1 ⇒ always return 0
-            if n > 1:
-                bits_needed = log_2(sp.as_nat(n-1))
-
-                # accumulators for the candidate number
-                num            = 0
-                bits_collected = 0
-
-                while not drawn:
-                    # get the next byte → 8 booleans
-                    byte = sp.slice(entropy_index, 1, entropy).unwrap_some()
-
-                    for bit_mask in bit_masks:
-                        if not drawn:
-                            if sp.and_bytes(byte, bit_mask) == bit_mask:
-                                num = (num << 1) + 1
-                            else:
-                                num = num << 1
-                            bits_collected += 1
-
-                            if bits_collected == bits_needed:
-                                if num < n:
-                                    result = num
-                                    drawn = True
-                                else:
-                                    num = 0
-                                    bits_collected = 0
-                                    entropy = sp.sha256(entropy)
-            return result
-
         @sp.entrypoint
         def mint(self, entropy: sp.bytes): 
             # Construct the artifactUri as a svg that is rendered on-chain
@@ -113,23 +66,7 @@ def svg_nft():
             # base64 buildable data uri. Start with something simple like circles
             # and squares of different sizes that are assembled on-chain)
             svg_string = self.data.frags[0] # datauri + svg
-            e = entropy
-            for i in range(10):
-                # draw circle
-                svg_string += self.data.frags[1]
-                svg_string += bytes_utils.from_int(sp.to_int(10 + self.rand(sp.record(entropy=e, n=30))))
-                e = sp.sha256(e)
-                svg_string += self.data.frags[2]
-                svg_string += bytes_utils.from_int(sp.to_int(50 + self.rand(sp.record(entropy=e, n=700))))
-                e = sp.sha256(e)
-                svg_string += self.data.frags[3]
-                svg_string += bytes_utils.from_int(sp.to_int(50 + self.rand(sp.record(entropy=e, n=500))))
-                e = sp.sha256(e)
-                svg_string += self.data.frags[4]
-                # svg_string += self.draw_circle(sp.record(x=sp.to_int(x), y=sp.to_int(y), r=sp.to_int(r)))
-
-            svg_string += self.data.frags[5]
-
+            svg_string += entropy
 
             self.data.ledger[self.data.next_token_id] = sp.sender
             self.data.token_metadata[self.data.next_token_id] = sp.record(

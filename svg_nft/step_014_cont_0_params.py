@@ -1,0 +1,1 @@
+sp.bytes('0xa0fa88edc03143780323e4bce030a528')

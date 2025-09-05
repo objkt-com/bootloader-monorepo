@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="180" viewBox="0 0 480 180">
+  <title>Hand-Drawn Sine</title>
+  <rect width="100%" height="100%" fill="white"/>
+  <path id="wave" fill="none" stroke="black" stroke-width="1.5" stroke-linecap="round" opacity="0.85" vector-effect="non-scaling-stroke"/>
+  <script><![CDATA[
+    const wave = document.getElementById('wave');
+    let phase = 0;
+    function draw(){
+      const W = 480, H = 180, mid = H/2, A = 40;
+      const pts = [];
+      for (let x = 0; x <= W; x += 4){
+        const y = mid + A * Math.sin((x/58) + phase) * Math.cos((x/91) - phase * 0.7);
+        pts.push((x===0?'M':'L') + x + ' ' + y.toFixed(2));
+      }
+      wave.setAttribute('d', pts.join(''));
+      phase += 0.02;
+      requestAnimationFrame(draw);
+    }
+    draw();
+  ]]></script>
+</svg>
+

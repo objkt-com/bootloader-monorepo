@@ -2,6 +2,24 @@ import smartpy as sp
 
 @sp.module
 def bytes_utils():
+    # Map a single digit (0..9) to its ASCII byte
+    def _digit_to_byte(d):
+        table = {
+            0: sp.bytes("0x30"),
+            1: sp.bytes("0x31"),
+            2: sp.bytes("0x32"),
+            3: sp.bytes("0x33"),
+            4: sp.bytes("0x34"),
+            5: sp.bytes("0x35"),
+            6: sp.bytes("0x36"),
+            7: sp.bytes("0x37"),
+            8: sp.bytes("0x38"),
+            9: sp.bytes("0x39"),
+        }
+        sp.cast(d, sp.int)
+        assert d >= 0 and d < 10
+        return table[d]
+
     def from_int(n):
         """Convert an integer to ASCII-encoded decimal bytes.
 
@@ -13,24 +31,6 @@ def bytes_utils():
         from_int(-3) == sp.bytes("0x2d33")
         """
         sp.cast(n, sp.int)
-
-        # Map a single digit (0..9) to its ASCII byte
-        def _digit_to_byte(d):
-            table = {
-                0: sp.bytes("0x30"),
-                1: sp.bytes("0x31"),
-                2: sp.bytes("0x32"),
-                3: sp.bytes("0x33"),
-                4: sp.bytes("0x34"),
-                5: sp.bytes("0x35"),
-                6: sp.bytes("0x36"),
-                7: sp.bytes("0x37"),
-                8: sp.bytes("0x38"),
-                9: sp.bytes("0x39"),
-            }
-            sp.cast(d, sp.int)
-            assert d >= 0 and d < 10
-            return table[d]
 
         negative = n < 0
         v = sp.to_int(abs(n))
@@ -51,4 +51,4 @@ def bytes_utils():
         if not negative:
             return out
         else:
-            return sp.concat([sp.bytes("0x2d"), out])
+            return sp.bytes("0x2d") + out
