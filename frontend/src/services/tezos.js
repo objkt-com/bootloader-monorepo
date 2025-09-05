@@ -3,7 +3,6 @@ import { BeaconWallet } from "@taquito/beacon-wallet";
 import { NetworkType, BeaconEvent } from "@airgap/beacon-dapp";
 import { getNetworkConfig, getContractAddress, CONFIG } from "../config.js";
 import { tzktService } from "./tzkt.js";
-import { escapeJavaScriptForSvg } from "../utils/xmlEscape.js";
 
 class TezosService {
   constructor() {
@@ -57,7 +56,7 @@ class TezosService {
             this.onAccountChangeCallback(null);
           }
         }
-      },
+      }
     );
   }
 
@@ -181,12 +180,15 @@ class TezosService {
         await this.loadContract();
       }
 
+      // URL encode the code before converting to bytes
+      const encodedCode = encodeURIComponent(code);
+
       // Use methodsObject with named parameters matching the new contract signature
       const operation = await this.contract.methodsObject
         .create_generator({
           name: this.stringToBytes(name),
           description: this.stringToBytes(description),
-          code: this.stringToBytes(code),
+          code: this.stringToBytes(encodedCode),
           author_bytes: this.stringToBytes(this.userAddress || ""),
         })
         .send();
@@ -205,13 +207,16 @@ class TezosService {
         await this.loadContract();
       }
 
+      // URL encode the code before converting to bytes
+      const encodedCode = encodeURIComponent(code);
+
       // Use methodsObject with named parameters matching the new contract signature
       const operation = await this.contract.methodsObject
         .update_generator({
           generator_id: generatorId,
           name: this.stringToBytes(name),
           description: this.stringToBytes(description),
-          code: this.stringToBytes(code),
+          code: this.stringToBytes(encodedCode),
           author_bytes: this.stringToBytes(this.userAddress || ""),
         })
         .send();
@@ -287,15 +292,15 @@ class TezosService {
         .send({ amount: salePrice, mutez: true });
 
       await operation.confirmation();
-      
+
       // The token ID that was minted is the nextTokenId we captured before the mint
       const mintedTokenId = nextTokenId;
-      
-      return { 
-        success: true, 
-        hash: operation.hash, 
+
+      return {
+        success: true,
+        hash: operation.hash,
         tokenId: mintedTokenId,
-        entropy: entropyHex
+        entropy: entropyHex,
       };
     } catch (error) {
       console.error("Failed to mint token:", error);
@@ -328,12 +333,13 @@ class TezosService {
 
   generateSVG(code, seed = 555555, tokenId = 0) {
     try {
-      // Escape the user code for safe embedding in SVG
-      const escapedCode = escapeJavaScriptForSvg(code);
-      
-      // Create the SVG content with proper character escaping instead of CDATA
-      const svgContent = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg"><script>const SEED=${seed}n;function sfc32(t,e,n,$){return function(){n|=0;var r=((t|=0)+(e|=0)|0)+($|=0)|0;return $=$+1|0,t=e^e&gt;&gt;&gt;9,e=n+(n&lt;&lt;3)|0,n=(n=n&lt;&lt;21|n&gt;&gt;&gt;11)+r|0,(r&gt;&gt;&gt;0)/4294967296}}function splitBigInt(t,e=4){let n=[];for(let $=0n;$&lt;e;$++)n.push(Number(t&gt;&gt;32n*$&amp;4294967295n));return n}const[a,b,c,d]=splitBigInt(SEED,4),rnd=sfc32(a,b,c,d);${escapedCode}</script></svg>`;
+      // Create the complete JavaScript code including the random number generator
+      const encodedCode = encodeURIComponent(code);
 
+      // Create SVG content and properly encode for data URI
+      const svgContent = `data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cscript%3E%3C!%5BCDATA%5Bconst%20SEED%3D${seed}n%3Bfunction%20splitmix64(t)%7Blet%20x%3Dt%3Breturn%20function()%7Bx%3D(x%2B0x9e3779b97f4a7c15n)%260xffffffffffffffffn%3Blet%20z%3Dx%3Bz%3D(z%5E(z%3E%3E30n))*0xbf58476d1ce4e5b9n%260xffffffffffffffffn%3Bz%3D(z%5E(z%3E%3E27n))*0x94d049bb133111ebn%260xffffffffffffffffn%3Bz%5E%3Dz%3E%3E31n%3Breturn%20Number(z%260xffffffffn)%3E%3E%3E0%7D%7Dfunction%20sfc32(a%2Cb%2Cc%2Cd)%7Breturn%20function()%7Ba%7C%3D0%3Bb%7C%3D0%3Bc%7C%3D0%3Bd%7C%3D0%3Blet%20t%3D(a%2Bb%7C0)%2Bd%7C0%3Bd%3Dd%2B1%7C0%3Ba%3Db%5Eb%3E%3E%3E9%3Bb%3Dc%2B(c%3C%3C3)%7C0%3Bc%3D(c%3C%3C21%7Cc%3E%3E%3E11)%3Bc%3Dc%2Bt%7C0%3Breturn(t%3E%3E%3E0)%2F4294967296%7D%7Dconst%20sm%3Dsplitmix64(SEED)%2Ca%3Dsm()%2Cb%3Dsm()%2Cc%3Dsm()%2Cd%3Dsm()%2Crnd%3Dsfc32(a%2Cb%2Cc%2Cd)%3B${encodedCode}%5D%5D%3E%3C%2Fscript%3E%3C%2Fsvg%3E`;
+
+      console.log(svgContent);
       return svgContent;
     } catch (error) {
       console.error("Failed to generate SVG:", error);
