@@ -1,4 +1,5 @@
 // Responsive generative art
+svg=document.documentElement;
 NS = "http://www.w3.org/2000/svg";
 svg.setAttribute("viewBox", "0 0 100 100");
 

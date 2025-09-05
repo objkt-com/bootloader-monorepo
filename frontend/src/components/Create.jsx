@@ -135,6 +135,7 @@ export default function Create() {
  * (c) 2025 svgKT
  */
 
+svg=document.documentElement;
 svg.style.backgroundColor = "white";
 svg.setAttribute("viewBox", "0 0 100 100");
 NS = "http://www.w3.org/2000/svg";
