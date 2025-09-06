@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import { nodePolyfills } from 'vite-plugin-node-polyfills'
 
 export default defineConfig({
+  base: process.env.NODE_ENV === 'production' ? '/svgkt-monorepo/' : '/',
   plugins: [
     react(),
     nodePolyfills({
@@ -19,5 +20,9 @@ export default defineConfig({
   },
   server: {
     port: 3000,
+  },
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
   },
 })
