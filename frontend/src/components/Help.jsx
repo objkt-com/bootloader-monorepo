@@ -199,14 +199,20 @@ svg = document.documentElement;`}</code></pre>
               spacing, and code style become permanent parts of the artwork's provenance and are visible when 
               viewing the on-chain data.
             </p>
+            <p>
+              <strong>Important:</strong> When you edit a stored value, you only pay for the difference in bytes, not the full new size. 
+              For example, if your old generator code was 100 bytes and your updated code is 120 bytes, you only pay 
+              storage fees for the additional 20 bytes (20 × 250 = 5,000 mutez). This makes iterating and improving 
+              your generators more cost-effective.
+            </p>
           </div>
           <div className="pricing-item">
             <h4>Minting Costs</h4>
             <p>
-              Since fragments are copied and assembled into one data URI during minting, this process costs 
-              minters additional fees. Each mint requires on-chain computation to combine your generator code 
-              with the template fragments, creating the complete SVG data URI that becomes the token's artifact.
-              The larger your code, the higher the minting cost for your collectors.
+              During minting, your generator code is assembled with template fragments and written into the 
+              minted token's token-metadata as a complete SVG data URI. Since this data is being stored 
+              on-chain again as part of the token, the storage fee (250 mutez per byte) must be paid again 
+              by the minter. The larger your code, the higher the minting cost for your collectors.
             </p>
           </div>
         </div>

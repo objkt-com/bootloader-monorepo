@@ -2,24 +2,14 @@ import smartpy as sp
 
 @sp.module
 def randomiser():
-    # Type definitions using new syntax
-    t_storage: type = sp.record(
-        metadata=sp.big_map[sp.string, sp.bytes],
-        b=sp.bytes
-    )
-
-    class Randomiser(sp.Contract):
+    class RandomiserMock(sp.Contract):
         def __init__(self, ):
-            # Initialize contract data directly on self.data
             self.data.metadata = sp.cast(sp.big_map({}), sp.big_map[sp.string, sp.bytes])
             self.data.b = sp.bytes("0x")
-            
-            # Cast the entire storage to the defined type
-            sp.cast(self.data, t_storage)
 
         @sp.private(with_storage="read-only", with_operations=False)
         def get_next_value(self, bytes_in):
-            """Get next random value using multiple entropy sources"""
+            """The Randomiser on mainnet uses more on-chain sources"""
             return sp.sha256(bytes_in + sp.pack(sp.now) + sp.pack(sp.source))
 
         @sp.entrypoint
@@ -55,7 +45,6 @@ def randomiser():
 
 
 
-# Test scenarios
 if "main" in __name__:
     @sp.add_test()
     def test_randomiser():
@@ -63,5 +52,5 @@ if "main" in __name__:
         scenario = sp.test_scenario("randomiser", randomiser)
         
         # Create contract instances
-        contract = randomiser.Randomiser()
+        contract = randomiser.RandomiserMock()
         scenario += contract

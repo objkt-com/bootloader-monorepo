@@ -37,6 +37,9 @@ def svgkt():
             self.data.treasury = admin_address
             self.data.platform_fee_bps = 2000
             self.data.rng_contract = rng_contract
+            self.data.max_bytes_code = 30000
+            self.data.max_bytes_name = 500
+            self.data.max_bytes_desc = 8000
             self.data.generators = sp.cast(sp.big_map({}), sp.big_map[sp.nat, sp.record(
                 name=sp.bytes,
                 created=sp.timestamp,
@@ -67,12 +70,18 @@ def svgkt():
                 n_tokens=0,
                 sale=None,
             )
+            assert sp.len(name) <= self.data.max_bytes_name, "NAME_TOO_LONG"
+            assert sp.len(description) <= self.data.max_bytes_desc, "DESC_TOO_LONG"
+            assert sp.len(code) <= self.data.max_bytes_code, "CODE_TOO_LONG"
             self.data.next_generator_id += 1
 
         @sp.entrypoint
         def update_generator(self, generator_id, name, description, code, author_bytes):
             generator = self.data.generators[generator_id]
             assert sp.sender == generator.author, "NOT_AUTHOR"
+            assert sp.len(name) <= self.data.max_bytes_name, "NAME_TOO_LONG"
+            assert sp.len(description) <= self.data.max_bytes_desc, "DESC_TOO_LONG"
+            assert sp.len(code) <= self.data.max_bytes_code, "CODE_TOO_LONG"
             self.data.generators[generator_id] = sp.record(
                 name=name,
                 created=generator.created,
@@ -95,7 +104,7 @@ def svgkt():
                     # but only if no tokens were minted yet
                     if generator.n_tokens > 0:
                         assert editions <= sale.editions, "NO_ED_INCREMENT"
-
+            assert editions >= generator.n_tokens, "ED_LT_MINTED"
             self.data.generators[generator_id].sale = sp.Some(sp.record(
                 start_time=start_time,
                 price=price,
@@ -111,6 +120,8 @@ def svgkt():
         @sp.entrypoint
         def set_platform_fee_bps(self, platform_fee_bps):
             assert self.data.administrator == sp.sender, "ONLY_ADMIN"
+            sp.cast(platform_fee_bps, sp.nat)
+            assert platform_fee_bps <= 10_000, "BPS_TOO_HIGH"
             self.data.platform_fee_bps = platform_fee_bps
 
         @sp.entrypoint
