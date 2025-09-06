@@ -9,13 +9,14 @@ import PreviewControls from './PreviewControls.jsx';
 import MintSuccessPopup from './MintSuccessPopup.jsx';
 import { estimateMint, getByteLength, formatStorageCost } from '../utils/storageCost.js';
 import { getTokenThumbnailUrl, prefetchTokenThumbnail } from '../utils/thumbnail.js';
+import { getUserDisplayInfo, formatAddress } from '../utils/userDisplay.js';
 import SmartThumbnail from './SmartThumbnail.jsx';
 
 export default function GeneratorDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [generator, setGenerator] = useState(null);
-  const [authorProfile, setAuthorProfile] = useState(null);
+  const [authorDisplayInfo, setAuthorDisplayInfo] = useState({ displayName: '', profile: null });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -205,33 +206,8 @@ export default function GeneratorDetail() {
     if (!generator?.author) return;
     
     try {
-      const query = `
-        query GetHolder($address: String!) {
-          holder(where: {address: {_eq: $address}}) {
-            address
-            alias
-            description
-            twitter
-            tzdomain
-          }
-        }
-      `;
-      
-      const response = await fetch('https://data.objkt.com/v3/graphql', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query,
-          variables: { address: generator.author }
-        })
-      });
-      
-      const data = await response.json();
-      if (data.data?.holder) {
-        setAuthorProfile(data.data.holder);
-      }
+      const displayInfo = await getUserDisplayInfo(generator.author);
+      setAuthorDisplayInfo(displayInfo);
     } catch (err) {
       console.error('Failed to load author profile:', err);
     }
@@ -396,7 +372,7 @@ export default function GeneratorDetail() {
           tokenId: mintedTokenId,
           tokenName: result.tokenName || fallbackTokenName, // Use on-chain name if available
           generatorName: generator.name || `Generator #${generator.id}`,
-          authorTwitter: authorProfile?.twitter,
+          authorTwitter: authorDisplayInfo.profile?.twitter,
           svgDataUri: svgDataUri,
           objktUrl: `https://${getObjktDomain()}/tokens/${getTokenContractAddress()}/${mintedTokenId}`
         };
@@ -605,15 +581,8 @@ export default function GeneratorDetail() {
 
   const isAuthor = generator && tezosService.userAddress === generator.author;
 
-  const formatAddress = (addr) => {
-    return `${addr.slice(0, 8)}...${addr.slice(-8)}`;
-  };
-
   const getAuthorDisplayName = () => {
-    if (authorProfile?.alias) {
-      return authorProfile.alias;
-    }
-    return formatAddress(generator.author);
+    return authorDisplayInfo.displayName || formatAddress(generator.author);
   };
 
   // Helper function to get the correct objkt domain based on network

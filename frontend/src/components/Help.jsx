@@ -10,26 +10,29 @@ This generator creates colorful circles with random positions and sizes.
 Each circle has a unique color based on the deterministic random seed.
 */
 
-svg = document.documentElement;
-svg.setAttribute('viewBox', '0 0 400 400');
+(() => {
+  svg = document.documentElement;
+  svg.setAttribute('viewBox', '0 0 400 400');
+  svg.style.cssText = "background:white";
 
-// Create 5 random circles
-for (let i = 0; i < 5; i++) {
-  const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-  
-  // Random position and size
-  const x = 50 + rnd() * 300;
-  const y = 50 + rnd() * 300;
-  const r = 20 + rnd() * 40;
-  
-  circle.setAttribute('cx', x);
-  circle.setAttribute('cy', y);
-  circle.setAttribute('r', r);
-  circle.setAttribute('fill', \`hsl(\${rnd() * 360}, 70%, 60%)\`);
-  circle.setAttribute('opacity', 0.8);
-  
-  svg.appendChild(circle);
-}`);
+  // Create 5 random circles
+  for (let i = 0; i < 5; i++) {
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    
+    // Random position and size
+    const x = 50 + rnd() * 300;
+    const y = 50 + rnd() * 300;
+    const r = 20 + rnd() * 40;
+    
+    circle.setAttribute('cx', x);
+    circle.setAttribute('cy', y);
+    circle.setAttribute('r', r);
+    circle.setAttribute('fill', \`hsl(\${rnd() * 360}, 70%, 60%)\`);
+    circle.setAttribute('opacity', 0.8);
+    
+    svg.appendChild(circle);
+  }
+})();`);
   
   const [previewSeed, setPreviewSeed] = useState(12345);
 
@@ -278,6 +281,10 @@ svg = document.documentElement;`}</code></pre>
           <div className="practice-item">
             <h4>🎯 Use Deterministic Randomness</h4>
             <p>Always use <code>rnd()</code> instead of <code>Math.random()</code> to ensure reproducible results</p>
+          </div>
+          <div className="practice-item">
+            <h4>🔒 Wrap Code in IIFE</h4>
+            <p>Wrap your generator code in <code>(() =&gt; {'{}'})();</code> to create a clean scope and avoid variable conflicts with the SVG execution environment</p>
           </div>
           <div className="practice-item">
             <h4>📏 Optimize Code Size</h4>

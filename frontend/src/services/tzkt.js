@@ -43,9 +43,10 @@ class TzKTService {
     if (options.offset) params.append("offset", options.offset);
     if (options.select) params.append("select", options.select);
 
-    // Handle sorting - TzKT uses sort.field=direction format
+    // Handle sorting - TzKT uses sort parameter format
     if (options.sortField && options.sortDirection) {
-      params.append(`sort.${options.sortField}`, options.sortDirection);
+      // Use the correct TzKT sorting format: sort=field.direction
+      params.append("sort", `${options.sortField}.${options.sortDirection}`);
     } else if (options.sort) {
       // Legacy support for simple sort parameter
       params.append("sort", options.sort);
@@ -56,6 +57,7 @@ class TzKTService {
       url += `&${queryString}`;
     }
 
+    console.log("TzKT API URL:", url); // Debug logging
     return await this.fetchJson(url);
   }
 
@@ -85,8 +87,6 @@ class TzKTService {
       }
 
       const keys = await this.getBigMapKeys(generatorsBigMap.ptr, {
-        sortField: "key",
-        sortDirection: "desc", // Sort descending (newest first)
         limit: 1000, // Adjust as needed
       });
 
@@ -104,6 +104,9 @@ class TzKTService {
           sale: generator.sale || null,
         };
       });
+
+      // Ensure sorting by ID descending (newest first) as fallback
+      generators.sort((a, b) => b.id - a.id);
 
       return generators;
     } catch (error) {
@@ -154,8 +157,6 @@ class TzKTService {
       }
 
       const keys = await this.getBigMapKeys(fragsBigMap.ptr, {
-        sortField: "key",
-        sortDirection: "asc", // Sort ascending (0, 1, 2, 3...)
         limit: 10, // Should be enough for fragments
       });
 
@@ -310,14 +311,13 @@ class TzKTService {
 
       // Get all generator mapping keys and filter for this generator
       const mappingKeys = await this.getBigMapKeys(generatorMappingBigMap.ptr, {
-        sortField: "key",
-        sortDirection: "desc", // Sort by token_id descending (newest first)
         limit: 1000, // Get a large batch to filter
       });
 
-      // Filter for tokens that belong to this generator
+      // Filter for tokens that belong to this generator and sort by tokenId descending
       const generatorTokens = mappingKeys
         .filter((keyData) => parseInt(keyData.value) === generatorId)
+        .sort((a, b) => parseInt(b.key) - parseInt(a.key)) // Ensure newest tokens first
         .slice(0, limit); // Take only the requested number
 
       if (generatorTokens.length === 0) {
@@ -368,6 +368,9 @@ class TzKTService {
         }
       }
 
+      // Ensure tokens are sorted by tokenId descending (newest first) as final fallback
+      tokens.sort((a, b) => b.tokenId - a.tokenId);
+
       return tokens;
     } catch (error) {
       console.error(`Failed to get mints for generator ${generatorId}:`, error);
@@ -387,14 +390,13 @@ class TzKTService {
 
       // Get all ledger keys and filter for this owner
       const ledgerKeys = await this.getBigMapKeys(ledgerBigMap.ptr, {
-        sortField: "key",
-        sortDirection: "desc", // Sort by token_id descending (newest first)
         limit: 1000, // Get a large batch to filter
       });
 
-      // Filter for tokens owned by this address
+      // Filter for tokens owned by this address and sort by tokenId descending
       const ownedTokens = ledgerKeys
         .filter((keyData) => keyData.value === ownerAddress)
+        .sort((a, b) => parseInt(b.key) - parseInt(a.key)) // Ensure newest tokens first
         .slice(0, limit); // Take only the requested number
 
       if (ownedTokens.length === 0) {
@@ -467,6 +469,9 @@ class TzKTService {
           console.warn(`Failed to get data for token ${tokenId}:`, error);
         }
       }
+
+      // Ensure tokens are sorted by tokenId descending (newest first) as final fallback
+      tokens.sort((a, b) => b.tokenId - a.tokenId);
 
       return tokens;
     } catch (error) {

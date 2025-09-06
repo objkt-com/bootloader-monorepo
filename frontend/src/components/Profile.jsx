@@ -4,6 +4,7 @@ import { tezosService } from '../services/tezos.js';
 import { tzktService } from '../services/tzkt.js';
 import { getNetworkConfig, getContractAddress } from '../config.js';
 import { getGeneratorThumbnailUrl, getTokenThumbnailUrl } from '../utils/thumbnail.js';
+import { getUserDisplayInfo, formatAddress } from '../utils/userDisplay.js';
 import SmartThumbnail from './SmartThumbnail.jsx';
 
 export default function Profile() {
@@ -12,7 +13,7 @@ export default function Profile() {
   const [activeTab, setActiveTab] = useState('generators');
   const [generators, setGenerators] = useState([]);
   const [ownedTokens, setOwnedTokens] = useState([]);
-  const [userProfile, setUserProfile] = useState(null);
+  const [userDisplayInfo, setUserDisplayInfo] = useState({ displayName: '', profile: null });
   const [loading, setLoading] = useState(true);
   const [tokensLoading, setTokensLoading] = useState(false);
   const [profileLoading, setProfileLoading] = useState(true);
@@ -33,33 +34,8 @@ export default function Profile() {
   const loadUserProfile = async () => {
     try {
       setProfileLoading(true);
-      const query = `
-        query GetHolder($address: String!) {
-          holder(where: {address: {_eq: $address}}) {
-            address
-            alias
-            description
-            twitter
-            tzdomain
-          }
-        }
-      `;
-      
-      const response = await fetch('https://data.objkt.com/v3/graphql', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query,
-          variables: { address }
-        })
-      });
-      
-      const data = await response.json();
-      if (data.data?.holder) {
-        setUserProfile(data.data.holder);
-      }
+      const displayInfo = await getUserDisplayInfo(address);
+      setUserDisplayInfo(displayInfo);
     } catch (err) {
       console.error('Failed to load user profile:', err);
     } finally {
@@ -211,13 +187,6 @@ export default function Profile() {
     );
   };
 
-  const formatAddress = (addr) => {
-    return `${addr.slice(0, 8)}...${addr.slice(-8)}`;
-  };
-
-  const formatAddressFull = (addr) => {
-    return addr;
-  };
 
   if (loading) {
     return (
@@ -251,20 +220,24 @@ export default function Profile() {
     <div className="profile-container">
       <div className="profile-header">
         <div className="profile-name">
-          {profileLoading ? 'Loading...' : (userProfile?.alias || formatAddress(address))}
+          {profileLoading ? 'Loading...' : (userDisplayInfo.displayName || formatAddress(address))}
         </div>
         <div className="profile-address-full">
-          {formatAddressFull(address)}
+          {address}
         </div>
         <div className="profile-links">
-          {userProfile?.twitter && (
+          {userDisplayInfo.profile?.twitter && (
             <a 
-              href={`https://x.com/${userProfile.twitter}`}
+              href={userDisplayInfo.profile.twitter.startsWith('http') 
+                ? userDisplayInfo.profile.twitter 
+                : `https://x.com/${userDisplayInfo.profile.twitter}`}
               target="_blank"
               rel="noopener noreferrer"
               className="profile-link"
             >
-              x.com/{userProfile.twitter}
+              {userDisplayInfo.profile.twitter.startsWith('http') 
+                ? userDisplayInfo.profile.twitter 
+                : `x.com/${userDisplayInfo.profile.twitter}`}
             </a>
           )}
           <a 
@@ -356,7 +329,6 @@ export default function Profile() {
                       src={getTokenThumbnailUrl(token.tokenId, 200, 200)}
                       width="200"
                       height="200"
-                      style={{ border: '1px solid var(--color-black)' }}
                       alt={token.name}
                       maxRetries={8}
                       retryDelay={3000}

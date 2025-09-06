@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { tezosService } from '../services/tezos.js';
 import { getGeneratorThumbnailUrl } from '../utils/thumbnail.js';
+import { getUserDisplayInfo } from '../utils/userDisplay.js';
 import SmartThumbnail from './SmartThumbnail.jsx';
 
 export default function Home() {
   const [generators, setGenerators] = useState([]);
+  const [authorDisplayInfo, setAuthorDisplayInfo] = useState({}); // Map of author address to display info
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [, forceUpdate] = useState(0);
@@ -30,12 +32,45 @@ export default function Home() {
       setError(null);
       const generatorsList = await tezosService.getGenerators();
       setGenerators(generatorsList);
+      
+      // Load author display info for all unique authors
+      const uniqueAuthors = [...new Set(generatorsList.map(g => g.author))];
+      loadAuthorDisplayInfo(uniqueAuthors);
     } catch (err) {
       console.error('Failed to load generators:', err);
       setError('Failed to load generators');
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadAuthorDisplayInfo = async (authors) => {
+    const displayInfoPromises = authors.map(async (author) => {
+      try {
+        const displayInfo = await getUserDisplayInfo(author);
+        return { author, displayInfo };
+      } catch (err) {
+        console.error(`Failed to load display info for ${author}:`, err);
+        return { author, displayInfo: { displayName: '', profile: null } };
+      }
+    });
+
+    const results = await Promise.all(displayInfoPromises);
+    const displayInfoMap = {};
+    results.forEach(({ author, displayInfo }) => {
+      displayInfoMap[author] = displayInfo;
+    });
+    
+    setAuthorDisplayInfo(displayInfoMap);
+  };
+
+  const getAuthorDisplayName = (author) => {
+    const displayInfo = authorDisplayInfo[author];
+    if (displayInfo?.displayName) {
+      return displayInfo.displayName;
+    }
+    // Fallback to shortened address
+    return `${author.slice(0, 6)}...${author.slice(-4)}`;
   };
 
   const handleGeneratorClick = (generator) => {
@@ -211,7 +246,7 @@ export default function Home() {
                   {generator.name || `Generator #${generator.id}`}
                 </div>
                 <div className="generator-card-author">
-                  by {generator.author.slice(0, 6)}...{generator.author.slice(-4)}
+                  by {getAuthorDisplayName(generator.author)}
                 </div>
                 {renderGeneratorStatus(generator)}
               </div>

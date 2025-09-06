@@ -1211,8 +1211,9 @@ input:focus, textarea:focus {
 
 .profile-links {
   display: flex;
-  gap: var(--spacing-md);
-  align-items: center;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  align-items: flex-start;
 }
 
 .profile-link {
