@@ -1,7 +1,8 @@
 from pytezos import pytezos
 from pytezos.crypto.key import Key
+from pytezos.michelson.parse import michelson_to_micheline
 from hashlib import sha256
-from utils import ContractDeployment, Network
+from utils import ContractDeployment, Network, load_lambda_from_name
 from templates import get_fragments_from_template
 import os
 
@@ -41,8 +42,9 @@ nft = pt.contract(nft_address)
 token_id = nft.storage()['next_token_id']
 
 
-print("adding fragments")
-ops = []
-for i, fragment in enumerate(fragments):
-    ops.append(nft.add_fragment(frag_id=i, frag=fragment.strip().encode()))
-print(pt.bulk(*ops).send(min_confirmations=1).hash())
+print("adding generator type")
+
+# load the lambda function
+bootloader = load_lambda_from_name('lambda_0_0_1')
+
+print(nft.add_generator_type(version='0.0.1'.encode(), name='bootloader'.encode(), fragments=[f.encode() for f in fragments], fun=str(bootloader)).send(min_confirmations=1).hash())

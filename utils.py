@@ -21,6 +21,7 @@ def load_code_and_storage(name):
     storage_glob = "%s/*storage.tz" % name
     code_path = glob.glob(code_glob)[0]
     storage_path = glob.glob(storage_glob)[0]
+
     contract = ContractInterface.from_file(code_path)
     with open(storage_path) as f:
         storage = contract.storage.decode(f.read())
@@ -35,6 +36,13 @@ def get_tezos_storage(**metadata):
             )
         )
     }
+
+def load_lambda_from_name(name):
+    storage_glob = "%s/*storage.tz" % name
+    storage_path = glob.glob(storage_glob)[0]
+
+    with open(storage_path) as f:
+        return f.read()
 
 class Network(StrEnum):
     localnet = 'http://localhost:20000'
