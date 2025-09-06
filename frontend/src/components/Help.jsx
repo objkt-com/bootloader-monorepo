@@ -1,4 +1,43 @@
+import { useState } from 'react';
+import CodeEditor from './CodeEditor.jsx';
+import SVGPreview from './SVGPreview.jsx';
+import PreviewControls from './PreviewControls.jsx';
+
 export default function Help() {
+  const [exampleCode, setExampleCode] = useState(`/*
+This generator creates colorful circles with random positions and sizes.
+Each circle has a unique color based on the deterministic random seed.
+*/
+
+svg = document.documentElement;
+svg.setAttribute('viewBox', '0 0 400 400');
+
+// Create 5 random circles
+for (let i = 0; i < 5; i++) {
+  const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  
+  // Random position and size
+  const x = 50 + rnd() * 300;
+  const y = 50 + rnd() * 300;
+  const r = 20 + rnd() * 40;
+  
+  circle.setAttribute('cx', x);
+  circle.setAttribute('cy', y);
+  circle.setAttribute('r', r);
+  circle.setAttribute('fill', \`hsl(\${rnd() * 360}, 70%, 60%)\`);
+  circle.setAttribute('opacity', 0.8);
+  
+  svg.appendChild(circle);
+}`);
+  
+  const [previewSeed, setPreviewSeed] = useState(12345);
+
+  const refreshPreview = () => {
+    const currentSeed = previewSeed;
+    setPreviewSeed(currentSeed + 0.1);
+    setTimeout(() => setPreviewSeed(currentSeed), 10);
+  };
+
   return (
     <div className="help-container">
       <div className="help-content">
@@ -6,70 +45,281 @@ export default function Help() {
 
         <h2>What is svgKT?</h2>
         <p>
-          svgKT is an on-chain SVG generator platform built on Tezos. It allows artists and developers
+          svgKT is an on-chain long-form generative SVG platform built on Tezos. It allows artists and developers
           to create generative art algorithms that produce unique SVG images directly on the blockchain.
+          Each piece is truly unique, verifiable, and stored permanently on-chain.
         </p>
 
-        <h2>Creating Generators</h2>
+        <h2>On-Chain SVG Assembly</h2>
         <p>
-          Generators are JavaScript programs that create SVG graphics. When you create a generator, 
-          your code is stored permanently on the Tezos blockchain. Each generator can produce infinite 
-          variations based on random entropy.
+          svgKT uses a fragment-based template system to assemble SVG artwork directly on the blockchain.
+          Here's how your code becomes a complete SVG using the actual on-chain fragments:
         </p>
 
-        <h2>Available Variables</h2>
-        <p>Your generator code has access to these variables:</p>
-        <ul>
-          <li><code>SEED</code> - A random number used for deterministic randomness</li>
-          <li><code>TOKEN_ID</code> - The unique ID of the minted token</li>
-          <li><code>rnd()</code> - A seeded random number generator function</li>
-          <li><code>svg</code> - The SVG document element for manipulation</li>
-        </ul>
-
-        <h2>Example Code</h2>
-        <pre>{`// Create a simple circle with random color
+        <div className="assembly-diagram">
+          <h3>Fragment Assembly Process</h3>
+          <div className="fragment-flow">
+            <div className="fragment-box">
+              <div className="fragment-header">
+                Fragment 0 
+                <a href="https://better-call.dev/ghostnet/KT1V7LKhv83hr7DnKRN1hnqF8yndDj71vNkZ/storage/big_map/477169/exprtZBwZUeYYYfUs9B9Rg2ywHezVHnCCnmF9WsDQVrs582dSK63dC" target="_blank" rel="noopener noreferrer" style={{marginLeft: '8px', fontSize: '12px'}}>
+                  (view on-chain)
+                </a>
+              </div>
+              <div className="fragment-content">
+                <code>{`data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg">
+<script><![CDATA[const SEED=`}</code>
+              </div>
+            </div>
+            
+            <div className="assembly-arrow">+</div>
+            
+            <div className="fragment-box entropy">
+              <div className="fragment-header">Random Entropy</div>
+              <div className="fragment-content">
+                <code>1234567890</code>
+                <div className="fragment-note">Generated from blockchain randomness</div>
+              </div>
+            </div>
+            
+            <div className="assembly-arrow">+</div>
+            
+            <div className="fragment-box">
+              <div className="fragment-header">
+                Fragment 1
+                <a href="https://better-call.dev/ghostnet/KT1V7LKhv83hr7DnKRN1hnqF8yndDj71vNkZ/storage/big_map/477169/expru2dKqDfZG8hu4wNGkiyunvq2hdSKuVYtcKta7BWP6Q18oNxKjS" target="_blank" rel="noopener noreferrer" style={{marginLeft: '8px', fontSize: '12px'}}>
+                  (view on-chain)
+                </a>
+              </div>
+              <div className="fragment-content">
+                <code>{`n;function splitmix64(t){...}function sfc32(a,b,c,d){...}
+const sm=splitmix64(SEED),a=sm(),b=sm(),c=sm(),d=sm(),rnd=sfc32(a,b,c,d);`}</code>
+                <div className="fragment-note">Sets up deterministic random number generator</div>
+              </div>
+            </div>
+            
+            <div className="assembly-arrow">+</div>
+            
+            <div className="fragment-box user-code">
+              <div className="fragment-header">Your Generator Code</div>
+              <div className="fragment-content">
+                <code>{`// Your creative code here
 const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
 circle.setAttribute('cx', 200);
 circle.setAttribute('cy', 200);
 circle.setAttribute('r', 50 + rnd() * 100);
 circle.setAttribute('fill', \`hsl(\${rnd() * 360}, 70%, 50%)\`);
-svg.appendChild(circle);`}</pre>
+svg.appendChild(circle);`}</code>
+              </div>
+            </div>
+            
+            <div className="assembly-arrow">+</div>
+            
+            <div className="fragment-box">
+              <div className="fragment-header">
+                Fragment 2
+                <a href="https://better-call.dev/ghostnet/KT1V7LKhv83hr7DnKRN1hnqF8yndDj71vNkZ/storage/big_map/477169/expruDuAZnFKqmLoisJqUGqrNzXTvw7PJM2rYk97JErM5FHCerQqgn" target="_blank" rel="noopener noreferrer" style={{marginLeft: '8px', fontSize: '12px'}}>
+                  (view on-chain)
+                </a>
+              </div>
+              <div className="fragment-content">
+                <code>{`]]></script>
+</svg>`}</code>
+              </div>
+            </div>
+            
+            <div className="assembly-result">
+              <div className="result-arrow">↓</div>
+              <div className="result-box">
+                <div className="result-header">Complete On-Chain SVG</div>
+                <div className="result-content">
+                  A fully executable SVG with embedded JavaScript that generates unique art
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
-        <h2>Minting Tokens</h2>
+        <h2>Generator Lifecycle</h2>
+        <div className="contract-diagram">
+          <div className="contract-flow">
+            <div className="contract-step">
+              <h4>1. Generator Creation</h4>
+              <p>Artists create generators by submitting their JavaScript code, name, and description to the blockchain. The generator is stored permanently with metadata including creation time and author.</p>
+            </div>
+            
+            <div className="contract-step">
+              <h4>2. Generator Updates</h4>
+              <p>Only the original author can update their generator's code, name, or description. The creation date and authorship remain unchanged.</p>
+            </div>
+            
+            <div className="contract-step">
+              <h4>3. Sale Configuration</h4>
+              <p>Authors configure sales by setting price, edition limits, start time, and pause status. Edition sizes can only be reduced if tokens have already been minted.</p>
+            </div>
+            
+            <div className="contract-step">
+              <h4>4. Minting Process</h4>
+              <p>Users mint tokens by paying the set price. The contract generates blockchain entropy, assembles the complete SVG by combining fragments with the generator code, and creates an NFT with the SVG as the artifact URI.</p>
+            </div>
+          </div>
+        </div>
+
+        <h2>Generator Description from Comments</h2>
         <p>
-          Once a generator is created, anyone can mint unique tokens from it. Each mint uses 
-          random entropy to create a one-of-a-kind artwork. The SVG is generated and stored 
-          entirely on-chain.
+          svgKT automatically extracts your generator's description from the first multi-line comment in your code.
+          This description is stored on-chain separately from your code and displayed to users when they view your generator.
         </p>
+        <div className="description-example">
+          <h4>Example:</h4>
+          <pre><code>{`/*
+This generator creates colorful circles with random positions and sizes.
+Each circle has a unique color based on the deterministic random seed.
+*/
 
-        <h2>Technical Details</h2>
+// Your generator code follows...
+svg = document.documentElement;`}</code></pre>
+          <p>
+            The text inside the first <code>/* */</code> comment block becomes your generator's description.
+            Any comments outside of the description section will be written on-chain into the code section.
+          </p>
+        </div>
+
+        <h2>Storage Costs and Mint Pricing</h2>
         <p>
-          svgKT uses SmartPy contracts on Tezos to store generator code and metadata. 
-          The SVG generation happens client-side using the stored code and blockchain-provided 
-          entropy, ensuring each piece is truly unique and verifiable.
+          Understanding the cost structure of svgKT helps you optimize your generators and set appropriate mint prices.
         </p>
+        <div className="pricing-section">
+          <div className="pricing-item">
+            <h4>On-Chain Storage Costs</h4>
+            <p>
+              Storing data on-chain costs <strong>250 mutez per byte</strong>. Your code is URL encoded and not minified, 
+              so the formatting of your code is part of the aesthetic of the project. This means your indentation, 
+              spacing, and code style become permanent parts of the artwork's provenance and are visible when 
+              viewing the on-chain data.
+            </p>
+          </div>
+          <div className="pricing-item">
+            <h4>Minting Costs</h4>
+            <p>
+              Since fragments are copied and assembled into one data URI during minting, this process costs 
+              minters additional fees. Each mint requires on-chain computation to combine your generator code 
+              with the template fragments, creating the complete SVG data URI that becomes the token's artifact.
+              The larger your code, the higher the minting cost for your collectors.
+            </p>
+          </div>
+        </div>
 
-        <h2>Getting Started</h2>
-        <p>
-          To get started, connect your Tezos wallet and explore existing generators. 
-          When you're ready to create, click "create" to write your own generative algorithm. 
-          You can test your code in the preview panel before publishing it to the blockchain.
-        </p>
+        <h2>Available Variables in Your Code</h2>
+        <div className="variables-section">
+          <div className="variable-item">
+            <code>SEED</code>
+            <p>A random number generated from blockchain entropy, unique for each mint</p>
+          </div>
+          <div className="variable-item">
+            <code>rnd()</code>
+            <p>A deterministic random number generator using the SFC32 algorithm, seeded with SEED. Returns values between 0 and 1. Always produces the same sequence for the same SEED, ensuring reproducible artwork.</p>
+          </div>
+        </div>
 
-        <h2>Tips for Creating</h2>
-        <ul>
-          <li>Use the <code>rnd()</code> function for consistent randomness</li>
-          <li>Keep your code concise - it's stored on-chain</li>
-          <li>Test thoroughly with different seeds</li>
-          <li>Consider how your art will look at different scales</li>
-          <li>Use SVG elements and attributes for best results</li>
-        </ul>
+        <h2>Example: Simple Generative Circle</h2>
+        <p>Try editing the code below to see how changes affect the generated artwork:</p>
+        
+        <div className="editor-container" style={{height: '350px'}}>
+          <CodeEditor
+            value={exampleCode}
+            onChange={setExampleCode}
+            height="300px"
+          />
+          
+          <div className="preview-panel">
+            <div className="preview-header">
+              <span>Live Preview</span>
+              <PreviewControls
+                seed={previewSeed}
+                onSeedChange={setPreviewSeed}
+                onRefresh={refreshPreview}
+                showRefresh={true}
+              />
+            </div>
+            <div className="preview-content">
+              <SVGPreview 
+                code={exampleCode}
+                seed={previewSeed}
+                width={300}
+                height={300}
+                noPadding={true}
+              />
+            </div>
+          </div>
+        </div>
 
-        <h2>Community</h2>
+        <h2>Creating Your First Generator</h2>
+        <div className="getting-started">
+          <ol>
+            <li><strong>Connect your Tezos wallet</strong> - You'll need XTZ for transaction fees</li>
+            <li><strong>Click "Create"</strong> - Start with the provided template or write from scratch</li>
+            <li><strong>Write your generative code</strong> - Use SVG DOM manipulation and the <code>rnd()</code> function</li>
+            <li><strong>Test in the preview</strong> - Try different seeds to see variations</li>
+            <li><strong>Deploy to blockchain</strong> - Your code becomes permanently stored on Tezos</li>
+            <li><strong>Set up sales</strong> - Configure pricing and edition limits</li>
+          </ol>
+        </div>
+
+        <h2>Best Practices</h2>
+        <div className="best-practices">
+          <div className="practice-item">
+            <h4>🎯 Use Deterministic Randomness</h4>
+            <p>Always use <code>rnd()</code> instead of <code>Math.random()</code> to ensure reproducible results</p>
+          </div>
+          <div className="practice-item">
+            <h4>📏 Optimize Code Size</h4>
+            <p>Your code is stored on-chain, so keep it concise. Each byte costs storage fees.</p>
+          </div>
+          <div className="practice-item">
+            <h4>🧪 Test Thoroughly</h4>
+            <p>Try many different seeds to ensure your generator produces good variations</p>
+          </div>
+          <div className="practice-item">
+            <h4>🎨 Consider Scalability</h4>
+            <p>Design your art to look good at different sizes and aspect ratios</p>
+          </div>
+          <div className="practice-item">
+            <h4>⚡ Performance Matters</h4>
+            <p>Avoid infinite loops or computationally expensive operations</p>
+          </div>
+        </div>
+
+        <h2>Important Information</h2>
+        <div className="features-grid">
+          <div className="feature-card">
+            <h4>Royalties & Fees</h4>
+            <p>Each token includes a default 5% royalty fee for the creator. The platform takes a 20% fee on primary sales, with secondary sales happening on objkt.</p>
+          </div>
+          <div className="feature-card">
+            <h4>Creator Verification</h4>
+            <p>To attribute tokens to your account on objkt, go to your profile → Collaborations → Creator Verifications and verify your Tezos address.</p>
+          </div>
+          <div className="feature-card">
+            <h4>Thumbnail Limitations</h4>
+            <p>Thumbnails are not generated dynamically on-chain (since they need to be images) and thus don't currently show on objkt marketplace.</p>
+          </div>
+          <div className="feature-card">
+            <h4>On-Chain Execution</h4>
+            <p>Your SVG runs directly in browsers and applications without external dependencies, ensuring permanent accessibility.</p>
+          </div>
+        </div>
+
+        <h2>Community & Support</h2>
         <p>
           svgKT is an open-source project. You can find the code, report issues, and contribute 
           on <a href="https://github.com/tsmcalister/svjkt-monorepo" target="_blank" rel="noopener noreferrer">GitHub</a>.
+          Join our community to share your creations and learn from other generative artists.
         </p>
+
+        <div className="help-footer">
+          <p><em>Ready to create? <a href="/create">Start building your first generator →</a></em></p>
+        </div>
       </div>
     </div>
   );
