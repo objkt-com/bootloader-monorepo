@@ -302,7 +302,7 @@ class TzKTService {
     try {
       // First get the generator_mapping bigmap to find tokens for this generator
       const generatorMappingBigMap = await this.getBigMapByPath(
-        "generator_mapping"
+        "token_extra"
       );
       if (!generatorMappingBigMap) {
         console.warn("Generator mapping bigmap not found");
@@ -310,16 +310,17 @@ class TzKTService {
       }
 
       // Get all generator mapping keys and filter for this generator
-      const mappingKeys = await this.getBigMapKeys(generatorMappingBigMap.ptr, {
+      const tokenExtraKeys = await this.getBigMapKeys(generatorMappingBigMap.ptr, {
         limit: 1000, // Get a large batch to filter
       });
+      console.log(tokenExtraKeys)
 
       // Filter for tokens that belong to this generator and sort by tokenId descending
-      const generatorTokens = mappingKeys
-        .filter((keyData) => parseInt(keyData.value) === generatorId)
+      const generatorTokens = tokenExtraKeys
+        .filter((keyData) => parseInt(keyData.value.generator_id) === generatorId)
         .sort((a, b) => parseInt(b.key) - parseInt(a.key)) // Ensure newest tokens first
         .slice(0, limit); // Take only the requested number
-
+      console.log(generatorTokens)
       if (generatorTokens.length === 0) {
         return [];
       }
