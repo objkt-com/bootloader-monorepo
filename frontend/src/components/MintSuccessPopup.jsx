@@ -6,9 +6,11 @@ export default function MintSuccessPopup({
   tokenName, 
   tokenId, 
   generatorName, 
-  authorTwitter, 
+  authorTwitter,
+  authorDisplayName,
   svgDataUri,
-  objktUrl 
+  objktUrl,
+  generatorUrl
 }) {
   const [showConfetti, setShowConfetti] = useState(false);
 
@@ -24,8 +26,12 @@ export default function MintSuccessPopup({
   if (!isOpen) return null;
 
   const handleShareOnX = () => {
-    const twitterHandle = authorTwitter ? `@${authorTwitter}` : 'the artist';
-    const tweetText = `I have just minted "${tokenName}" by ${twitterHandle} a long-form generative onchain SVG via svgKT`;
+    // Use Twitter handle if available, otherwise use display name (alias/tzdomain/short address), fallback to 'the artist'
+    const authorIdentifier = authorTwitter 
+      ? `@${authorTwitter}` 
+      : (authorDisplayName || 'the artist');
+    
+    const tweetText = `I just minted "${tokenName}" by ${authorIdentifier}. A long-form generative onchain SVG via @svgktcom ${generatorUrl || ''}`.trim();
     const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
     window.open(tweetUrl, '_blank', 'noopener,noreferrer');
   };

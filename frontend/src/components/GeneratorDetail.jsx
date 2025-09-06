@@ -327,8 +327,18 @@ export default function GeneratorDetail() {
 
   const handleMint = async () => {
     if (!tezosService.isConnected) {
-      setError('Please connect your wallet first');
-      return;
+      // Trigger wallet connection instead of showing error
+      try {
+        const connectResult = await tezosService.connectWallet();
+        if (!connectResult.success) {
+          setError(`Failed to connect wallet: ${connectResult.error}`);
+          return;
+        }
+        // If connection successful, continue with minting
+      } catch (err) {
+        setError(`Failed to connect wallet: ${err.message}`);
+        return;
+      }
     }
 
     if (!generator.sale) {
@@ -373,8 +383,10 @@ export default function GeneratorDetail() {
           tokenName: result.tokenName || fallbackTokenName, // Use on-chain name if available
           generatorName: generator.name || `Generator #${generator.id}`,
           authorTwitter: authorDisplayInfo.profile?.twitter,
+          authorDisplayName: authorDisplayInfo.displayName,
           svgDataUri: svgDataUri,
-          objktUrl: `https://${getObjktDomain()}/tokens/${getTokenContractAddress()}/${mintedTokenId}`
+          objktUrl: `https://${getObjktDomain()}/tokens/${getTokenContractAddress()}/${mintedTokenId}`,
+          generatorUrl: `https://svgkt.com/generator/${generator.id}`
         };
         
         setMintedTokenData(tokenData);
@@ -434,7 +446,7 @@ export default function GeneratorDetail() {
   };
 
   const isMintDisabled = () => {
-    if (!tezosService.isConnected || isMinting) return true;
+    if (isMinting) return true;
     if (!generator.sale) return true;
 
     const sale = generator.sale;
@@ -810,11 +822,6 @@ export default function GeneratorDetail() {
         </div>
       </div>
 
-      {!tezosService.isConnected && (
-        <div className="error">
-          Please connect your wallet to mint or edit
-        </div>
-      )}
 
       {showSaleForm && (
         <div className="sale-form">
@@ -937,8 +944,10 @@ export default function GeneratorDetail() {
         tokenId={mintedTokenData?.tokenId}
         generatorName={mintedTokenData?.generatorName}
         authorTwitter={mintedTokenData?.authorTwitter}
+        authorDisplayName={mintedTokenData?.authorDisplayName}
         svgDataUri={mintedTokenData?.svgDataUri}
         objktUrl={mintedTokenData?.objktUrl}
+        generatorUrl={mintedTokenData?.generatorUrl}
       />
 
       {/* Fullscreen Preview Modal */}

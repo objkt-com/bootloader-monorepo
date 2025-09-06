@@ -177,8 +177,18 @@ for (let i = 0; i < 5; i++) {
 
   const handleCreate = async () => {
     if (!tezosService.isConnected) {
-      setError('Please connect your wallet first');
-      return;
+      // Trigger wallet connection instead of showing error
+      try {
+        const connectResult = await tezosService.connectWallet();
+        if (!connectResult.success) {
+          setError(`Failed to connect wallet: ${connectResult.error}`);
+          return;
+        }
+        // If connection successful, continue with creating
+      } catch (err) {
+        setError(`Failed to connect wallet: ${err.message}`);
+        return;
+      }
     }
 
     if (!name.trim()) {
@@ -294,7 +304,7 @@ for (let i = 0; i < 5; i++) {
         <div className="action-with-cost">
         <button 
           onClick={handleCreate}
-          disabled={isCreating || !tezosService.isConnected || (() => {
+          disabled={isCreating || (() => {
             if (!code.trim()) return false;
             const { description, code: cleanCode } = parseDescription(code);
             const nameBytes = getByteLength(name.trim());
@@ -338,11 +348,6 @@ for (let i = 0; i < 5; i++) {
         </div>
       </div>
 
-      {!tezosService.isConnected && (
-        <div className="error">
-          Please connect your wallet to create a generator
-        </div>
-      )}
 
       {/* Fullscreen Preview Modal */}
       {showFullscreenPreview && (
