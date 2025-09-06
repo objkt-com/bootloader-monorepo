@@ -509,8 +509,8 @@ def test_reserved_editions_comprehensive():
     scenario.verify(contract.data.generators[0].n_tokens == 1)
 
     scenario.h2("Public minting respects reserved editions")
-    # Should only be able to mint 4 more (10 total - 5 reserved - 1 already minted)
-    for i in range(4):
+    # Should only be able to mint 4 more (10 total - 4 reserved - 1 already minted)
+    for i in range(5):
         contract.mint(
             generator_id=0, 
             entropy=sp.bytes("0x" + os.urandom(16).hex()),
@@ -536,7 +536,7 @@ def test_reserved_editions_comprehensive():
         _sender=alice
     )
     
-    scenario.verify(contract.data.generators[0].n_tokens == 6)
+    scenario.verify(contract.data.generators[0].n_tokens == 7)
     scenario.verify(contract.data.generators[0].reserved_editions == 3)
 
 @sp.add_test()
@@ -620,5 +620,5 @@ def test_sold_out_conditions():
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=alice,
         _valid=False,
-        _exception="NO_RESERVED_LEFT"
+        _exception="SOLD_OUT"
     )

@@ -250,10 +250,11 @@ def svgkt():
         def airdrop(self, generator_id: sp.nat, recipient: sp.address, entropy: sp.bytes):
             generator = self.data.generators[generator_id]
             assert sp.sender == generator.author, "ONLY_AUTHOR"
+            assert generator.reserved_editions > 0, "NO_RESERVED_LEFT"
             match generator.sale:
                 case Some(sale):
                     assert generator.n_tokens < sale.editions, "SOLD_OUT"
-            assert generator.reserved_editions > 0, "NO_RESERVED_LEFT"
+
             self.data.generators[generator_id].reserved_editions = sp.as_nat(generator.reserved_editions - 1)
             # get_entropy
             c = sp.create_contract_operation(EmptyContract, None, sp.mutez(0), ())
@@ -290,6 +291,8 @@ def svgkt():
                         case Some(start_time):
                             assert sp.now >= start_time, "SALE_NOT_STARTED"
                     
+                    assert generator.n_tokens + generator.reserved_editions < sale.editions, "PUBLIC_SOLD_OUT"
+                    
                     # enforce (optional) max per wallet
                     minted_key = (generator_id, sp.sender)
                     n_minted = self.data.generator_mints.get(minted_key, default=0)
@@ -298,7 +301,6 @@ def svgkt():
                             assert max_per_wallet > n_minted, "EXCEEDS_MAX_PER_WALLET"
                     self.data.generator_mints[minted_key] = n_minted + 1
 
-                    assert generator.n_tokens + generator.reserved_editions < sale.editions, "PUBLIC_SOLD_OUT"
 
                     if sp.amount > sp.mutez(0):
                         platform_fee = sp.split_tokens(sp.amount, self.data.platform_fee_bps, 10_000)

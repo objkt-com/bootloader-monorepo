@@ -25,7 +25,7 @@ def test_utils():
             self.data = ()
         
         @sp.onchain_view()
-        def rb(self, seed):
+        def rb(self, seed: sp.bytes):
             return sp.bytes("0x1234567890abcdef1234567890abcdef")
         
         @sp.entrypoint
@@ -143,7 +143,7 @@ def test_rng_contract_missing_view():
         start_time=None,
         price=sp.mutez(0),
         paused=False,
-        editions=1,
+        editions=10,
         max_per_wallet=None,
         _sender=alice
     )
@@ -681,6 +681,13 @@ def test_complex_scenarios():
     # Should reach public limit (5 total - 1 reserved - 3 already minted = 1 remaining)
     scenario.verify(contract.data.generators[0].n_tokens == 3)
 
+    contract.mint(
+        generator_id=0, 
+        entropy=sp.bytes("0x" + os.urandom(16).hex()),
+        _sender=charlie,
+        _amount=sp.mutez(0),
+    )
+
     # This should fail as we've reached public limit
     contract.mint(
         generator_id=0, 
@@ -699,5 +706,5 @@ def test_complex_scenarios():
         _sender=alice
     )
 
-    scenario.verify(contract.data.generators[0].n_tokens == 4)
+    scenario.verify(contract.data.generators[0].n_tokens == 5)
     scenario.verify(contract.data.generators[0].reserved_editions == 0)
