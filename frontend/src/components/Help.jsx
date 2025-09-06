@@ -103,7 +103,7 @@ for (let i = 0; i < 5; i++) {
 
         <h2>What is svgKT?</h2>
         <p>
-          svgKT is an experimental on-chain long-form generative SVG platform built on Tezos L1. It empowers artists and developers
+          svgKT is an open-source experimental on-chain long-form generative art platform built on Tezos. It empowers artists and developers
           to create generative art algorithms that produce unique SVG images directly on the blockchain. Using a{' '}
           <a href="https://en.wikipedia.org/wiki/WYSIWYG" target="_blank" rel="noopener noreferrer">WYSIWYG</a>{' '}
           (What You See Is What You Get) editor, the platform presents code alongside live previews, creating an intuitive environment 
@@ -112,27 +112,33 @@ for (let i = 0; i < 5; i++) {
 
         <h3>Why SVG?</h3>
         <p>
-          SVG was the first interactive format supported on hicetnunc and remains uniquely suited for on-chain art. 
-          Unlike other formats, SVG is self-contained like a complete package - it can embed JavaScript, CSS, and 
-          interactive elements all within a single file. This makes it perfect for generative art that needs to be 
-          truly autonomous and executable anywhere without external dependencies.
+          SVG is one of the more esoteric formats in the digital landscape — part image, part code, part container. 
+          What looks like a simple XML file can also act as an engine, carrying instructions, executing logic, and 
+          shaping visuals directly in the browser.
+        </p>
+        <p>
+          This potential first revealed itself on Tezos in 2021, when artists on hic et nunc discovered a hack: 
+          embedding JavaScript inside SVGs so that a "picture file" could suddenly become interactive. Mini-games, 
+          drawing tools, and generative systems began appearing on-chain through this trick, reviving the spirit 
+          of early net art and showing how NFTs could be both artifact and algorithm. Yet all of this lived on IPFS, 
+          relying on external storage and viewers.
+        </p>
+        <p>
+          With svgKT, we are reintroducing this bootloader in a raw form, giving it new life in the context of 
+          long-form generative art. Here the works are fully on-chain, each mint animated by random seeds from 
+          the blockchain itself, producing unique yet reproducible variations that remain durable, self-contained, 
+          and alive within the chain's own data.
         </p>
 
         <h3>Why This Platform?</h3>
         <p>
-          Currently, there is no open long-form generative art platform on Tezos. svgKT aims to close this gap 
-          while making the process fun and accessible. The juxtaposition of seeing your code alongside the generated 
-          art is very intentional - it aims to demystify the creative process and show that generative art is 
-          fundamentally about creative coding.
+          svgKT is a response to fxhash closing long form mints on Tezos, providing an open and non-curated alternative 
+          for generative artists on Tezos. This platform aims to fill that gap while making the process fun and 
+          accessible. The juxtaposition of seeing your code alongside the generated art is very intentional - it 
+          aims to demystify the creative process and show that generative art is fundamentally about creative coding.
         </p>
 
         <h3>Why On-Chain?</h3>
-        <p>
-          On-chain movements on Tezos have gained significant traction recently, particularly around the "Zero Contract" 
-          movement. We're using on-chain storage purely for aesthetic and self-contained purposes - no need to upload 
-          anything to IPFS or manage external file storage. Discussions around preservation and on-chain vs IPFS are 
-          not in the scope of this project; it's simply an aesthetic choice that keeps everything self-contained.
-        </p>
         <p>
           svgKT demonstrates how platforms can be built without any backend systems, relying only on publicly available 
           infrastructure like indexer APIs (tzkt and objkt). These APIs are open to anyone, showing that experimental 
@@ -532,7 +538,7 @@ svg.appendChild(circle);`}</code></pre>
         <h2>Community & Support</h2>
         <p>
           svgKT is an open-source project. You can find the code, report issues, and contribute 
-          on <a href="https://github.com/tsmcalister/svjkt-monorepo" target="_blank" rel="noopener noreferrer">GitHub</a>.
+          on <a href="https://github.com/tsmcalister/svgkt-monorepo" target="_blank" rel="noopener noreferrer">GitHub</a>.
           Join our community to share your creations and learn from other generative artists.
         </p>
 

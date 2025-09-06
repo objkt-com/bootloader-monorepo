@@ -57,7 +57,7 @@ function Footer() {
       <div className="footer-content">
         <div className="footer-links">
           <Link to="/help">Help</Link>
-          <a href="https://github.com/tsmcalister/svjkt-monorepo" target="_blank" rel="noopener noreferrer">
+          <a href="https://github.com/svgkt-monorepo/svgkt-monorepo" target="_blank" rel="noopener noreferrer">
             GitHub
           </a>
         </div>
