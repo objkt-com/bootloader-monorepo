@@ -253,7 +253,7 @@ def svgkt():
             assert generator.reserved_editions > 0, "NO_RESERVED_LEFT"
             match generator.sale:
                 case Some(sale):
-                    assert generator.n_tokens < sale.editions, "SOLD_OUT"
+                    assert generator.n_tokens < sale.editions, "NO_RESERVED_LEFT"
 
             self.data.generators[generator_id].reserved_editions = sp.as_nat(generator.reserved_editions - 1)
             # get_entropy

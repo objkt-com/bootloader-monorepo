@@ -620,5 +620,5 @@ def test_sold_out_conditions():
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=alice,
         _valid=False,
-        _exception="SOLD_OUT"
+        _exception="NO_RESERVED_LEFT"
     )
