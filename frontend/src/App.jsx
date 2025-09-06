@@ -7,6 +7,7 @@ import Create from './components/Create.jsx';
 import GeneratorDetail from './components/GeneratorDetail.jsx';
 import Profile from './components/Profile.jsx';
 import Help from './components/Help.jsx';
+import ThumbnailRenderer from './components/ThumbnailRenderer.jsx';
 
 function Navigation() {
   const location = useLocation();
@@ -70,19 +71,27 @@ function Footer() {
 function App() {
   return (
     <Router>
-      <Navigation />
-      
-      <main className="main-content">
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/create" element={<Create />} />
-          <Route path="/generator/:id" element={<GeneratorDetail />} />
-          <Route path="/profile/:address" element={<Profile />} />
-          <Route path="/help" element={<Help />} />
-        </Routes>
-      </main>
-
-      <Footer />
+      <Routes>
+        {/* Thumbnail route without navigation/footer */}
+        <Route path="/thumbnail/:tokenId" element={<ThumbnailRenderer />} />
+        
+        {/* All other routes with navigation/footer */}
+        <Route path="/*" element={
+          <>
+            <Navigation />
+            <main className="main-content">
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/create" element={<Create />} />
+                <Route path="/generator/:id" element={<GeneratorDetail />} />
+                <Route path="/profile/:address" element={<Profile />} />
+                <Route path="/help" element={<Help />} />
+              </Routes>
+            </main>
+            <Footer />
+          </>
+        } />
+      </Routes>
     </Router>
   );
 }
