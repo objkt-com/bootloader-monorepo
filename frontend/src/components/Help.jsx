@@ -54,14 +54,142 @@ Each circle has a unique color based on the deterministic random seed.
           Each piece is truly unique, verifiable, and stored permanently on-chain.
         </p>
 
-        <h2>On-Chain SVG Assembly</h2>
+        <h2>Generator Storage Structure</h2>
         <p>
-          svgKT uses a fragment-based template system to assemble SVG artwork directly on the blockchain.
-          Here's how your code becomes a complete SVG using the actual on-chain fragments:
+          When you create a generator, all data is stored permanently on-chain in a structured format.
+          Here are the fields stored for each generator:
+        </p>
+
+        <div style={{overflowX: 'auto', marginBottom: '2rem'}}>
+          <table style={{width: '100%', borderCollapse: 'collapse', fontSize: '14px'}}>
+            <thead>
+              <tr style={{backgroundColor: '#f5f5f5'}}>
+                <th style={{padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd'}}>Field</th>
+                <th style={{padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd'}}>Type</th>
+                <th style={{padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd'}}>Max Size</th>
+                <th style={{padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd'}}>Description</th>
+                <th style={{padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd'}}>Mutable</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}><code>name</code></td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>bytes</td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>500 bytes</td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>Display name for your generator</td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>✅</td>
+              </tr>
+              <tr>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}><code>description</code></td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>bytes</td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>8,000 bytes</td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>Extracted from first /* */ comment in code</td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>✅</td>
+              </tr>
+              <tr>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}><code>code</code></td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>bytes</td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>30,000 bytes</td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>Your JavaScript generator code</td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>✅</td>
+              </tr>
+              <tr>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}><code>author</code></td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>address</td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>36 bytes</td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>Your Tezos address</td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>❌</td>
+              </tr>
+              <tr>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}><code>author_bytes</code></td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>bytes</td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>~44 bytes</td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>Hex-encoded address for NFT metadata</td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>✅</td>
+              </tr>
+              <tr>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}><code>created</code></td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>timestamp</td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>8 bytes</td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>Creation timestamp</td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>❌</td>
+              </tr>
+              <tr>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}><code>last_update</code></td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>timestamp</td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>8 bytes</td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>Last modification timestamp</td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>Auto</td>
+              </tr>
+              <tr>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}><code>n_tokens</code></td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>nat</td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>~4 bytes</td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>Number of tokens minted</td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>Auto</td>
+              </tr>
+              <tr>
+                <td style={{padding: '10px'}}><code>sale</code></td>
+                <td style={{padding: '10px'}}>option</td>
+                <td style={{padding: '10px'}}>~32 bytes</td>
+                <td style={{padding: '10px'}}>Sale configuration (price, editions, etc.)</td>
+                <td style={{padding: '10px'}}>✅</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2>NFT Assembly During Mint</h2>
+        <p>
+          When someone mints your generator, the contract assembles a complete SVG using template fragments and creates the NFT metadata.
+          Here's the real-time assembly process:
         </p>
 
         <div className="assembly-diagram">
-          <h3>Fragment Assembly Process</h3>
+          <h3 style={{marginTop: '1rem', marginBottom: '1.5rem', textAlign: 'center'}}>NFT Name Assembly</h3>
+          <div className="fragment-flow">
+            <div className="fragment-box">
+              <div className="fragment-header">generator.name</div>
+              <div className="fragment-content">
+                <code>"Colorful Circles"</code>
+                <div className="fragment-note">From generator storage table above</div>
+              </div>
+            </div>
+            
+            <div className="assembly-arrow">+</div>
+            
+            <div className="fragment-box">
+              <div className="fragment-header">"#" character</div>
+              <div className="fragment-content">
+                <code>0x2023</code>
+                <div className="fragment-note">Hex encoding of " #" separator</div>
+              </div>
+            </div>
+            
+            <div className="assembly-arrow">+</div>
+            
+            <div className="fragment-box">
+              <div className="fragment-header">Iteration Number</div>
+              <div className="fragment-content">
+                <code>generator.n_tokens + 1</code>
+                <div className="fragment-note">Sequential numbering (1, 2, 3...)</div>
+              </div>
+            </div>
+            
+            <div className="assembly-result">
+              <div className="result-arrow">↓</div>
+              <div className="result-box">
+                <div className="result-header">Final NFT Name</div>
+                <div className="result-content">
+                  "Colorful Circles #1", "Colorful Circles #2", etc.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="assembly-diagram">
+          <h3 style={{marginTop: '1rem', marginBottom: '1.5rem', textAlign: 'center'}}>SVG Fragment Assembly Process</h3>
           <div className="fragment-flow">
             <div className="fragment-box">
               <div className="fragment-header">
@@ -81,8 +209,8 @@ Each circle has a unique color based on the deterministic random seed.
             <div className="fragment-box entropy">
               <div className="fragment-header">Random Entropy</div>
               <div className="fragment-content">
-                <code>1234567890</code>
-                <div className="fragment-note">Generated from blockchain randomness</div>
+                <code>a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456</code>
+                <div className="fragment-note">Generated from blockchain randomness (SHA256 hash)</div>
               </div>
             </div>
             
@@ -107,13 +235,17 @@ const sm=splitmix64(SEED),a=sm(),b=sm(),c=sm(),d=sm(),rnd=sfc32(a,b,c,d);`}</cod
             <div className="fragment-box user-code">
               <div className="fragment-header">Your Generator Code</div>
               <div className="fragment-content">
-                <code>{`// Your creative code here
-const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                <pre style={{whiteSpace: 'pre-wrap', wordWrap: 'break-word'}}><code>{`// Your creative code here
+svg = document.documentElement;
+const circle = document.createElementNS(
+  'http://www.w3.org/2000/svg', 'circle');
 circle.setAttribute('cx', 200);
 circle.setAttribute('cy', 200);
 circle.setAttribute('r', 50 + rnd() * 100);
-circle.setAttribute('fill', \`hsl(\${rnd() * 360}, 70%, 50%)\`);
-svg.appendChild(circle);`}</code>
+circle.setAttribute('fill', 
+  \`hsl(\${rnd() * 360}, 70%, 50%)\`);
+svg.appendChild(circle);`}</code></pre>
+                <div className="fragment-note">Retrieved from generator.code field</div>
               </div>
             </div>
             
