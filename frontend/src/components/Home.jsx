@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { tezosService } from '../services/tezos.js';
-import SVGPreview from './SVGPreview.jsx';
+import { getGeneratorThumbnailUrl } from '../utils/thumbnail.js';
 
 export default function Home() {
   const [generators, setGenerators] = useState([]);
@@ -196,11 +196,12 @@ export default function Home() {
               onClick={() => handleGeneratorClick(generator)}
             >
               <div className="generator-preview-container">
-                <SVGPreview 
-                  code={generator.code} 
-                  seed={12345} 
-                  width={320}
-                  height={320}
+                <img
+                  src={getGeneratorThumbnailUrl(generator.id, 320, 320)}
+                  width="320"
+                  height="320"
+                  alt={generator.name || `Generator #${generator.id}`}
+                  loading="lazy"
                 />
               </div>
               <div className="generator-card-info">

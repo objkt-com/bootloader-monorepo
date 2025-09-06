@@ -8,6 +8,7 @@ import GeneratorDetail from './components/GeneratorDetail.jsx';
 import Profile from './components/Profile.jsx';
 import Help from './components/Help.jsx';
 import ThumbnailRenderer from './components/ThumbnailRenderer.jsx';
+import GeneratorThumbnailRenderer from './components/GeneratorThumbnailRenderer.jsx';
 
 function Navigation() {
   const location = useLocation();
@@ -75,8 +76,9 @@ function App() {
   return (
     <Router basename={basename}>
       <Routes>
-        {/* Thumbnail route without navigation/footer */}
+        {/* Thumbnail routes without navigation/footer */}
         <Route path="/thumbnail/:tokenId" element={<ThumbnailRenderer />} />
+        <Route path="/generator-thumbnail/:generatorId" element={<GeneratorThumbnailRenderer />} />
         
         {/* All other routes with navigation/footer */}
         <Route path="/*" element={

@@ -8,6 +8,7 @@ import SVGPreview from './SVGPreview.jsx';
 import PreviewControls from './PreviewControls.jsx';
 import MintSuccessPopup from './MintSuccessPopup.jsx';
 import { estimateMint, getByteLength, formatStorageCost } from '../utils/storageCost.js';
+import { getTokenThumbnailUrl } from '../utils/thumbnail.js';
 
 export default function GeneratorDetail() {
   const { id } = useParams();
@@ -890,8 +891,8 @@ export default function GeneratorDetail() {
         ) : (
           <div className="tokens-grid">
             {latestTokens.map((token) => {
-              // Use the actual on-chain artifactUri data URI from token metadata
-              const artifactUri = token.artifactUri;
+              // Use thum.io to generate thumbnail images
+              const thumbnailUrl = getTokenThumbnailUrl(token.tokenId, 200, 200);
               
               return (
                 <a
@@ -902,12 +903,13 @@ export default function GeneratorDetail() {
                   className="token-card"
                 >
                   <div className="token-preview-container">
-                    <iframe
-                      src={artifactUri}
+                    <img
+                      src={thumbnailUrl}
                       width="200"
                       height="200"
                       style={{ border: '1px solid var(--color-black)' }}
-                      title={`${generator.name || `Generator #${generator.id}`} #${token.tokenId}`}
+                      alt={`${generator.name || `Generator #${generator.id}`} #${token.tokenId}`}
+                      loading="lazy"
                     />
                   </div>
                   <div className="token-card-info">

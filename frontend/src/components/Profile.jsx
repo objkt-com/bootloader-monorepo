@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { tezosService } from '../services/tezos.js';
 import { tzktService } from '../services/tzkt.js';
 import { getNetworkConfig, getContractAddress } from '../config.js';
-import SVGPreview from './SVGPreview.jsx';
+import { getGeneratorThumbnailUrl, getTokenThumbnailUrl } from '../utils/thumbnail.js';
 
 export default function Profile() {
   const { address } = useParams();
@@ -307,11 +307,12 @@ export default function Profile() {
                   onClick={() => handleGeneratorClick(generator)}
                 >
                   <div className="generator-preview-container">
-                    <SVGPreview 
-                      code={generator.code} 
-                      seed={12345} 
-                      width={320}
-                      height={320}
+                    <img
+                      src={getGeneratorThumbnailUrl(generator.id, 320, 320)}
+                      width="320"
+                      height="320"
+                      alt={generator.name || `Generator #${generator.id}`}
+                      loading="lazy"
                     />
                   </div>
                   <div className="generator-card-info">
@@ -349,12 +350,13 @@ export default function Profile() {
                   className="token-card"
                 >
                   <div className="token-preview-container">
-                    <iframe
-                      src={token.artifactUri}
+                    <img
+                      src={getTokenThumbnailUrl(token.tokenId, 200, 200)}
                       width="200"
                       height="200"
                       style={{ border: '1px solid var(--color-black)' }}
-                      title={token.name}
+                      alt={token.name}
+                      loading="lazy"
                     />
                   </div>
                   <div className="token-card-info">
