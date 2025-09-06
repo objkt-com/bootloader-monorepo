@@ -372,19 +372,27 @@ export default function GeneratorDetail() {
         // Use the actual token ID returned from the mint operation
         const mintedTokenId = result.tokenId;
         
-        // Extract seed from the entropy returned by the mint operation
-        const entropyHex = result.entropy;
-        // Convert hex entropy to seed (same logic as contract)
-        const entropyBytes = entropyHex.slice(2); // Remove '0x' prefix
-        const seed = parseInt(entropyBytes.slice(0, 8), 16); // Use first 4 bytes as seed
+        // Use the actual artifactUri from the on-chain token metadata if available
+        // Otherwise fall back to generating the SVG manually
+        let svgDataUri = result.artifactUri;
         
-        // Generate SVG data URI for the minted token
-        const svgDataUri = tezosService.generateSVG(generator.code, Math.abs(seed), mintedTokenId);
+        if (!svgDataUri) {
+          // Fallback: Extract seed from the entropy and generate SVG manually
+          const entropyHex = result.entropy;
+          const entropyBytes = entropyHex.slice(2); // Remove '0x' prefix
+          const entropyBigInt = BigInt('0x' + entropyBytes);
+          const seed = Number(entropyBigInt % BigInt(2**32)); // Use 32-bit seed
+          svgDataUri = tezosService.generateSVG(generator.code, Math.abs(seed), mintedTokenId);
+        }
+        
+        // Use the on-chain token name if available, otherwise construct it
+        const iterationNumber = (generator.nTokens || 0) + 1;
+        const fallbackTokenName = `${generator.name || `Generator #${generator.id}`} #${iterationNumber}`;
         
         // Prepare token data for success popup
         const tokenData = {
           tokenId: mintedTokenId,
-          tokenName: `${generator.name || `Generator #${generator.id}`} #${mintedTokenId}`,
+          tokenName: result.tokenName || fallbackTokenName, // Use on-chain name if available
           generatorName: generator.name || `Generator #${generator.id}`,
           authorTwitter: authorProfile?.twitter,
           svgDataUri: svgDataUri,
@@ -535,11 +543,13 @@ export default function GeneratorDetail() {
       return;
     }
 
-    // Check if updating existing sale and editions can only be decreased
+    // Check if updating existing sale - editions can only be increased if no tokens were minted yet
     if (generator.sale && generator.sale.editions) {
       const currentEditions = generator.sale.editions;
-      if (editions > currentEditions) {
-        setError(`Editions can only be decreased when updating. Current: ${currentEditions}, Maximum allowed: ${currentEditions}`);
+      const tokensMinted = generator.nTokens || 0;
+      
+      if (editions > currentEditions && tokensMinted > 0) {
+        setError(`Editions can only be increased if no tokens were minted yet. Current: ${currentEditions}, Tokens minted: ${tokensMinted}`);
         return;
       }
     }
@@ -784,7 +794,9 @@ export default function GeneratorDetail() {
                 <div className="storage-cost-value">
                   {(() => {
                     const nameBytes = getByteLength(generator.name || `Generator #${generator.id}`);
-                    const codeBytes = getByteLength(generator.code);
+                    // Use encoded code length to match what gets stored on-chain during minting
+                    const encodedCode = encodeURIComponent(generator.code);
+                    const codeBytes = getByteLength(encodedCode);
                     const cost = estimateMint(nameBytes, codeBytes);
                     return formatStorageCost(cost);
                   })()}

@@ -89,9 +89,12 @@ def svgkt():
         def set_sale(self, generator_id, start_time, price, paused, editions):
             generator = self.data.generators[generator_id]
             assert sp.sender == generator.author, "NOT_AUTHOR"
+            # only allow reducing edition size
             match generator.sale:
                 case Some(sale):
-                    assert editions <= sale.editions, "NO_ED_INCREMENT"
+                    # but only if no tokens were minted yet
+                    if generator.n_tokens > 0:
+                        assert editions <= sale.editions, "NO_ED_INCREMENT"
 
             self.data.generators[generator_id].sale = sp.Some(sp.record(
                 start_time=start_time,

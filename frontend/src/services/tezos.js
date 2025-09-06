@@ -293,14 +293,120 @@ class TezosService {
 
       await operation.confirmation();
 
-      // The token ID that was minted is the nextTokenId we captured before the mint
-      const mintedTokenId = nextTokenId;
+      // Extract the actual minted token information from the operation result
+      let mintedTokenId = nextTokenId; // fallback to predicted ID
+      let artifactUri = null;
+
+      try {
+        // Get the operation results to find the actual token that was minted
+        const operationResult = await operation.operationResults();
+
+        if (operationResult && operationResult.length > 0) {
+          // Look for lazy_storage_diff that contains bigmap updates
+          for (let i = 0; i < operationResult.length; i++) {
+            const result = operationResult[i];
+
+            // Check for lazy_storage_diff in the correct location: metadata.operation_result.lazy_storage_diff
+            const lazyStorageDiff =
+              result.metadata?.operation_result?.lazy_storage_diff ||
+              result.lazy_storage_diff;
+
+            if (lazyStorageDiff && Array.isArray(lazyStorageDiff)) {
+              for (const lazyDiff of lazyStorageDiff) {
+                // Look for big_map updates
+                if (
+                  lazyDiff.kind === "big_map" &&
+                  lazyDiff.diff &&
+                  lazyDiff.diff.updates
+                ) {
+                  for (const update of lazyDiff.diff.updates) {
+                    // Look for token_metadata updates (value contains token_info)
+                    if (
+                      update.value &&
+                      update.value.args &&
+                      update.value.args.length >= 2
+                    ) {
+                      const tokenInfo = update.value.args[1];
+
+                      // Check if this looks like token_info (array of Elt entries)
+                      if (
+                        Array.isArray(tokenInfo) &&
+                        tokenInfo.length > 0 &&
+                        tokenInfo[0].prim === "Elt"
+                      ) {
+                        // Extract the actual token ID that was minted
+                        mintedTokenId = parseInt(update.key.int);
+
+                        // Find the artifactUri and name in the token_info entries
+                        let tokenName = null;
+                        for (const entry of tokenInfo) {
+                          if (entry.args && entry.args.length >= 2) {
+                            if (entry.args[0].string === "artifactUri") {
+                              artifactUri = this.bytesToString(
+                                entry.args[1].bytes
+                              );
+                            } else if (entry.args[0].string === "name") {
+                              tokenName = this.bytesToString(
+                                entry.args[1].bytes
+                              );
+                            }
+                          }
+                        }
+
+                        if (artifactUri && tokenName) {
+                          // Store the extracted token name for later use
+                          this.extractedTokenName = tokenName;
+                          break; // Found what we need, exit the loops
+                        }
+                      }
+                    }
+                  }
+
+                  if (artifactUri) {
+                    break; // Found what we need, exit the loops
+                  }
+                }
+              }
+
+              if (artifactUri) {
+                break; // Found what we need, exit the loops
+              }
+            }
+          }
+        }
+
+        // Fallback: Get the contract storage after the mint to fetch the token metadata
+        if (!artifactUri) {
+          const storageAfter = await this.getContractStorage();
+          const tokenMetadata = await storageAfter.token_metadata.get(
+            mintedTokenId.toString()
+          );
+
+          if (
+            tokenMetadata &&
+            tokenMetadata.token_info &&
+            tokenMetadata.token_info.artifactUri
+          ) {
+            // Decode the artifactUri from bytes
+            artifactUri = this.bytesToString(
+              tokenMetadata.token_info.artifactUri
+            );
+          }
+        }
+      } catch (error) {
+        console.warn(
+          "Failed to fetch token metadata from operation result:",
+          error
+        );
+      }
 
       return {
         success: true,
         hash: operation.hash,
         tokenId: mintedTokenId,
         entropy: entropyHex,
+        artifactUri: artifactUri,
+        tokenName: this.extractedTokenName, // On-chain token name if extracted
       };
     } catch (error) {
       console.error("Failed to mint token:", error);
@@ -339,7 +445,6 @@ class TezosService {
       // Create SVG content and properly encode for data URI
       const svgContent = `data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cscript%3E%3C!%5BCDATA%5Bconst%20SEED%3D${seed}n%3Bfunction%20splitmix64(t)%7Blet%20x%3Dt%3Breturn%20function()%7Bx%3D(x%2B0x9e3779b97f4a7c15n)%260xffffffffffffffffn%3Blet%20z%3Dx%3Bz%3D(z%5E(z%3E%3E30n))*0xbf58476d1ce4e5b9n%260xffffffffffffffffn%3Bz%3D(z%5E(z%3E%3E27n))*0x94d049bb133111ebn%260xffffffffffffffffn%3Bz%5E%3Dz%3E%3E31n%3Breturn%20Number(z%260xffffffffn)%3E%3E%3E0%7D%7Dfunction%20sfc32(a%2Cb%2Cc%2Cd)%7Breturn%20function()%7Ba%7C%3D0%3Bb%7C%3D0%3Bc%7C%3D0%3Bd%7C%3D0%3Blet%20t%3D(a%2Bb%7C0)%2Bd%7C0%3Bd%3Dd%2B1%7C0%3Ba%3Db%5Eb%3E%3E%3E9%3Bb%3Dc%2B(c%3C%3C3)%7C0%3Bc%3D(c%3C%3C21%7Cc%3E%3E%3E11)%3Bc%3Dc%2Bt%7C0%3Breturn(t%3E%3E%3E0)%2F4294967296%7D%7Dconst%20sm%3Dsplitmix64(SEED)%2Ca%3Dsm()%2Cb%3Dsm()%2Cc%3Dsm()%2Cd%3Dsm()%2Crnd%3Dsfc32(a%2Cb%2Cc%2Cd)%3B${encodedCode}%5D%5D%3E%3C%2Fscript%3E%3C%2Fsvg%3E`;
 
-      console.log(svgContent);
       return svgContent;
     } catch (error) {
       console.error("Failed to generate SVG:", error);

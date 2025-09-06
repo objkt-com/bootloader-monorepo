@@ -75,7 +75,7 @@ export default function MintSuccessPopup({
             </div>
             
             <div className="mint-success-info">
-              <h3>Token #{tokenId}</h3>
+              <h3>{tokenName}</h3>
               <p>from "{generatorName}"</p>
               {objktUrl && (
                 <a 

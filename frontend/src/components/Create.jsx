@@ -499,6 +499,14 @@ for (let i = 0; i < letters.length; i++) {
     }
   }, [location.state]);
 
+  const refreshPreview = () => {
+    // Force a re-render with the same seed by updating a dummy state or triggering SVGPreview refresh
+    // We can do this by temporarily changing the seed and then setting it back
+    const currentSeed = previewSeed;
+    setPreviewSeed(currentSeed + 0.1); // Tiny change to trigger re-render
+    setTimeout(() => setPreviewSeed(currentSeed), 10); // Set back to original
+  };
+
   const handleCreate = async () => {
     if (!tezosService.isConnected) {
       setError('Please connect your wallet first');
@@ -582,6 +590,8 @@ for (let i = 0; i < letters.length; i++) {
               <PreviewControls
                 seed={previewSeed}
                 onSeedChange={setPreviewSeed}
+                onRefresh={refreshPreview}
+                showRefresh={true}
               />
               <button 
                 className="fullscreen-btn"
@@ -608,23 +618,44 @@ for (let i = 0; i < letters.length; i++) {
       <div className="actions">
         <button onClick={() => navigate('/')}>Cancel</button>
         <div className="action-with-cost">
-          <button 
-            onClick={handleCreate}
-            disabled={isCreating || !tezosService.isConnected}
-          >
-            {isCreating ? 'Creating...' : 'Create Generator'}
-          </button>
+        <button 
+          onClick={handleCreate}
+          disabled={isCreating || !tezosService.isConnected || (() => {
+            if (!code.trim()) return false;
+            const { description, code: cleanCode } = parseDescription(code);
+            const nameBytes = getByteLength(name.trim());
+            const descriptionBytes = getByteLength(description);
+            const encodedCode = encodeURIComponent(cleanCode);
+            const codeBytes = getByteLength(encodedCode);
+            const cost = estimateCreateGenerator(nameBytes, descriptionBytes, codeBytes);
+            return cost.tez > 8;
+          })()}
+        >
+          {isCreating ? 'Creating...' : 'Create Generator'}
+        </button>
           {/* Storage Cost Display */}
           {code.trim() && (
             <div className="storage-cost">
               <div className="storage-cost-label">Onchain inscription fee:</div>
               <div className="storage-cost-value">
                 {(() => {
-                  const { description } = parseDescription(code);
+                  const { description, code: cleanCode } = parseDescription(code);
                   const nameBytes = getByteLength(name.trim());
                   const descriptionBytes = getByteLength(description);
-                  const codeBytes = getByteLength(parseDescription(code).code);
+                  // Use encoded code length to match what gets stored on-chain
+                  const encodedCode = encodeURIComponent(cleanCode);
+                  const codeBytes = getByteLength(encodedCode);
                   const cost = estimateCreateGenerator(nameBytes, descriptionBytes, codeBytes);
+                  
+                  // Check if cost exceeds 8 tez limit
+                  if (cost.tez > 8) {
+                    return (
+                      <span style={{ color: '#ff6b6b' }}>
+                        {formatStorageCost(cost)} - Warning: inscription size will exceed transaction limit. Minting Disabled
+                      </span>
+                    );
+                  }
+                  
                   return formatStorageCost(cost);
                 })()}
               </div>
@@ -649,6 +680,8 @@ for (let i = 0; i < letters.length; i++) {
                 <PreviewControls
                   seed={previewSeed}
                   onSeedChange={setPreviewSeed}
+                  onRefresh={refreshPreview}
+                  showRefresh={true}
                 />
                 <button 
                   className="close-fullscreen-btn"
