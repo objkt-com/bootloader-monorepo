@@ -5,7 +5,7 @@ import SVGPreview from './SVGPreview.jsx';
 import PreviewControls from './PreviewControls.jsx';
 
 export default function Help() {
-  const [exampleCode, setExampleCode] = useState(`/**
+  const [exampleCode, setExampleCode] = useState(`/*
 * This generator creates colorful circles with random positions and sizes.
 * Each circle has a unique color based on the deterministic random seed.
 */
@@ -538,7 +538,7 @@ svg.appendChild(circle);`}</code></pre>
         <h2>Community & Support</h2>
         <p>
           svgKT is an open-source project. You can find the code, report issues, and contribute 
-          on <a href="https://github.com/tsmcalister/svgkt-monorepo" target="_blank" rel="noopener noreferrer">GitHub</a>.
+          on <a href="https://github.com/objkt-com/svgkt-monorepo" target="_blank" rel="noopener noreferrer">GitHub</a>.
           Join our community to share your creations and learn from other generative artists.
         </p>
 

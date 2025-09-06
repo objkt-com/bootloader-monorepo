@@ -13,7 +13,7 @@ print(wallet.public_key_hash())
 
 pt = pytezos.using(key=wallet.secret_key(), shell="https://ghostnet.smartpy.io")
 
-fragments = get_fragments_from_template('v0.0.1')
+fragments = get_fragments_from_template('templates/v0.0.1')
 
 randomiser_address = 'KT1Vn34jRFpo3q5fAsYA5wT3X4zc7WhpuQas'
 
