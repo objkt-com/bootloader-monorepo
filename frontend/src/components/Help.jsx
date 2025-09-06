@@ -187,26 +187,59 @@ for (let i = 0; i < 5; i++) {
         </div>
 
         <h2>Available Variables in Your Code</h2>
-        <div className="variables-section">
-          <div className="variable-item">
-            <code>SEED</code>
-            <p>A random number generated from blockchain entropy, unique for each mint</p>
-          </div>
-          <div className="variable-item">
-            <code>rnd()</code>
-            <p>A deterministic random number generator using the SFC32 algorithm, seeded with SEED. Returns values between 0 and 1. Always produces the same sequence for the same SEED, ensuring reproducible artwork.</p>
-          </div>
-        </div>
+        
+        <p>Your generator code runs inside an SVG "bootloader" that provides access to the <code>$svgKT</code> object. This is where your code executes. Currently there is no standard library - only these 4 properties are available (this will change in the future):</p>
+        
+        <h4>The $svgKT Object</h4>
+        <pre style={{
+          backgroundColor: '#f8f9fa',
+          border: '1px solid #e9ecef',
+          borderRadius: '8px',
+          padding: '16px',
+          fontSize: '14px',
+          lineHeight: '1.4',
+          overflow: 'auto',
+          marginBottom: '24px',
+          width: '100%',
+          display: 'block'
+        }}><code>{`// The $svgKT object provided to your code:
+const $svgKT = {
+  rnd: sfc32(a,b,c,d),           // Deterministic random function (0-1)
+  SEED: SEED,                    // Raw BigInt seed from blockchain
+  svg: document.documentElement, // Reference to the root SVG element
+  v: '0.0.1'                    // Template version string
+};
+
+// Your code is executed in this structure:
+(($svgKT) => {
+  // YOUR GENERATOR CODE GOES HERE
+  // You can destructure for convenience:
+  const { rnd, svg, SEED, v } = $svgKT;
+  
+  // Set up your SVG canvas
+  svg.setAttribute('viewBox', '0 0 400 400');
+  
+  // Use rnd() for deterministic randomness
+  const x = rnd() * 400;
+  const y = rnd() * 400;
+  
+  // Create and append SVG elements
+  const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  circle.setAttribute('cx', x);
+  circle.setAttribute('cy', y);
+  circle.setAttribute('r', 20 + rnd() * 30);
+  svg.appendChild(circle);
+})($svgKT);`}</code></pre>
 
         <h2>Best Practices</h2>
         <div className="best-practices">
           <div className="practice-item">
             <h4>🎯 Use Deterministic Randomness</h4>
-            <p>Always use <code>rnd()</code> instead of <code>Math.random()</code> to ensure reproducible results</p>
+            <p>Always use <code>$svgKT.rnd()</code> instead of <code>Math.random()</code> to ensure reproducible results</p>
           </div>
           <div className="practice-item">
-            <h4>🔒 Wrap Code in IIFE</h4>
-            <p>Wrap your generator code in <code>(() =&gt; {'{}'})();</code> to create a clean scope and avoid variable conflicts with the SVG execution environment</p>
+            <h4>🔒 Clean Code Scoping</h4>
+            <p>Your code is automatically wrapped in an IIFE (Immediately Invoked Function Expression) by the template, so you don't need to worry about variable conflicts. The template handles scoping for you.</p>
           </div>
           <div className="practice-item">
             <h4>📏 Optimize Code Size</h4>
@@ -328,23 +361,39 @@ svg = document.documentElement;`}</code></pre>
             <div className="fragment-box">
               <div className="fragment-header">
                 Fragment 0 
-                <a href="https://better-call.dev/ghostnet/KT1V7LKhv83hr7DnKRN1hnqF8yndDj71vNkZ/storage/big_map/477169/exprtZBwZUeYYYfUs9B9Rg2ywHezVHnCCnmF9WsDQVrs582dSK63dC" target="_blank" rel="noopener noreferrer" style={{marginLeft: '8px', fontSize: '12px'}}>
+                <a href="https://better-call.dev/ghostnet/KT1TTnYpBpUwjPiKYu3uL68i4G7AZSu36Ug3/storage/big_map/477232/exprtZBwZUeYYYfUs9B9Rg2ywHezVHnCCnmF9WsDQVrs582dSK63dC" target="_blank" rel="noopener noreferrer" style={{marginLeft: '8px', fontSize: '12px'}}>
                   (view on-chain)
                 </a>
               </div>
               <div className="fragment-content">
                 <code>{`data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg">
 <script><![CDATA[const SEED=`}</code>
+                <div className="fragment-note">Note: Content after data:image/svg+xml;utf8, is URL-encoded on-chain but shown decoded here for readability</div>
               </div>
             </div>
             
             <div className="assembly-arrow">+</div>
             
             <div className="fragment-box entropy">
-              <div className="fragment-header">Random Entropy</div>
+              <div className="fragment-header">Random Entropy (BigInt)</div>
               <div className="fragment-content">
-                <code>a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456</code>
-                <div className="fragment-note">Generated from blockchain randomness (SHA256 hash)</div>
+                <code>123456789012345678901234567890123456789012345678901234567890n</code>
+                <div className="fragment-note">Generated from blockchain randomness (BigInt with 'n' suffix)</div>
+              </div>
+            </div>
+            
+            <div className="assembly-arrow">+</div>
+            
+            <div className="fragment-box">
+              <div className="fragment-header">
+                Fragment 1 
+                <a href="https://better-call.dev/ghostnet/KT1TTnYpBpUwjPiKYu3uL68i4G7AZSu36Ug3/storage/big_map/477232/expru2dKqDfZG8hu4wNGkiyunvq2hdSKuVYtcKta7BWP6Q18oNxKjS" target="_blank" rel="noopener noreferrer" style={{marginLeft: '8px', fontSize: '12px'}}>
+                  (view on-chain)
+                </a>
+              </div>
+              <div className="fragment-content">
+                <code>{`;function splitmix64(f){let n=f;return function(){let f=n=n+0x9e3779b97f4a7c15n&0xffffffffffffffffn;return f=((f=(f^f>>30n)*0xbf58476d1ce4e5b9n&0xffffffffffffffffn)^f>>27n)*0x94d049bb133111ebn&0xffffffffffffffffn,Number(4294967295n&(f^=f>>31n))>>>0}}function sfc32(f,n,$,t){return function(){$|=0;let e=((f|=0)+(n|=0)|0)+(t|=0)|0;return t=t+1|0,f=n^n>>>9,n=$+($<<3)|0,$=($=$<<21|$>>>11)+e|0,(e>>>0)/4294967296}}const sm=splitmix64(SEED),a=sm(),b=sm(),c=sm(),d=sm(),$svgKT={rnd:sfc32(a,b,c,d),SEED:SEED,svg:document.documentElement,v:'0.0.1'};(($svgKT)=>{`}</code>
+                <div className="fragment-note">Random number generator setup and $svgKT object creation</div>
               </div>
             </div>
             
@@ -354,14 +403,15 @@ svg = document.documentElement;`}</code></pre>
               <div className="fragment-header">Your Generator Code</div>
               <div className="fragment-content">
                 <pre style={{whiteSpace: 'pre-wrap', wordWrap: 'break-word'}}><code>{`// Your creative code here
-const circle = document.createElementNS(
-  'http://www.w3.org/2000/svg', 'circle');
+const { rnd, svg } = $svgKT;
+
+svg.setAttribute('viewBox', '0 0 400 400');
+const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
 circle.setAttribute('cx', 200);
 circle.setAttribute('cy', 200);
-circle.setAttribute('r', 50 + $svg.rnd() * 100);
-circle.setAttribute('fill', 
-  \`hsl(\${$svgKT.rnd() * 360}, 70%, 50%)\`);
-$svgKT.svg.appendChild(circle);`}</code></pre>
+circle.setAttribute('r', 50 + rnd() * 100);
+circle.setAttribute('fill', \`hsl(\${rnd() * 360}, 70%, 50%)\`);
+svg.appendChild(circle);`}</code></pre>
                 <div className="fragment-note">Retrieved from generator.code field</div>
               </div>
             </div>
@@ -371,13 +421,14 @@ $svgKT.svg.appendChild(circle);`}</code></pre>
             <div className="fragment-box">
               <div className="fragment-header">
                 Fragment 2
-                <a href="https://better-call.dev/ghostnet/KT1V7LKhv83hr7DnKRN1hnqF8yndDj71vNkZ/storage/big_map/477169/expruDuAZnFKqmLoisJqUGqrNzXTvw7PJM2rYk97JErM5FHCerQqgn" target="_blank" rel="noopener noreferrer" style={{marginLeft: '8px', fontSize: '12px'}}>
+                <a href="https://better-call.dev/ghostnet/KT1TTnYpBpUwjPiKYu3uL68i4G7AZSu36Ug3/storage/big_map/477232/expruDuAZnFKqmLoisJqUGqrNzXTvw7PJM2rYk97JErM5FHCerQqgn" target="_blank" rel="noopener noreferrer" style={{marginLeft: '8px', fontSize: '12px'}}>
                   (view on-chain)
                 </a>
               </div>
               <div className="fragment-content">
-                <code>{`]]></script>
+                <code>{`})($svgKT);]]></script>
 </svg>`}</code>
+                <div className="fragment-note">Closes the IIFE and completes the SVG structure</div>
               </div>
             </div>
             
@@ -414,7 +465,7 @@ $svgKT.svg.appendChild(circle);`}</code></pre>
               <tr>
                 <td style={{padding: '10px', borderBottom: '1px solid #eee'}}><code>name</code></td>
                 <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>bytes</td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>500 bytes</td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>100 bytes</td>
                 <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>Display name for your generator</td>
                 <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>✅</td>
               </tr>
@@ -442,7 +493,7 @@ $svgKT.svg.appendChild(circle);`}</code></pre>
               <tr>
                 <td style={{padding: '10px', borderBottom: '1px solid #eee'}}><code>author_bytes</code></td>
                 <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>bytes</td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>~44 bytes</td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>36 bytes</td>
                 <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>Hex-encoded address for NFT metadata</td>
                 <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>✅</td>
               </tr>
@@ -465,6 +516,27 @@ $svgKT.svg.appendChild(circle);`}</code></pre>
                 <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>nat</td>
                 <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>~4 bytes</td>
                 <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>Number of tokens minted</td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>Auto</td>
+              </tr>
+              <tr>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}><code>reserved_editions</code></td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>nat</td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>~4 bytes</td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>Number of editions reserved for airdrops</td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>✅</td>
+              </tr>
+              <tr>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}><code>flag</code></td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>nat</td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>~4 bytes</td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>Moderation flag (0 = normal, other values for UI filtering)</td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>Mods only</td>
+              </tr>
+              <tr>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}><code>version</code></td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>nat</td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>~4 bytes</td>
+                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>Generator version (increments on updates)</td>
                 <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>Auto</td>
               </tr>
               <tr>
