@@ -233,7 +233,7 @@ export default function Home() {
             >
               <div className="generator-preview-container">
                 <SmartThumbnail
-                  src={getGeneratorThumbnailUrl(generator.id, 500, 500)}
+                  src={getGeneratorThumbnailUrl(generator.id)}
                   width="500"
                   height="500"
                   alt={generator.name || `Generator #${generator.id}`}

@@ -282,7 +282,7 @@ export default function Profile() {
                 >
                   <div className="generator-preview-container">
                     <SmartThumbnail
-                      src={getGeneratorThumbnailUrl(generator.id, 500, 500)}
+                      src={getGeneratorThumbnailUrl(generator.id)}
                       width="500"
                       height="500"
                       alt={generator.name || `Generator #${generator.id}`}
@@ -326,7 +326,7 @@ export default function Profile() {
                 >
                   <div className="token-preview-container">
                     <SmartThumbnail
-                      src={getTokenThumbnailUrl(token.tokenId, 200, 200)}
+                      src={getTokenThumbnailUrl(token.tokenId)}
                       width="200"
                       height="200"
                       alt={token.name}

@@ -381,7 +381,7 @@ export default function GeneratorDetail() {
         setShowSuccessPopup(true);
         
         // Prefetch token thumbnail with identical parameters to the ones used in display
-        prefetchTokenThumbnail(mintedTokenId, 200, 200).catch(err => {
+        prefetchTokenThumbnail(mintedTokenId).catch(err => {
           console.warn('Token thumbnail prefetch failed:', err);
         });
         
@@ -894,7 +894,7 @@ export default function GeneratorDetail() {
           <div className="tokens-grid">
             {latestTokens.map((token) => {
               // Use thum.io to generate thumbnail images
-              const thumbnailUrl = getTokenThumbnailUrl(token.tokenId, 200, 200);
+              const thumbnailUrl = getTokenThumbnailUrl(token.tokenId);
               
               return (
                 <a

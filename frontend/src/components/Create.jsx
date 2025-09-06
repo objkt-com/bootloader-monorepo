@@ -209,7 +209,7 @@ for (let i = 0; i < 5; i++) {
           const newGeneratorId = nextId - 1; // The ID that was just created
           
           // Prefetch generator thumbnail with identical parameters to the ones used in display
-          prefetchGeneratorThumbnail(newGeneratorId, 400, 400).catch(err => {
+          prefetchGeneratorThumbnail(newGeneratorId).catch(err => {
             console.warn('Generator thumbnail prefetch failed:', err);
           });
           

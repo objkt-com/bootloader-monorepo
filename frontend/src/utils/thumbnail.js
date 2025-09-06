@@ -1,87 +1,56 @@
-// Utility functions for generating thumbnail URLs using thum.io
+// Utility functions for generating thumbnail URLs
 
 // Global cache buster - change this value to force refresh all thumbnails
 const CACHE_BUSTER = 'v1';
 
 /**
- * Generate a thum.io thumbnail URL for a token
+ * Generate a thumbnail URL for a token
  * @param {number} tokenId - The token ID
- * @param {number} width - Thumbnail width (default: 400)
- * @param {number} height - Thumbnail height (default: 400)
- * @returns {string} The thum.io URL
+ * @returns {string} The thumbnail URL
  */
-export function getTokenThumbnailUrl(tokenId, width = 400, height = 400) {
-  // Always use the remote URL since thum.io needs to access a publicly available URL
-  const baseUrl = 'https://tsmcalister.github.io/svgkt-monorepo';
-  
-  const targetUrl = `${baseUrl}/thumbnail/${tokenId}?cb=${CACHE_BUSTER}`;
-  
-  return `https://image.thum.io/get/image/fit/${width}x${height}/https://image.thum.io/get/wait/20/width/1200/crop/1200/viewportWidth/1200/noanimate/allowJPG/${targetUrl}`;
+export function getTokenThumbnailUrl(tokenId) {
+  return `https://media.svgkt.com/thumbnail/${tokenId}?cb=${CACHE_BUSTER}`;
 }
 
 /**
- * Generate a thum.io thumbnail URL for a generator
+ * Generate a thumbnail URL for a generator
  * @param {number} generatorId - The generator ID
- * @param {number} width - Thumbnail width (default: 400)
- * @param {number} height - Thumbnail height (default: 400)
- * @returns {string} The thum.io URL
+ * @returns {string} The thumbnail URL
  */
-export function getGeneratorThumbnailUrl(generatorId, width = 400, height = 400) {
-  // Always use the remote URL since thum.io needs to access a publicly available URL
-  const baseUrl = 'https://tsmcalister.github.io/svgkt-monorepo';
-  
-  const targetUrl = `${baseUrl}/generator-thumbnail/${generatorId}?cb=${CACHE_BUSTER}`;
-  
-  return `https://image.thum.io/get/image/fit/${width}x${height}/https://image.thum.io/get/wait/20/width/1200/crop/1200/viewportWidth/1200/noanimate/allowJPG/${targetUrl}`;
+export function getGeneratorThumbnailUrl(generatorId) {
+  return `https://media.svgkt.com/generator-thumbnail/${generatorId}?cb=${CACHE_BUSTER}`;
 }
 
 /**
- * Generate a thum.io prefetch URL for a token
+ * Generate a prefetch URL for a token (same as regular URL)
  * @param {number} tokenId - The token ID
- * @param {number} width - Thumbnail width (default: 400)
- * @param {number} height - Thumbnail height (default: 400)
- * @returns {string} The thum.io prefetch URL
+ * @returns {string} The thumbnail URL
  */
-export function getTokenThumbnailPrefetchUrl(tokenId, width = 400, height = 400) {
-  // Always use the remote URL since thum.io needs to access a publicly available URL
-  const baseUrl = 'https://tsmcalister.github.io/svgkt-monorepo';
-  
-  const targetUrl = `${baseUrl}/thumbnail/${tokenId}?cb=${CACHE_BUSTER}`;
-  
-  return `https://image.thum.io/get/prefetch/image/fit/${width}x${height}/https://image.thum.io/get/wait/20/width/1200/crop/1200/viewportWidth/1200/noanimate/allowJPG/${targetUrl}`;
+export function getTokenThumbnailPrefetchUrl(tokenId) {
+  return getTokenThumbnailUrl(tokenId);
 }
 
 /**
- * Generate a thum.io prefetch URL for a generator
+ * Generate a prefetch URL for a generator (same as regular URL)
  * @param {number} generatorId - The generator ID
- * @param {number} width - Thumbnail width (default: 400)
- * @param {number} height - Thumbnail height (default: 400)
- * @returns {string} The thum.io prefetch URL
+ * @returns {string} The thumbnail URL
  */
-export function getGeneratorThumbnailPrefetchUrl(generatorId, width = 400, height = 400) {
-  // Always use the remote URL since thum.io needs to access a publicly available URL
-  const baseUrl = 'https://tsmcalister.github.io/svgkt-monorepo';
-  
-  const targetUrl = `${baseUrl}/generator-thumbnail/${generatorId}?cb=${CACHE_BUSTER}`;
-  
-  return `https://image.thum.io/get/prefetch/image/fit/${width}x${height}/https://image.thum.io/get/wait/20/width/1200/crop/1200/viewportWidth/1200/noanimate/allowJPG/${targetUrl}`;
+export function getGeneratorThumbnailPrefetchUrl(generatorId) {
+  return getGeneratorThumbnailUrl(generatorId);
 }
 
 /**
- * Call prefetch for a token thumbnail to queue image generation
+ * Call prefetch for a token thumbnail (simplified since we're using direct URLs)
  * @param {number} tokenId - The token ID
- * @param {number} width - Thumbnail width (default: 400)
- * @param {number} height - Thumbnail height (default: 400)
  * @returns {Promise<boolean>} Success status
  */
-export async function prefetchTokenThumbnail(tokenId, width = 400, height = 400) {
+export async function prefetchTokenThumbnail(tokenId) {
   try {
-    const prefetchUrl = getTokenThumbnailPrefetchUrl(tokenId, width, height);
-    const response = await fetch(prefetchUrl);
+    const prefetchUrl = getTokenThumbnailPrefetchUrl(tokenId);
+    const response = await fetch(prefetchUrl, { method: 'HEAD' });
     
     if (response.ok) {
-      const text = await response.text();
-      console.log(`Token ${tokenId} thumbnail prefetch:`, text);
+      console.log(`Token ${tokenId} thumbnail prefetch successful`);
       return true;
     } else {
       console.warn(`Token ${tokenId} thumbnail prefetch failed:`, response.status);
@@ -94,20 +63,17 @@ export async function prefetchTokenThumbnail(tokenId, width = 400, height = 400)
 }
 
 /**
- * Call prefetch for a generator thumbnail to queue image generation
+ * Call prefetch for a generator thumbnail (simplified since we're using direct URLs)
  * @param {number} generatorId - The generator ID
- * @param {number} width - Thumbnail width (default: 400)
- * @param {number} height - Thumbnail height (default: 400)
  * @returns {Promise<boolean>} Success status
  */
-export async function prefetchGeneratorThumbnail(generatorId, width = 400, height = 400) {
+export async function prefetchGeneratorThumbnail(generatorId) {
   try {
-    const prefetchUrl = getGeneratorThumbnailPrefetchUrl(generatorId, width, height);
-    const response = await fetch(prefetchUrl);
+    const prefetchUrl = getGeneratorThumbnailPrefetchUrl(generatorId);
+    const response = await fetch(prefetchUrl, { method: 'HEAD' });
     
     if (response.ok) {
-      const text = await response.text();
-      console.log(`Generator ${generatorId} thumbnail prefetch:`, text);
+      console.log(`Generator ${generatorId} thumbnail prefetch successful`);
       return true;
     } else {
       console.warn(`Generator ${generatorId} thumbnail prefetch failed:`, response.status);
