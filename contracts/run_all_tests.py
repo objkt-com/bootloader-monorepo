@@ -1,0 +1,7 @@
+import tests.test_admin_access_control
+import test_external_dependencies
+import test_fa2_operations
+import test_generator_management
+import test_minting_and_airdrop
+import test_platform_fees_and_payments
+import test_sale_configuration
