@@ -9,6 +9,7 @@ import PreviewControls from './PreviewControls.jsx';
 import MintSuccessPopup from './MintSuccessPopup.jsx';
 import { estimateMint, getByteLength, formatStorageCost } from '../utils/storageCost.js';
 import { getTokenThumbnailUrl } from '../utils/thumbnail.js';
+import SmartThumbnail from './SmartThumbnail.jsx';
 
 export default function GeneratorDetail() {
   const { id } = useParams();
@@ -903,13 +904,14 @@ export default function GeneratorDetail() {
                   className="token-card"
                 >
                   <div className="token-preview-container">
-                    <img
+                    <SmartThumbnail
                       src={thumbnailUrl}
                       width="200"
                       height="200"
                       style={{ border: '1px solid var(--color-black)' }}
                       alt={`${generator.name || `Generator #${generator.id}`} #${token.tokenId}`}
-                      loading="lazy"
+                      maxRetries={8}
+                      retryDelay={3000}
                     />
                   </div>
                   <div className="token-card-info">

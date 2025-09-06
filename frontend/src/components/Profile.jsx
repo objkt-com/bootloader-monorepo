@@ -4,6 +4,7 @@ import { tezosService } from '../services/tezos.js';
 import { tzktService } from '../services/tzkt.js';
 import { getNetworkConfig, getContractAddress } from '../config.js';
 import { getGeneratorThumbnailUrl, getTokenThumbnailUrl } from '../utils/thumbnail.js';
+import SmartThumbnail from './SmartThumbnail.jsx';
 
 export default function Profile() {
   const { address } = useParams();
@@ -307,12 +308,13 @@ export default function Profile() {
                   onClick={() => handleGeneratorClick(generator)}
                 >
                   <div className="generator-preview-container">
-                    <img
+                    <SmartThumbnail
                       src={getGeneratorThumbnailUrl(generator.id, 320, 320)}
                       width="320"
                       height="320"
                       alt={generator.name || `Generator #${generator.id}`}
-                      loading="lazy"
+                      maxRetries={8}
+                      retryDelay={3000}
                     />
                   </div>
                   <div className="generator-card-info">
@@ -350,13 +352,14 @@ export default function Profile() {
                   className="token-card"
                 >
                   <div className="token-preview-container">
-                    <img
+                    <SmartThumbnail
                       src={getTokenThumbnailUrl(token.tokenId, 200, 200)}
                       width="200"
                       height="200"
                       style={{ border: '1px solid var(--color-black)' }}
                       alt={token.name}
-                      loading="lazy"
+                      maxRetries={8}
+                      retryDelay={3000}
                     />
                   </div>
                   <div className="token-card-info">

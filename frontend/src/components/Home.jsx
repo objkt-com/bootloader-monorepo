@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { tezosService } from '../services/tezos.js';
 import { getGeneratorThumbnailUrl } from '../utils/thumbnail.js';
+import SmartThumbnail from './SmartThumbnail.jsx';
 
 export default function Home() {
   const [generators, setGenerators] = useState([]);
@@ -196,12 +197,13 @@ export default function Home() {
               onClick={() => handleGeneratorClick(generator)}
             >
               <div className="generator-preview-container">
-                <img
+                <SmartThumbnail
                   src={getGeneratorThumbnailUrl(generator.id, 320, 320)}
                   width="320"
                   height="320"
                   alt={generator.name || `Generator #${generator.id}`}
-                  loading="lazy"
+                  maxRetries={8}
+                  retryDelay={3000}
                 />
               </div>
               <div className="generator-card-info">
