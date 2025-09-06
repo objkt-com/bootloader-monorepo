@@ -23,7 +23,7 @@ def test_utils():
     
         @sp.entrypoint
         def default(self):
-            self.data = sp.amount
+            self.data = self.data + sp.amount
     
     class FailingTreasury(sp.Contract):
         def __init__(self):
