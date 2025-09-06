@@ -1,7 +1,7 @@
 // Utility functions for generating thumbnail URLs
 
 // Global cache buster - change this value to force refresh all thumbnails
-const CACHE_BUSTER = 'v1';
+const CACHE_BUSTER = 'v10';
 
 /**
  * Generate a thumbnail URL for a token
