@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import CodeEditor from './CodeEditor.jsx';
 import SVGPreview from './SVGPreview.jsx';
 import PreviewControls from './PreviewControls.jsx';
@@ -318,7 +319,7 @@ svg = document.documentElement;`}</code></pre>
         </p>
 
         <div className="help-footer">
-          <p><em>Ready to create? <a href="/create">Start building your first generator →</a></em></p>
+          <p><em>Ready to create? <Link to="/create">Start building your first generator →</Link></em></p>
         </div>
       </div>
     </div>
