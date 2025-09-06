@@ -6,11 +6,12 @@ import PreviewControls from './PreviewControls.jsx';
 
 export default function Help() {
   const [exampleCode, setExampleCode] = useState(`/*
-* This generator creates colorful circles with random positions and sizes.
-* Each circle has a unique color based on the deterministic random seed.
+* Five Random Circles
+* svgKT v0.0.1
 */
 
-svg = document.documentElement;
+const { rnd, svg } = $svgKT;
+
 svg.setAttribute('viewBox', '0 0 400 400');
 svg.style.cssText = "background:white";
 
@@ -18,14 +19,9 @@ svg.style.cssText = "background:white";
 for (let i = 0; i < 5; i++) {
   const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
   
-  // Random position and size
-  const x = 50 + rnd() * 300;
-  const y = 50 + rnd() * 300;
-  const r = 20 + rnd() * 40;
-  
-  circle.setAttribute('cx', x);
-  circle.setAttribute('cy', y);
-  circle.setAttribute('r', r);
+  circle.setAttribute('cx', 50 + rnd() * 300);
+  circle.setAttribute('cy', 50 + rnd() * 300);
+  circle.setAttribute('r', 20 + rnd() * 40);
   circle.setAttribute('fill', \`hsl(\${rnd() * 360}, 70%, 60%)\`);
   circle.setAttribute('opacity', 0.8);
   
@@ -358,15 +354,14 @@ svg = document.documentElement;`}</code></pre>
               <div className="fragment-header">Your Generator Code</div>
               <div className="fragment-content">
                 <pre style={{whiteSpace: 'pre-wrap', wordWrap: 'break-word'}}><code>{`// Your creative code here
-svg = document.documentElement;
 const circle = document.createElementNS(
   'http://www.w3.org/2000/svg', 'circle');
 circle.setAttribute('cx', 200);
 circle.setAttribute('cy', 200);
-circle.setAttribute('r', 50 + rnd() * 100);
+circle.setAttribute('r', 50 + $svg.rnd() * 100);
 circle.setAttribute('fill', 
-  \`hsl(\${rnd() * 360}, 70%, 50%)\`);
-svg.appendChild(circle);`}</code></pre>
+  \`hsl(\${$svgKT.rnd() * 360}, 70%, 50%)\`);
+$svgKT.svg.appendChild(circle);`}</code></pre>
                 <div className="fragment-note">Retrieved from generator.code field</div>
               </div>
             </div>

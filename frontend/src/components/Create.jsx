@@ -130,30 +130,27 @@ export default function Create() {
   };
 
   // Default example generator
-const defaultCode = `/**
-* This generator creates colorful circles with random positions and sizes.
-* Each circle has a unique color based on the deterministic random seed.
+const defaultCode = `/*
+* Five Random Circles
+* svgKT v0.0.1
 */
 
-$svg.svg.setAttribute('viewBox', '0 0 400 400');
-$svg.svg.style.cssText = "background:white";
+const { rnd, svg } = $svgKT;
+
+svg.setAttribute('viewBox', '0 0 400 400');
+svg.style.cssText = "background:white";
 
 // Create 5 random circles
 for (let i = 0; i < 5; i++) {
   const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
   
-  // Random position and size
-  const x = 50 + $svg.rnd() * 300;
-  const y = 50 + $svg.rnd() * 300;
-  const r = 20 + $svg.rnd() * 40;
-  
-  circle.setAttribute('cx', x);
-  circle.setAttribute('cy', y);
-  circle.setAttribute('r', r);
-  circle.setAttribute('fill', \`hsl(\${$svg.rnd() * 360}, 70%, 60%)\`);
+  circle.setAttribute('cx', 50 + rnd() * 300);
+  circle.setAttribute('cy', 50 + rnd() * 300);
+  circle.setAttribute('r', 20 + rnd() * 40);
+  circle.setAttribute('fill', \`hsl(\${rnd() * 360}, 70%, 60%)\`);
   circle.setAttribute('opacity', 0.8);
   
-  $svg.svg.appendChild(circle);
+  svg.appendChild(circle);
 }`;
 
   useEffect(() => {
