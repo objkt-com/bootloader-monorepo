@@ -1,14 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { tzktService } from '../services/tzkt.js';
-import { tezosService } from '../services/tezos.js';
 
 function ThumbnailRenderer() {
   const { tokenId } = useParams();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [tokenData, setTokenData] = useState(null);
-  const [svgContent, setSvgContent] = useState(null);
 
   useEffect(() => {
     const fetchTokenData = async () => {
@@ -31,52 +29,18 @@ function ThumbnailRenderer() {
           throw new Error(`Token ${tokenId} not found`);
         }
 
-        // Get generator mapping to find which generator this token belongs to
-        const generatorMappingBigMap = await tzktService.getBigMapByPath("generator_mapping");
-        if (!generatorMappingBigMap) {
-          throw new Error("Generator mapping bigmap not found");
-        }
-
-        const generatorMapping = await tzktService.getBigMapKey(
-          generatorMappingBigMap.ptr,
-          tokenId.toString()
-        );
-
-        if (!generatorMapping) {
-          throw new Error(`Generator mapping for token ${tokenId} not found`);
-        }
-
-        const generatorId = parseInt(generatorMapping.value);
-
-        // Get generator data
-        const generator = await tzktService.getGenerator(generatorId);
-        if (!generator) {
-          throw new Error(`Generator ${generatorId} not found`);
-        }
-
-        // Extract token info
+        // Extract token info - we only need the artifactUri
         const tokenInfo = tokenMetadata.value.token_info;
         const artifactUri = tzktService.bytesToString(tokenInfo.artifactUri);
-        
-        // Extract seed from the artifactUri (it's embedded in the SVG)
-        const seedMatch = artifactUri.match(/const SEED=(\d+)n?/);
-        const seed = seedMatch ? parseInt(seedMatch[1]) : 12345;
+        const tokenName = tzktService.bytesToString(tokenInfo.name);
 
         const token = {
           tokenId: parseInt(tokenId),
-          name: tzktService.bytesToString(tokenInfo.name),
+          name: tokenName,
           artifactUri: artifactUri,
-          seed: seed,
-          generatorId: generatorId,
-          generatorName: generator.name,
-          generatorCode: generator.code,
         };
 
         setTokenData(token);
-
-        // Generate the SVG using the generator code and seed
-        const generatedSvg = tezosService.generateSVG(generator.code, seed, parseInt(tokenId));
-        setSvgContent(generatedSvg);
 
       } catch (err) {
         console.error('Failed to fetch token data:', err);
@@ -132,7 +96,7 @@ function ThumbnailRenderer() {
     );
   }
 
-  if (!tokenData || !svgContent) {
+  if (!tokenData) {
     return (
       <div style={{ 
         position: 'fixed',
@@ -164,7 +128,7 @@ function ThumbnailRenderer() {
       overflow: 'hidden'
     }}>
       <iframe
-        src={svgContent}
+        src={tokenData.artifactUri}
         style={{
           width: '100%',
           height: '100%',
