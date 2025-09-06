@@ -1,6 +1,8 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { nodePolyfills } from 'vite-plugin-node-polyfills'
+import { copyFileSync } from 'fs'
+import { resolve } from 'path'
 
 export default defineConfig({
   base: process.env.NODE_ENV === 'production' ? '/svgkt-monorepo/' : '/',
@@ -14,6 +16,16 @@ export default defineConfig({
         process: true,
       },
     }),
+    // Custom plugin to copy 404.html to dist root
+    {
+      name: 'copy-404',
+      writeBundle() {
+        copyFileSync(
+          resolve(__dirname, 'public/404.html'),
+          resolve(__dirname, 'dist/404.html')
+        )
+      }
+    }
   ],
   define: {
     global: 'globalThis',
