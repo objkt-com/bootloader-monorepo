@@ -70,11 +70,8 @@ function Footer() {
 }
 
 function App() {
-  // Get the base path for GitHub Pages deployment
-  const basename = import.meta.env.PROD ? '/svgkt-monorepo' : '';
-  
   return (
-    <Router basename={basename}>
+    <Router>
       <Routes>
         {/* Thumbnail routes without navigation/footer */}
         <Route path="/thumbnail/:tokenId" element={<ThumbnailRenderer />} />
