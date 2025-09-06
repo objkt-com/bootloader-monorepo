@@ -5,7 +5,7 @@ import { copyFileSync } from 'fs'
 import { resolve } from 'path'
 
 export default defineConfig({
-  base: process.env.NODE_ENV === 'production' ? '/svgkt-monorepo/' : '/',
+  base: '/',
   plugins: [
     react(),
     nodePolyfills({
