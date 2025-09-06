@@ -222,7 +222,6 @@ dist
 
 # Gatsby files
 .cache/
-public
 
 # Vite build output
 dist/
