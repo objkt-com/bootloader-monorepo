@@ -7,7 +7,7 @@ import CodeEditor from './CodeEditor.jsx';
 import SVGPreview from './SVGPreview.jsx';
 import PreviewControls from './PreviewControls.jsx';
 import MintSuccessPopup from './MintSuccessPopup.jsx';
-import { estimateMint, getByteLength, formatStorageCost } from '../utils/storageCost.js';
+import { estimateMint, estimateUpdateGenerator, getByteLength, formatStorageCost } from '../utils/storageCost.js';
 import { getTokenThumbnailUrl, prefetchTokenThumbnail } from '../utils/thumbnail.js';
 import SmartThumbnail from './SmartThumbnail.jsx';
 
@@ -781,6 +781,33 @@ export default function GeneratorDetail() {
               <button onClick={handleSave} disabled={isSaving}>
                 {isSaving ? 'Saving...' : 'Save Changes'}
               </button>
+              {/* Storage Cost Display for Generator Updates - shown when editing */}
+              <div className="action-with-cost">
+                <div className="storage-cost">
+                  <div className="storage-cost-label">Storage fee for changes:</div>
+                  <div className="storage-cost-value">
+                    {(() => {
+                      // Calculate byte differences for the update
+                      const { description: newDescription, code: newCleanCode } = parseDescription(editCode);
+                      
+                      const oldNameBytes = getByteLength(generator.name || "");
+                      const oldDescriptionBytes = getByteLength(generator.description || "");
+                      const oldCodeBytes = getByteLength(generator.code || "");
+                      
+                      const newNameBytes = getByteLength(editName.trim());
+                      const newDescriptionBytes = getByteLength(newDescription);
+                      const newCodeBytes = getByteLength(newCleanCode);
+                      
+                      const cost = estimateUpdateGenerator(
+                        oldNameBytes, oldDescriptionBytes, oldCodeBytes,
+                        newNameBytes, newDescriptionBytes, newCodeBytes
+                      );
+                      
+                      return formatStorageCost(cost);
+                    })()}
+                  </div>
+                </div>
+              </div>
             </>
           )}
         </div>
