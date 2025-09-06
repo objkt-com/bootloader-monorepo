@@ -117,6 +117,42 @@ def svgkt():
         def add_fragment(self, frag_id: sp.nat, frag: sp.bytes):
             assert self.data.administrator == sp.sender, "ONLY_ADMIN"
             self.data.frags[frag_id] = frag
+        
+        @sp.entrypoint
+        def airdrop(self, generator_id: sp.nat, recipient: sp.address, entropy: sp.bytes):
+            generator = self.data.generators[generator_id]
+            assert sp.sender == generator.author, "NOT_AUTHOR"
+            sale = generator.sale.unwrap_some()
+            assert generator.n_tokens < sale.editions, "SOLD_OUT"
+
+            # get_entropy
+            c = sp.create_contract_operation(EmptyContract, None, sp.mutez(0), ())
+            e = sp.view("rb", self.data.rng_contract, entropy + sp.pack(c.address)+sp.pack(generator.n_tokens), sp.bytes).unwrap_some()
+            sp.send(self.data.rng_contract, sp.mutez(0))
+
+
+            # assemble NFT Metadata
+            svg_string =    self.data.frags[0] + \
+                            bytes_utils.from_nat(bytes_utils.to_nat(e)) + \
+                            self.data.frags[1] + \
+                            generator.code + \
+                            self.data.frags[2]
+
+            self.data.ledger[self.data.next_token_id] = recipient
+            self.data.token_metadata[self.data.next_token_id] = sp.record(
+                token_id=self.data.next_token_id,
+                token_info={
+                    "name": generator.name + sp.bytes("0x2023") + bytes_utils.from_nat(generator.n_tokens+1),
+                    "artifactUri": svg_string,
+                    "royalties": sp.bytes("0x7B22646563696D616C73223A322C22736861726573223A7B22") + generator.author_bytes + sp.bytes("0x223A357D7D"),
+                    "creators": sp.bytes("0x5B22") + generator.author_bytes + sp.bytes('0x225D'),
+                    "symbol": sp.bytes("0x53564A4B54"),
+                    "decimals": sp.bytes("0x30"),
+                }
+            )
+            self.data.generators[generator_id].n_tokens += 1
+            self.data.generator_mapping[self.data.next_token_id] = generator_id
+            self.data.next_token_id += 1
 
         @sp.entrypoint
         def mint(self, generator_id: sp.nat, entropy: sp.bytes): 
