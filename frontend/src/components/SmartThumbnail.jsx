@@ -7,43 +7,54 @@ function SmartThumbnail({
   height, 
   style = {}, 
   className = '',
-  fallbackSrc = null,
-  maxRetries = 5,
-  retryDelay = 2000 
+  maxRetries = 8,
+  initialDelay = 5000 // Start with 5 seconds
 }) {
-  const [currentSrc, setCurrentSrc] = useState(src);
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasError, setHasError] = useState(false);
+  const [showImage, setShowImage] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
+  const [isRetrying, setIsRetrying] = useState(false);
 
   useEffect(() => {
-    setCurrentSrc(src);
-    setIsLoading(true);
-    setHasError(false);
+    setShowImage(false);
     setRetryCount(0);
+    setIsRetrying(false);
+    attemptLoad();
   }, [src]);
 
-  const handleLoad = () => {
-    setIsLoading(false);
-    setHasError(false);
-  };
-
-  const handleError = () => {
-    if (retryCount < maxRetries) {
-      // Retry after delay
-      setTimeout(() => {
-        setRetryCount(prev => prev + 1);
-        setCurrentSrc(`${src}?retry=${retryCount + 1}`); // Add cache buster
-      }, retryDelay);
-    } else {
-      // Max retries reached
-      setIsLoading(false);
-      setHasError(true);
-      if (fallbackSrc) {
-        setCurrentSrc(fallbackSrc);
-        setHasError(false);
+  const attemptLoad = async () => {
+    try {
+      // Try to fetch the image to check if it exists
+      const response = await fetch(src, { method: 'HEAD' });
+      
+      if (response.ok) {
+        // Image is ready, show it
+        setShowImage(true);
+        setIsRetrying(false);
+      } else if (response.status === 404 && retryCount < maxRetries) {
+        // 404 - thumbnail not ready yet, retry with exponential backoff
+        scheduleRetry();
+      } else {
+        // Other error or max retries reached
+        setIsRetrying(false);
+      }
+    } catch (error) {
+      // Network error or other issue, retry if we haven't exceeded max attempts
+      if (retryCount < maxRetries) {
+        scheduleRetry();
+      } else {
+        setIsRetrying(false);
       }
     }
+  };
+
+  const scheduleRetry = () => {
+    setIsRetrying(true);
+    const delay = initialDelay * Math.pow(2, retryCount); // Exponential backoff
+    
+    setTimeout(() => {
+      setRetryCount(prev => prev + 1);
+      attemptLoad();
+    }, delay);
   };
 
   const placeholderStyle = {
@@ -60,50 +71,30 @@ function SmartThumbnail({
     ...style
   };
 
-  if (isLoading && retryCount === 0) {
+  if (!showImage) {
     return (
       <div style={placeholderStyle} className={className}>
-        <div>
-          <div style={{ marginBottom: '4px' }}>⏳</div>
-          <div>Generating...</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (isLoading && retryCount > 0) {
-    return (
-      <div style={placeholderStyle} className={className}>
-        <div>
-          <div style={{ marginBottom: '4px' }}>⏳</div>
-          <div>Loading... ({retryCount}/{maxRetries})</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (hasError && !fallbackSrc) {
-    return (
-      <div style={placeholderStyle} className={className}>
-        <div>
-          <div style={{ marginBottom: '4px' }}>❌</div>
-          <div>Failed to load</div>
-        </div>
+        <div>&lt;generating preview&gt;</div>
       </div>
     );
   }
 
   return (
     <img
-      src={currentSrc}
+      src={src}
       alt={alt}
       width={width}
       height={height}
       style={style}
       className={className}
-      onLoad={handleLoad}
-      onError={handleError}
-      loading="lazy"
+      onError={() => {
+        // If the image fails to load after we thought it was ready, 
+        // go back to placeholder and retry
+        setShowImage(false);
+        if (retryCount < maxRetries) {
+          scheduleRetry();
+        }
+      }}
     />
   );
 }
