@@ -271,10 +271,10 @@ input:focus, textarea:focus {
   width: 100%;
   aspect-ratio: 1;
   overflow: hidden;
-  border-bottom: var(--border-width) solid var(--color-black);
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
 }
 
 .generator-preview-container iframe {
@@ -285,8 +285,16 @@ input:focus, textarea:focus {
   pointer-events: none;
 }
 
+.generator-preview-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 .generator-card-info {
   padding: var(--spacing-md);
+  border-top: var(--border-width) solid var(--color-black);
 }
 
 .generator-card-title {
@@ -1120,10 +1128,10 @@ input:focus, textarea:focus {
   width: 100%;
   aspect-ratio: 1;
   overflow: hidden;
-  border-bottom: var(--border-width) solid var(--color-black);
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
 }
 
 .token-preview-container iframe {
@@ -1134,8 +1142,16 @@ input:focus, textarea:focus {
   pointer-events: none;
 }
 
+.token-preview-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 .token-card-info {
   padding: var(--spacing-sm);
+  border-top: var(--border-width) solid var(--color-black);
 }
 
 .token-card-name {

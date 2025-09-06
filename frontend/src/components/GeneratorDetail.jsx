@@ -913,7 +913,6 @@ export default function GeneratorDetail() {
                       src={thumbnailUrl}
                       width="200"
                       height="200"
-                      style={{ border: '1px solid var(--color-black)' }}
                       alt={`${generator.name || `Generator #${generator.id}`} #${token.tokenId}`}
                       maxRetries={8}
                       retryDelay={3000}

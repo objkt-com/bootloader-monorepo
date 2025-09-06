@@ -61,13 +61,13 @@ function SmartThumbnail({
     width: width,
     height: height,
     backgroundColor: '#f0f0f0',
-    border: '1px solid #ddd',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     color: '#666',
     fontSize: '12px',
     textAlign: 'center',
+    objectFit: 'cover',
     ...style
   };
 
@@ -85,7 +85,7 @@ function SmartThumbnail({
       alt={alt}
       width={width}
       height={height}
-      style={style}
+      style={{ objectFit: 'cover', ...style }}
       className={className}
       onError={() => {
         // If the image fails to load after we thought it was ready, 
