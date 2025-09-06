@@ -2,12 +2,9 @@ import smartpy as sp
 from smartpy.templates import fa2_lib as fa2
 from utils import bytes_utils
 
-# Main template for FA2 contracts
 main = fa2.main
 
-
-
-@sp.module
+@sp.module  
 def svgkt():
     import main
     import bytes_utils
@@ -30,16 +27,25 @@ def svgkt():
             main.MintNft.__init__(self)
             main.Nft.__init__(self, contract_metadata, ledger, token_metadata)
             main.Admin.__init__(self, admin_address)
+
             self.data.next_token_id = 0
             self.data.next_generator_id = 0
             self.data.frags = sp.cast(sp.big_map({}), sp.big_map[sp.nat, sp.bytes])
-            self.data.generator_mapping = sp.cast(sp.big_map({}), sp.big_map[sp.nat, sp.nat])
+            self.data.token_extra = sp.cast(sp.big_map({}), sp.big_map[sp.nat, sp.record(
+                generator_id=sp.nat, 
+                generator_version=sp.nat,
+                seed=sp.bytes,
+                iteration_number=sp.nat,
+            )])
             self.data.treasury = admin_address
             self.data.platform_fee_bps = 2000
             self.data.rng_contract = rng_contract
             self.data.max_bytes_code = 30000
-            self.data.max_bytes_name = 500
+            self.data.max_bytes_name = 100
             self.data.max_bytes_desc = 8000
+            self.data.max_bytes_author = 36
+            self.data.moderators = sp.cast(sp.big_map({}), sp.big_map[sp.address, sp.unit])
+            self.data.generator_mints = sp.cast(sp.big_map({}), sp.big_map[sp.pair[sp.nat, sp.address], sp.nat])
             self.data.generators = sp.cast(sp.big_map({}), sp.big_map[sp.nat, sp.record(
                 name=sp.bytes,
                 created=sp.timestamp,
@@ -49,16 +55,30 @@ def svgkt():
                 author_bytes=sp.bytes,
                 code=sp.bytes,
                 n_tokens=sp.nat,
+                reserved_editions=sp.nat,
+                flag=sp.nat,
+                version=sp.nat,
                 sale=sp.option[sp.record(
                     paused=sp.bool,
                     start_time=sp.option[sp.timestamp],
                     price=sp.mutez,
                     editions=sp.nat,
+                    max_per_wallet=sp.option[sp.nat],
                 )]
             )])
+        
+        @sp.entrypoint
+        def add_moderator(self, address:  sp.address):
+            assert sp.sender == self.data.administrator, "ONLY_ADMIN"
+            self.data.moderators[address] = ()
+        
+        @sp.entrypoint
+        def remove_moderator(self, address: sp.address):
+            assert sp.sender == self.data.administrator, "ONLY_ADMIN"
+            del self.data.moderators[address]
 
         @sp.entrypoint
-        def create_generator(self, name, description, code, author_bytes):
+        def create_generator(self, name: sp.bytes, description: sp.bytes, code: sp.bytes, author_bytes: sp.bytes, reserved_editions: sp.nat):
             self.data.generators[self.data.next_generator_id] = sp.record(
                 name=name,
                 created = sp.now,
@@ -68,20 +88,31 @@ def svgkt():
                 author_bytes=author_bytes,
                 code=code,
                 n_tokens=0,
+                reserved_editions=reserved_editions,
+                flag=0,
+                version=1,
                 sale=None,
             )
             assert sp.len(name) <= self.data.max_bytes_name, "NAME_TOO_LONG"
             assert sp.len(description) <= self.data.max_bytes_desc, "DESC_TOO_LONG"
             assert sp.len(code) <= self.data.max_bytes_code, "CODE_TOO_LONG"
+            assert sp.len(author_bytes) <= self.data.max_bytes_author, "AUTHOR_TOO_LONG"
             self.data.next_generator_id += 1
 
         @sp.entrypoint
-        def update_generator(self, generator_id, name, description, code, author_bytes):
+        def update_generator(self, generator_id: sp.nat, name: sp.bytes, description: sp.bytes, code: sp.bytes, author_bytes: sp.bytes, reserved_editions: sp.nat):
             generator = self.data.generators[generator_id]
-            assert sp.sender == generator.author, "NOT_AUTHOR"
+            assert sp.sender == generator.author, "ONLY_AUTHOR"
             assert sp.len(name) <= self.data.max_bytes_name, "NAME_TOO_LONG"
             assert sp.len(description) <= self.data.max_bytes_desc, "DESC_TOO_LONG"
             assert sp.len(code) <= self.data.max_bytes_code, "CODE_TOO_LONG"
+            assert sp.len(author_bytes) <= self.data.max_bytes_author, "AUTHOR_TOO_LONG"
+
+            # if geneartor has sale configured. Ensure reserved_editions are not more than remaining capacity
+            match generator.sale:
+                case Some(sale):
+                    assert generator.n_tokens + reserved_editions <= sale.editions, "RESERVE_EXCEEDS_CAPACITY"
+
             self.data.generators[generator_id] = sp.record(
                 name=name,
                 created=generator.created,
@@ -91,127 +122,215 @@ def svgkt():
                 author_bytes=author_bytes,
                 code=code,
                 n_tokens=generator.n_tokens,
-                sale=generator.sale
+                reserved_editions=reserved_editions,
+                flag=generator.flag,
+                sale=generator.sale,
+                version=generator.version +1,
             )
+
+        @sp.entrypoint
+        def set_max_bytes_name(self, n_bytes: sp.nat):
+            assert self.data.moderators.contains(sp.sender) or sp.sender == self.data.administrator, "ONLY_MODS"
+            self.data.max_bytes_name = n_bytes
+
+        @sp.entrypoint
+        def set_max_bytes_desc(self, n_bytes: sp.nat):
+            assert self.data.moderators.contains(sp.sender) or sp.sender == self.data.administrator, "ONLY_MODS"
+            self.data.max_bytes_desc = n_bytes
+
+        @sp.entrypoint
+        def set_max_bytes_code(self, n_bytes: sp.nat):
+            assert self.data.moderators.contains(sp.sender) or sp.sender == self.data.administrator, "ONLY_MODS"
+            self.data.max_bytes_code = n_bytes
+
+        @sp.entrypoint
+        def set_max_bytes_author(self, n_bytes: sp.nat):
+            assert self.data.moderators.contains(sp.sender) or sp.sender == self.data.administrator, "ONLY_MODS"
+            self.data.max_bytes_author = n_bytes
+
+        @sp.entrypoint
+        def set_rng_contract(self, rng: sp.address):
+            assert self.data.moderators.contains(sp.sender) or sp.sender == self.data.administrator, "ONLY_MODS"
+            self.data.rng_contract = rng
         
         @sp.entrypoint
-        def set_sale(self, generator_id, start_time, price, paused, editions):
+        def flag_generator(self, generator_id: sp.nat, flag: sp.nat):
+            # used for UI moderation
+            assert self.data.moderators.contains(sp.sender) or sp.sender == self.data.administrator, "ONLY_MODS"
+            self.data.generators[generator_id].flag = flag
+
+        @sp.entrypoint
+        def update_thumbnail(self, token_id: sp.nat, thumbnailUri: sp.bytes):
+            token_extra = self.data.token_extra[token_id]
+            generator = self.data.generators[token_extra.generator_id]
+            assert sp.sender == generator.author or self.data.moderators.contains(sp.sender) or sp.sender == self.data.administrator, "ONLY_AUTHOR_OR_MODS"
+            current_metadata = self.data.token_metadata[token_id].token_info
+            current_metadata['thumbnailUri'] = thumbnailUri
+            self.data.token_metadata[token_id] = sp.record(token_id=token_id, token_info=current_metadata)
+        
+        @sp.entrypoint
+        def set_sale(self, generator_id: sp.nat, start_time: sp.option[sp.timestamp], price: sp.mutez, paused: sp.bool, editions: sp.nat, max_per_wallet: sp.option[sp.nat]):
             generator = self.data.generators[generator_id]
-            assert sp.sender == generator.author, "NOT_AUTHOR"
+            assert sp.sender == generator.author, "ONLY_AUTHOR"
             # only allow reducing edition size
             match generator.sale:
                 case Some(sale):
                     # but only if no tokens were minted yet
                     if generator.n_tokens > 0:
                         assert editions <= sale.editions, "NO_ED_INCREMENT"
-            assert editions >= generator.n_tokens, "ED_LT_MINTED"
+            assert editions >= generator.n_tokens + generator.reserved_editions, "ED_LT_MINTED"
             self.data.generators[generator_id].sale = sp.Some(sp.record(
                 start_time=start_time,
                 price=price,
                 paused=paused,
-                editions=editions
+                editions=editions,
+                max_per_wallet=max_per_wallet,
             ))
         
         @sp.entrypoint
-        def set_treasury(self, address):
-            assert self.data.administrator == sp.sender, "ONLY_ADMIN"
+        def set_treasury(self, address: sp.address):
+            assert self.data.moderators.contains(sp.sender) or sp.sender == self.data.administrator, "ONLY_MODS"
             self.data.treasury = address
         
         @sp.entrypoint
-        def set_platform_fee_bps(self, platform_fee_bps):
-            assert self.data.administrator == sp.sender, "ONLY_ADMIN"
+        def set_platform_fee_bps(self, platform_fee_bps: sp.nat):
+            assert self.data.moderators.contains(sp.sender) or sp.sender == self.data.administrator, "ONLY_MODS"
             sp.cast(platform_fee_bps, sp.nat)
             assert platform_fee_bps <= 10_000, "BPS_TOO_HIGH"
             self.data.platform_fee_bps = platform_fee_bps
 
         @sp.entrypoint
         def add_fragment(self, frag_id: sp.nat, frag: sp.bytes):
-            assert self.data.administrator == sp.sender, "ONLY_ADMIN"
+            assert self.data.moderators.contains(sp.sender) or sp.sender == self.data.administrator, "ONLY_MODS"
             self.data.frags[frag_id] = frag
         
-        @sp.entrypoint
-        def airdrop(self, generator_id: sp.nat, recipient: sp.address, entropy: sp.bytes):
-            generator = self.data.generators[generator_id]
-            assert sp.sender == generator.author, "NOT_AUTHOR"
-            sale = generator.sale.unwrap_some()
-            assert generator.n_tokens < sale.editions, "SOLD_OUT"
-
-            # get_entropy
-            c = sp.create_contract_operation(EmptyContract, None, sp.mutez(0), ())
-            e = sp.view("rb", self.data.rng_contract, entropy + sp.pack(c.address)+sp.pack(generator.n_tokens), sp.bytes).unwrap_some()
-            sp.send(self.data.rng_contract, sp.mutez(0))
-
-
-            # assemble NFT Metadata
+        @sp.private(with_storage="read-write", with_operations=True)
+        def create_token_metadata(self, params):
             svg_string =    self.data.frags[0] + \
-                            bytes_utils.from_nat(bytes_utils.to_nat(e)) + \
+                            params.seed + \
                             self.data.frags[1] + \
-                            generator.code + \
+                            params.generator_code + \
                             self.data.frags[2]
 
-            self.data.ledger[self.data.next_token_id] = recipient
-            self.data.token_metadata[self.data.next_token_id] = sp.record(
-                token_id=self.data.next_token_id,
+            iteration_bytes = bytes_utils.from_nat(params.iteration_number)
+            token_id_bytes = bytes_utils.from_nat(params.token_id)
+            self.data.token_metadata[params.token_id] = sp.record(
+                token_id=params.token_id,
                 token_info={
-                    "name": generator.name + sp.bytes("0x2023") + bytes_utils.from_nat(generator.n_tokens+1),
+                    "name": params.generator_name + sp.bytes("0x2023") + iteration_bytes,
                     "artifactUri": svg_string,
-                    "royalties": sp.bytes("0x7B22646563696D616C73223A322C22736861726573223A7B22") + generator.author_bytes + sp.bytes("0x223A357D7D"),
-                    "creators": sp.bytes("0x5B22") + generator.author_bytes + sp.bytes('0x225D'),
+                    "thumbnailUri": sp.bytes("0x68747470733A2F2F6D656469612E7376676B742E636F6D2F7468756D626E61696C2F") + token_id_bytes + sp.bytes("0x3F763D") + bytes_utils.from_nat(params.generator_version), # cache buster for thumbnail generation
+                    "royalties": sp.bytes("0x7B22646563696D616C73223A322C22736861726573223A7B22") + params.generator_author_bytes + sp.bytes("0x223A357D7D"),
+                    "creators": sp.bytes("0x5B22") + params.generator_author_bytes + sp.bytes('0x225D'),
                     "symbol": sp.bytes("0x53564A4B54"),
                     "decimals": sp.bytes("0x30"),
                 }
             )
+        
+        @sp.entrypoint
+        def regenerate_token(self, token_id: sp.nat):
+            assert self.data.ledger[token_id] == sp.sender, "ONLY_OWNER"
+            token_extra = self.data.token_extra[token_id]
+            generator = self.data.generators[token_extra.generator_id]
+            assert generator.version > token_extra.generator_version, "NO_UPDATE_POSSIBLE"
+            
+            self.create_token_metadata(sp.record(
+                token_id=token_id,
+                seed=token_extra.seed,
+                iteration_number=token_extra.iteration_number,
+                generator_name=generator.name,
+                generator_author_bytes=generator.author_bytes,
+                generator_version=generator.version,
+                generator_code=generator.code
+            ))
+
+            self.data.token_extra[token_id].generator_version = generator.version
+        
+        @sp.entrypoint
+        def airdrop(self, generator_id: sp.nat, recipient: sp.address, entropy: sp.bytes):
+            generator = self.data.generators[generator_id]
+            assert sp.sender == generator.author, "ONLY_AUTHOR"
+            match generator.sale:
+                case Some(sale):
+                    assert generator.n_tokens < sale.editions, "SOLD_OUT"
+            assert generator.reserved_editions > 0, "NO_RESERVED_LEFT"
+            self.data.generators[generator_id].reserved_editions = sp.as_nat(generator.reserved_editions - 1)
+            # get_entropy
+            c = sp.create_contract_operation(EmptyContract, None, sp.mutez(0), ())
+            e = sp.view("rb", self.data.rng_contract, sp.sha256(entropy + sp.pack(c.address)+sp.pack(generator.n_tokens)), sp.bytes).unwrap_some()
+            sp.send(self.data.rng_contract, sp.mutez(0))
+
+            seed = bytes_utils.from_nat(bytes_utils.to_nat(e))
+
+            self.create_token_metadata(sp.record(
+                token_id=self.data.next_token_id,
+                seed=seed,
+                iteration_number=generator.n_tokens+1,
+                generator_name=generator.name,
+                generator_author_bytes=generator.author_bytes,
+                generator_version=generator.version,
+                generator_code=generator.code
+            ))
+
+            self.data.ledger[self.data.next_token_id] = recipient
             self.data.generators[generator_id].n_tokens += 1
-            self.data.generator_mapping[self.data.next_token_id] = generator_id
+            self.data.token_extra[self.data.next_token_id] = sp.record(generator_id=generator_id, seed=seed, generator_version=generator.version, iteration_number=generator.n_tokens+1)
             self.data.next_token_id += 1
 
         @sp.entrypoint
         def mint(self, generator_id: sp.nat, entropy: sp.bytes): 
             generator = self.data.generators[generator_id]
             assert generator.sale.is_some(), "NO_SALE_CONFIG"
-            sale = generator.sale.unwrap_some()
-            assert not sale.paused, "SALE_PAUSED"
-            assert sp.amount == sale.price, "PRICE_MISMATCH"
-            match sale.start_time:
-                case Some(start_time):
-                    assert sp.now >= start_time, "SALE_NOT_STARTED"
-            assert generator.n_tokens < sale.editions, "SOLD_OUT"
+            match generator.sale:
+                case Some(sale):
+                    assert not sale.paused, "SALE_PAUSED"
+                    assert sp.amount == sale.price, "PRICE_MISMATCH"
 
-            # get_entropy
-            c = sp.create_contract_operation(EmptyContract, None, sp.mutez(0), ())
-            e = sp.view("rb", self.data.rng_contract, entropy + sp.pack(c.address)+sp.pack(generator.n_tokens), sp.bytes).unwrap_some()
-            sp.send(self.data.rng_contract, sp.mutez(0))
+                    match sale.start_time:
+                        case Some(start_time):
+                            assert sp.now >= start_time, "SALE_NOT_STARTED"
+                    
+                    # enforce (optional) max per wallet
+                    minted_key = (generator_id, sp.sender)
+                    n_minted = self.data.generator_mints.get(minted_key, default=0)
+                    match sale.max_per_wallet:
+                        case Some(max_per_wallet):
+                            assert max_per_wallet > n_minted, "EXCEEDS_MAX_PER_WALLET"
+                    self.data.generator_mints[minted_key] = n_minted + 1
 
-            if sp.amount > sp.mutez(0):
-                platform_fee = sp.split_tokens(sp.amount, self.data.platform_fee_bps, 10_000)
-                rest = sp.amount - platform_fee
-                if platform_fee > sp.mutez(0):
-                    sp.send(self.data.treasury, platform_fee)
-                if rest > sp.mutez(0):
-                    sp.send(generator.author, rest)
+                    assert generator.n_tokens + generator.reserved_editions < sale.editions, "PUBLIC_SOLD_OUT"
 
-            # assemble NFT Metadata
-            svg_string =    self.data.frags[0] + \
-                            bytes_utils.from_nat(bytes_utils.to_nat(e)) + \
-                            self.data.frags[1] + \
-                            generator.code + \
-                            self.data.frags[2]
+                    if sp.amount > sp.mutez(0):
+                        platform_fee = sp.split_tokens(sp.amount, self.data.platform_fee_bps, 10_000)
+                        rest = sp.amount - platform_fee
+                        if platform_fee > sp.mutez(0):
+                            sp.send(self.data.treasury, platform_fee)
+                        if rest > sp.mutez(0):
+                            sp.send(generator.author, rest)
+                                        # get_entropy
+                    c = sp.create_contract_operation(EmptyContract, None, sp.mutez(0), ())
+                    e = sp.view("rb", self.data.rng_contract, sp.sha256(entropy + sp.pack(c.address)+sp.pack(generator.n_tokens)), sp.bytes).unwrap_some()
+                    sp.send(self.data.rng_contract, sp.mutez(0))
 
-            self.data.ledger[self.data.next_token_id] = sp.sender
-            self.data.token_metadata[self.data.next_token_id] = sp.record(
-                token_id=self.data.next_token_id,
-                token_info={
-                    "name": generator.name + sp.bytes("0x2023") + bytes_utils.from_nat(generator.n_tokens+1),
-                    "artifactUri": svg_string,
-                    "royalties": sp.bytes("0x7B22646563696D616C73223A322C22736861726573223A7B22") + generator.author_bytes + sp.bytes("0x223A357D7D"),
-                    "creators": sp.bytes("0x5B22") + generator.author_bytes + sp.bytes('0x225D'),
-                    "symbol": sp.bytes("0x53564A4B54"),
-                    "decimals": sp.bytes("0x30"),
-                }
-            )
-            self.data.generators[generator_id].n_tokens += 1
-            self.data.generator_mapping[self.data.next_token_id] = generator_id
-            self.data.next_token_id += 1
+                    seed = bytes_utils.from_nat(bytes_utils.to_nat(e))
+
+
+                    self.create_token_metadata(sp.record(
+                        token_id=self.data.next_token_id,
+                        seed=seed,
+                        iteration_number=generator.n_tokens+1,
+                        generator_name=generator.name,
+                        generator_author_bytes=generator.author_bytes,
+                        generator_version=generator.version,
+                        generator_code=generator.code
+                    ))
+
+                    self.data.ledger[self.data.next_token_id] = sp.sender
+                    self.data.generators[generator_id].n_tokens += 1
+                    self.data.token_extra[self.data.next_token_id] = sp.record(generator_id=generator_id, seed=seed, generator_version=generator.version, iteration_number=generator.n_tokens+1)
+                    self.data.next_token_id += 1
+                case None:
+                    raise "NO_SALE_CONFIGURED"
 
 @sp.add_test()
 def test():

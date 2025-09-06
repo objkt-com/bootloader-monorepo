@@ -25,6 +25,18 @@ def test_utils():
         def __init__(self):
             self.data = ()
 
+    class MockRngContract(sp.Contract):
+        def __init__(self):
+            self.data = ()
+        
+        @sp.onchain_view()
+        def rb(self, seed):
+            return sp.bytes("0x1234567890abcdef1234567890abcdef")
+        
+        @sp.entrypoint
+        def default(self):
+            pass
+
 @sp.add_test()
 def test_comprehensive():
     scenario = sp.test_scenario("svgkt_test", [svgkt, randomiser])
@@ -42,7 +54,13 @@ def test_comprehensive():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(admin.address, rng.address, sp.big_map({}), {}, [])
+    contract = svgkt.SvgKT(
+        admin_address=admin.address,
+        rng_contract=rng.address, 
+        contract_metadata=sp.big_map({}),
+        ledger=sp.map({}),
+        token_metadata=[]
+    )
     scenario += contract
 
     scenario.h1("Admin Access Control")
@@ -59,7 +77,7 @@ def test_comprehensive():
         frag=sp.bytes("0x00"),
         _sender=alice,
         _valid=False,
-        _exception="ONLY_ADMIN"
+        _exception="ONLY_MODS"
     )
     
     contract.set_treasury(treasury.address, _sender=admin)
@@ -69,7 +87,7 @@ def test_comprehensive():
         alice.address,
         _sender=alice,
         _valid=False,
-        _exception="ONLY_ADMIN"
+        _exception="ONLY_MODS"
     )
     
     contract.set_platform_fee_bps(1500, _sender=admin)
@@ -79,7 +97,7 @@ def test_comprehensive():
         3000,
         _sender=alice,
         _valid=False,
-        _exception="ONLY_ADMIN"
+        _exception="ONLY_MODS"
     )
     
     contract.set_administrator(new_admin.address, _sender=admin)
@@ -88,7 +106,7 @@ def test_comprehensive():
         alice.address,
         _sender=admin,
         _valid=False,
-        _exception="ONLY_ADMIN"
+        _exception="ONLY_MODS"
     )
     
     contract.set_treasury(treasury_counter.address, _sender=new_admin)
@@ -104,6 +122,7 @@ def test_comprehensive():
         description=sp.bytes("0x412062656175746966756c2067656e657261746f72"),
         code=sp.bytes("0x636f6e736f6c652e6c6f67282248656c6c6f20576f726c642229"),
         author_bytes=sp.bytes("0x416c696365"),
+        reserved_editions=0,
         _sender=alice
     )
     
@@ -120,6 +139,7 @@ def test_comprehensive():
         description=sp.bytes("0x557064617465642067656e657261746f72"),
         code=sp.bytes("0x636f6e736f6c652e6c6f67282248656c6c6f20576f726c64205632"),
         author_bytes=sp.bytes("0x416c696365"),
+        reserved_editions=0,
         _sender=alice
     )
     
@@ -129,9 +149,10 @@ def test_comprehensive():
         description=sp.bytes("0x426f62732067656e657261746f72"),
         code=sp.bytes("0x636f6e736f6c652e6c6f67282248656c6c6f20426f62"),
         author_bytes=sp.bytes("0x426f62"),
+        reserved_editions=0,
         _sender=bob,
         _valid=False,
-        _exception="NOT_AUTHOR"
+        _exception="ONLY_AUTHOR"
     )
     
     scenario.h1("Sale States")
@@ -150,6 +171,7 @@ def test_comprehensive():
         price=sp.mutez(1000000),
         paused=True,
         editions=100,
+        max_per_wallet=None,
         _sender=alice
     )
     
@@ -166,8 +188,9 @@ def test_comprehensive():
         generator_id=0,
         start_time=sp.Some(sp.timestamp(200)),
         price=sp.mutez(1000000),
-        paused=False,
+        paused=False,   
         editions=100,
+        max_per_wallet=None,
         _sender=alice
     )
     
@@ -202,7 +225,7 @@ def test_comprehensive():
     scenario.verify(contract.data.next_token_id == 1)
     scenario.verify(contract.data.ledger[0] == bob.address)
     scenario.verify(contract.data.generators[0].n_tokens == 1)
-    scenario.verify(contract.data.generator_mapping[0] == 0)
+    scenario.verify(contract.data.token_extra[0].generator_id == 0)
     
     scenario.h1("Free Minting")
     
@@ -211,6 +234,7 @@ def test_comprehensive():
         description=sp.bytes("0x46726565206d696e74696e672067656e657261746f72"),
         code=sp.bytes("0x636f6e736f6c652e6c6f67282246726565204172742229"),
         author_bytes=sp.bytes("0x416c696365"),
+        reserved_editions=0,
         _sender=alice
     )
     
@@ -220,6 +244,7 @@ def test_comprehensive():
         price=sp.mutez(0),
         paused=False,
         editions=50,
+        max_per_wallet=None,
         _sender=alice
     )
     
@@ -246,6 +271,7 @@ def test_comprehensive():
         description=sp.bytes("0x4c696d697465642065646974696f6e2067656e657261746f72"),
         code=sp.bytes("0x636f6e736f6c652e6c6f67282253636172636520417274"),
         author_bytes=sp.bytes("0x416c696365"),
+        reserved_editions=0,
         _sender=alice
     )
     
@@ -255,6 +281,7 @@ def test_comprehensive():
         price=sp.mutez(500000),
         paused=False,
         editions=2,
+        max_per_wallet=None,
         _sender=alice
     )
     
@@ -288,6 +315,7 @@ def test_comprehensive():
         description=sp.bytes("0x54657374696e672065646974696f6e206368616e676573"),
         code=sp.bytes("0x636f6e736f6c652e6c6f67282245646974696f6e2054657374"),
         author_bytes=sp.bytes("0x416c696365"),
+        reserved_editions=0,
         _sender=alice
     )
     
@@ -297,6 +325,7 @@ def test_comprehensive():
         price=sp.mutez(100000),
         paused=False,
         editions=100,
+        max_per_wallet=None,
         _sender=alice
     )
     
@@ -306,6 +335,7 @@ def test_comprehensive():
         price=sp.mutez(100000),
         paused=False,
         editions=50,
+        max_per_wallet=None,
         _sender=alice
     )
     
@@ -322,6 +352,7 @@ def test_comprehensive():
         price=sp.mutez(100000),
         paused=False,
         editions=25,
+        max_per_wallet=None,
         _sender=alice
     )
     
@@ -331,6 +362,7 @@ def test_comprehensive():
         price=sp.mutez(100000),
         paused=False,
         editions=75,
+        max_per_wallet=None,
         _sender=alice,
         _valid=False,
         _exception="NO_ED_INCREMENT"
@@ -351,7 +383,7 @@ def test_comprehensive():
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=bob,
         _valid=False,
-        _exception="NOT_AUTHOR"
+        _exception="ONLY_AUTHOR"
     )
     
     for i in range(23):
@@ -378,6 +410,7 @@ def test_comprehensive():
         description=sp.bytes("0x54657374696e672066656520646973747269627574696f6e"),
         code=sp.bytes("0x636f6e736f6c652e6c6f67282246656520546573742229"),
         author_bytes=sp.bytes("0x426f62"),
+        reserved_editions=0,
         _sender=bob
     )
     
@@ -387,6 +420,7 @@ def test_comprehensive():
         price=sp.mutez(10000000),
         paused=False,
         editions=10,
+        max_per_wallet=None,
         _sender=bob
     )
     
@@ -408,6 +442,7 @@ def test_comprehensive():
         description=sp.bytes("0x54657374696e67206d617820666565"),
         code=sp.bytes("0x636f6e736f6c652e6c6f67282254657374"),
         author_bytes=sp.bytes("0x416c696365"),
+        reserved_editions=0,
         _sender=alice
     )
     
@@ -417,6 +452,7 @@ def test_comprehensive():
         price=sp.mutez(1000000),
         paused=False,
         editions=5,
+        max_per_wallet=None,
         _sender=alice
     )
     
@@ -447,6 +483,7 @@ def test_comprehensive():
         description=sp.bytes("0x54657374696e672065646974696f6e20726564756374696f6e"),
         code=sp.bytes("0x636f6e736f6c652e6c6f67282254657374"),
         author_bytes=sp.bytes("0x416c696365"),
+        reserved_editions=0,
         _sender=alice
     )
     
@@ -456,6 +493,7 @@ def test_comprehensive():
         price=sp.mutez(100000),
         paused=False,
         editions=10,
+        max_per_wallet=None,
         _sender=alice
     )
     
@@ -504,7 +542,7 @@ def test_comprehensive():
         editions=50,
         _sender=bob,
         _valid=False,
-        _exception="NOT_AUTHOR"
+        _exception="ONLY_AUTHOR"
     )
     
     scenario.h1("Input Validation")
@@ -544,7 +582,13 @@ def test_comprehensive():
     
     scenario.h1("External Dependencies")
     
-    contract_no_frags = svgkt.SvgKT(admin.address, rng.address, sp.big_map({}), {}, [])
+    contract_no_frags = svgkt.SvgKT(
+        admin_address=admin.address,
+        rng_contract=rng.address, 
+        contract_metadata=sp.big_map({}),
+        ledger=sp.map({}),
+        token_metadata=[]
+    )
     scenario += contract_no_frags
     
     contract_no_frags.add_fragment(
@@ -581,7 +625,13 @@ def test_comprehensive():
     no_rng_contract = test_utils.NoRngContract()
     scenario += no_rng_contract
     
-    contract_no_rng = svgkt.SvgKT(admin.address, no_rng_contract.address, sp.big_map({}), {}, [])
+    contract_no_rng = svgkt.SvgKT(
+        admin_address=admin.address,
+        rng_contract=no_rng_contract.address, 
+        contract_metadata=sp.big_map({}),
+        ledger=sp.map({}),
+        token_metadata=[]
+    )
     scenario += contract_no_rng
     
     for i in range(4):
@@ -722,7 +772,7 @@ def test_comprehensive():
         author_bytes=sp.bytes("0x41646d696e"),
         _sender=new_admin,
         _valid=False,
-        _exception="NOT_AUTHOR"
+        _exception="ONLY_AUTHOR"
     )
     
     contract.set_sale(
@@ -733,7 +783,7 @@ def test_comprehensive():
         editions=200,
         _sender=new_admin,
         _valid=False,
-        _exception="NOT_AUTHOR"
+        _exception="ONLY_AUTHOR"
     )
     
     scenario.h1("FA2 Operations")
@@ -782,3 +832,483 @@ def test_comprehensive():
         _valid=False,
         _exception="PRICE_MISMATCH"
     )
+    
+    scenario.h1("NEW FEATURES - Moderator System")
+    
+    moderator = sp.test_account("Moderator")
+    
+    # Test moderator addition/removal (admin only)
+    contract.add_moderator(moderator.address, _sender=new_admin)
+    scenario.verify(contract.data.moderators.contains(moderator.address))
+    
+    contract.add_moderator(
+        alice.address,
+        _sender=alice,
+        _valid=False,
+        _exception="ONLY_ADMIN"
+    )
+    
+    # Test moderator permissions
+    contract.set_treasury(treasury.address, _sender=moderator)
+    scenario.verify(contract.data.treasury == treasury.address)
+    
+    contract.set_platform_fee_bps(3000, _sender=moderator)
+    scenario.verify(contract.data.platform_fee_bps == 3000)
+    
+    contract.add_fragment(
+        frag_id=20, 
+        frag=sp.bytes("0x3c2f7376673e"),
+        _sender=moderator
+    )
+    
+    contract.set_rng_contract(rng.address, _sender=moderator)
+    scenario.verify(contract.data.rng_contract == rng.address)
+    
+    # Test moderator removal
+    contract.remove_moderator(moderator.address, _sender=new_admin)
+    scenario.verify(~contract.data.moderators.contains(moderator.address))
+    
+    contract.remove_moderator(
+        alice.address,
+        _sender=alice,
+        _valid=False,
+        _exception="ONLY_ADMIN"
+    )
+    
+    # Test that removed moderator loses permissions
+    contract.set_treasury(
+        alice.address,
+        _sender=moderator,
+        _valid=False,
+        _exception="ONLY_MODS"
+    )
+    
+    scenario.h1("NEW FEATURES - Reserved Editions")
+    
+    contract.create_generator(
+        name=sp.bytes("0x526573657276656420456469746f6e732054657374"),
+        description=sp.bytes("0x54657374696e6720726573657276656420656469746f6e73"),
+        code=sp.bytes("0x636f6e736f6c652e6c6f67282254657374"),
+        author_bytes=sp.bytes("0x416c696365"),
+        reserved_editions=5,
+        _sender=alice
+    )
+    
+    scenario.verify(contract.data.generators[11].reserved_editions == 5)
+    
+    # Test airdrop with reserved editions
+    contract.set_sale(
+        generator_id=11,
+        start_time=None,
+        price=sp.mutez(1000000),
+        paused=False,
+        editions=10,
+        max_per_wallet=None,
+        _sender=alice
+    )
+    
+    # Airdrop should work with reserved editions
+    contract.airdrop(
+        generator_id=11,
+        recipient=bob.address,
+        entropy=sp.bytes("0x" + os.urandom(16).hex()),
+        _sender=alice
+    )
+    
+    scenario.verify(contract.data.generators[11].reserved_editions == 4)
+    scenario.verify(contract.data.generators[11].n_tokens == 1)
+    
+    # Test that public minting respects reserved editions
+    for i in range(4):  # Should only be able to mint 4 more (10 total - 5 reserved - 1 already minted)
+        contract.mint(
+            generator_id=11, 
+            entropy=sp.bytes("0x" + os.urandom(16).hex()),
+            _sender=charlie,
+            _amount=sp.mutez(1000000)
+        )
+    
+    # This should fail because we've reached the public limit
+    contract.mint(
+        generator_id=11, 
+        entropy=sp.bytes("0x" + os.urandom(16).hex()),
+        _sender=charlie,
+        _amount=sp.mutez(1000000),
+        _valid=False,
+        _exception="PUBLIC_SOLD_OUT"
+    )
+    
+    # But airdrop should still work
+    contract.airdrop(
+        generator_id=11,
+        recipient=charlie.address,
+        entropy=sp.bytes("0x" + os.urandom(16).hex()),
+        _sender=alice
+    )
+    
+    # Test airdrop when no reserved editions left
+    for i in range(3):  # Use up remaining reserved editions
+        contract.airdrop(
+            generator_id=11,
+            recipient=bob.address,
+            entropy=sp.bytes("0x" + os.urandom(16).hex()),
+            _sender=alice
+        )
+    
+    contract.airdrop(
+        generator_id=11,
+        recipient=bob.address,
+        entropy=sp.bytes("0x" + os.urandom(16).hex()),
+        _sender=alice,
+        _valid=False,
+        _exception="NO_RESERVED_LEFT"
+    )
+    
+    scenario.h1("NEW FEATURES - Max Per Wallet")
+    
+    contract.create_generator(
+        name=sp.bytes("0x4d6178205065722057616c6c65742054657374"),
+        description=sp.bytes("0x54657374696e67206d6178207065722077616c6c6574"),
+        code=sp.bytes("0x636f6e736f6c652e6c6f67282254657374"),
+        author_bytes=sp.bytes("0x416c696365"),
+        reserved_editions=0,
+        _sender=alice
+    )
+    
+    contract.set_sale(
+        generator_id=12,
+        start_time=None,
+        price=sp.mutez(500000),
+        paused=False,
+        editions=10,
+        max_per_wallet=sp.Some(2),
+        _sender=alice
+    )
+    
+    # First mint should work
+    contract.mint(
+        generator_id=12, 
+        entropy=sp.bytes("0x" + os.urandom(16).hex()),
+        _sender=bob,
+        _amount=sp.mutez(500000)
+    )
+    
+    # Second mint should work
+    contract.mint(
+        generator_id=12, 
+        entropy=sp.bytes("0x" + os.urandom(16).hex()),
+        _sender=bob,
+        _amount=sp.mutez(500000)
+    )
+    
+    # Third mint should fail
+    contract.mint(
+        generator_id=12, 
+        entropy=sp.bytes("0x" + os.urandom(16).hex()),
+        _sender=bob,
+        _amount=sp.mutez(500000),
+        _valid=False,
+        _exception="EXCEEDS_MAX_PER_WALLET"
+    )
+    
+    # Different wallet should work
+    contract.mint(
+        generator_id=12, 
+        entropy=sp.bytes("0x" + os.urandom(16).hex()),
+        _sender=charlie,
+        _amount=sp.mutez(500000)
+    )
+    
+    scenario.h1("NEW FEATURES - Generator Versioning and Regeneration")
+    
+    contract.create_generator(
+        name=sp.bytes("0x56657273696f6e696e672054657374"),
+        description=sp.bytes("0x54657374696e672067656e657261746f722076657273696f6e696e67"),
+        code=sp.bytes("0x636f6e736f6c652e6c6f67282256657273696f6e203122"),
+        author_bytes=sp.bytes("0x416c696365"),
+        reserved_editions=0,
+        _sender=alice
+    )
+    
+    contract.set_sale(
+        generator_id=13,
+        start_time=None,
+        price=sp.mutez(100000),
+        paused=False,
+        editions=5,
+        max_per_wallet=None,
+        _sender=alice
+    )
+    
+    # Mint a token
+    contract.mint(
+        generator_id=13, 
+        entropy=sp.bytes("0x" + os.urandom(16).hex()),
+        _sender=bob,
+        _amount=sp.mutez(100000)
+    )
+    
+    token_id = contract.data.next_token_id - 1
+    initial_version = contract.data.generators[13].version
+    scenario.verify(initial_version == 1)
+    
+    # Update generator (should increment version)
+    contract.update_generator(
+        generator_id=13,
+        name=sp.bytes("0x56657273696f6e696e672054657374205632"),
+        description=sp.bytes("0x557064617465642067656e657261746f72"),
+        code=sp.bytes("0x636f6e736f6c652e6c6f67282256657273696f6e203222"),
+        author_bytes=sp.bytes("0x416c696365"),
+        reserved_editions=0,
+        _sender=alice
+    )
+    
+    scenario.verify(contract.data.generators[13].version == 2)
+    
+    # Test regenerate_token
+    contract.regenerate_token(token_id, _sender=bob)
+    scenario.verify(contract.data.token_extra[token_id].generator_version == 2)
+    
+    # Test regenerate_token with wrong owner
+    contract.regenerate_token(
+        token_id,
+        _sender=alice,
+        _valid=False,
+        _exception="ONLY_OWNER"
+    )
+    
+    # Test regenerate_token when no update is possible
+    contract.regenerate_token(
+        token_id,
+        _sender=bob,
+        _valid=False,
+        _exception="NO_UPDATE_POSSIBLE"
+    )
+    
+    scenario.h1("NEW FEATURES - Generator Flagging")
+    
+    # Re-add moderator for flagging tests
+    contract.add_moderator(moderator.address, _sender=new_admin)
+    
+    contract.flag_generator(generator_id=0, flag=1, _sender=moderator)
+    scenario.verify(contract.data.generators[0].flag == 1)
+    
+    contract.flag_generator(generator_id=0, flag=2, _sender=new_admin)
+    scenario.verify(contract.data.generators[0].flag == 2)
+    
+    contract.flag_generator(
+        generator_id=0,
+        flag=3,
+        _sender=alice,
+        _valid=False,
+        _exception="ONLY_MODS"
+    )
+    
+    scenario.h1("NEW FEATURES - Thumbnail Updates")
+    
+    # Create a token to test thumbnail updates
+    contract.create_generator(
+        name=sp.bytes("0x5468756d626e61696c2054657374"),
+        description=sp.bytes("0x54657374696e67207468756d626e61696c20757064617465"),
+        code=sp.bytes("0x636f6e736f6c652e6c6f67282254657374"),
+        author_bytes=sp.bytes("0x416c696365"),
+        reserved_editions=0,
+        _sender=alice
+    )
+    
+    contract.set_sale(
+        generator_id=14,
+        start_time=None,
+        price=sp.mutez(0),
+        paused=False,
+        editions=1,
+        max_per_wallet=None,
+        _sender=alice
+    )
+    
+    contract.mint(
+        generator_id=14, 
+        entropy=sp.bytes("0x" + os.urandom(16).hex()),
+        _sender=alice,
+        _amount=sp.mutez(0)
+    )
+    
+    thumbnail_token_id = contract.data.next_token_id - 1
+    new_thumbnail = sp.bytes("0x68747470733a2f2f6e65772d7468756d626e61696c2e636f6d")
+    
+    # Author can update thumbnail
+    contract.update_thumbnail(
+        token_id=thumbnail_token_id,
+        thumbnailUri=new_thumbnail,
+        _sender=alice
+    )
+    
+    # Moderator can update thumbnail
+    contract.update_thumbnail(
+        token_id=thumbnail_token_id,
+        thumbnailUri=sp.bytes("0x68747470733a2f2f6d6f642d7468756d626e61696c2e636f6d"),
+        _sender=moderator
+    )
+    
+    # Admin can update thumbnail
+    contract.update_thumbnail(
+        token_id=thumbnail_token_id,
+        thumbnailUri=sp.bytes("0x68747470733a2f2f61646d696e2d7468756d626e61696c2e636f6d"),
+        _sender=new_admin
+    )
+    
+    # Non-author/non-mod cannot update thumbnail
+    contract.update_thumbnail(
+        token_id=thumbnail_token_id,
+        thumbnailUri=new_thumbnail,
+        _sender=bob,
+        _valid=False,
+        _exception="ONLY_AUTHOR_OR_MODS"
+    )
+    
+    scenario.h1("NEW FEATURES - Byte Limit Configuration")
+    
+    # Test setting byte limits (moderator/admin only)
+    contract.set_max_bytes_name(200, _sender=moderator)
+    scenario.verify(contract.data.max_bytes_name == 200)
+    
+    contract.set_max_bytes_desc(10000, _sender=new_admin)
+    scenario.verify(contract.data.max_bytes_desc == 10000)
+    
+    contract.set_max_bytes_code(40000, _sender=moderator)
+    scenario.verify(contract.data.max_bytes_code == 40000)
+    
+    contract.set_max_bytes_author(50, _sender=new_admin)
+    scenario.verify(contract.data.max_bytes_author == 50)
+    
+    # Test non-mod cannot set limits
+    contract.set_max_bytes_name(
+        300,
+        _sender=alice,
+        _valid=False,
+        _exception="ONLY_MODS"
+    )
+    
+    # Test author bytes too long with new limit
+    long_author = sp.bytes("0x" + "41" * 51)
+    contract.create_generator(
+        name=sp.bytes("0x54657374"),
+        description=sp.bytes("0x54657374"),
+        code=sp.bytes("0x636f6e736f6c652e6c6f67282254657374"),
+        author_bytes=long_author,
+        reserved_editions=0,
+        _sender=alice,
+        _valid=False,
+        _exception="AUTHOR_TOO_LONG"
+    )
+    
+    scenario.h1("NEW FEATURES - Reserved Editions in Updates")
+    
+    contract.create_generator(
+        name=sp.bytes("0x526573657276652055706461746520546573742020"),
+        description=sp.bytes("0x54657374696e6720726573657276656420656469746f6e7320696e20757064617465"),
+        code=sp.bytes("0x636f6e736f6c652e6c6f67282254657374"),
+        author_bytes=sp.bytes("0x416c696365"),
+        reserved_editions=2,
+        _sender=alice
+    )
+    
+    contract.set_sale(
+        generator_id=15,
+        start_time=None,
+        price=sp.mutez(100000),
+        paused=False,
+        editions=10,
+        max_per_wallet=None,
+        _sender=alice
+    )
+    
+    # Test updating reserved editions within capacity
+    contract.update_generator(
+        generator_id=15,
+        name=sp.bytes("0x526573657276652055706461746520546573742020"),
+        description=sp.bytes("0x54657374696e6720726573657276656420656469746f6e7320696e20757064617465"),
+        code=sp.bytes("0x636f6e736f6c652e6c6f67282254657374"),
+        author_bytes=sp.bytes("0x416c696365"),
+        reserved_editions=5,
+        _sender=alice
+    )
+    
+    # Test updating reserved editions beyond capacity
+    contract.update_generator(
+        generator_id=15,
+        name=sp.bytes("0x526573657276652055706461746520546573742020"),
+        description=sp.bytes("0x54657374696e6720726573657276656420656469746f6e7320696e20757064617465"),
+        code=sp.bytes("0x636f6e736f6c652e6c6f67282254657374"),
+        author_bytes=sp.bytes("0x416c696365"),
+        reserved_editions=15,
+        _sender=alice,
+        _valid=False,
+        _exception="RESERVE_EXCEEDS_CAPACITY"
+    )
+    
+    scenario.h1("EDGE CASES - Zero Editions")
+    
+    contract.create_generator(
+        name=sp.bytes("0x5a65726f20456469746f6e732054657374"),
+        description=sp.bytes("0x54657374696e67207a65726f20656469746f6e73"),
+        code=sp.bytes("0x636f6e736f6c652e6c6f67282254657374"),
+        author_bytes=sp.bytes("0x416c696365"),
+        reserved_editions=0,
+        _sender=alice
+    )
+    
+    contract.set_sale(
+        generator_id=16,
+        start_time=None,
+        price=sp.mutez(100000),
+        paused=False,
+        editions=0,
+        max_per_wallet=None,
+        _sender=alice
+    )
+    
+    contract.mint(
+        generator_id=16, 
+        entropy=sp.bytes("0x" + os.urandom(16).hex()),
+        _sender=bob,
+        _amount=sp.mutez(100000),
+        _valid=False,
+        _exception="PUBLIC_SOLD_OUT"
+    )
+    
+    scenario.h1("EDGE CASES - Large Numbers")
+    
+    contract.create_generator(
+        name=sp.bytes("0x4c61726765204e756d6265722054657374"),
+        description=sp.bytes("0x54657374696e67206c61726765206e756d62657273"),
+        code=sp.bytes("0x636f6e736f6c652e6c6f67282254657374"),
+        author_bytes=sp.bytes("0x416c696365"),
+        reserved_editions=999999,
+        _sender=alice
+    )
+    
+    contract.set_sale(
+        generator_id=17,
+        start_time=None,
+        price=sp.mutez(0),
+        paused=False,
+        editions=1000000,
+        max_per_wallet=sp.Some(999999),
+        _sender=alice
+    )
+    
+    scenario.h1("EDGE CASES - Empty Bytes")
+    
+    contract.create_generator(
+        name=sp.bytes("0x"),
+        description=sp.bytes("0x"),
+        code=sp.bytes("0x"),
+        author_bytes=sp.bytes("0x"),
+        reserved_editions=0,
+        _sender=alice
+    )
+    
+    scenario.verify(contract.data.generators[18].name == sp.bytes("0x"))
+    scenario.verify(contract.data.generators[18].description == sp.bytes("0x"))
+    scenario.verify(contract.data.generators[18].code == sp.bytes("0x"))
+    scenario.verify(contract.data.generators[18].author_bytes == sp.bytes("0x"))
