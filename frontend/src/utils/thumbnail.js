@@ -14,7 +14,7 @@ export function getTokenThumbnailUrl(tokenId, width = 400, height = 400) {
   
   const targetUrl = `${baseUrl}/thumbnail/${tokenId}`;
   
-  return `https://image.thum.io/get/image/fit/${width}x${height}/https://image.thum.io/get/wait/10/width/1200/crop/1200/viewportWidth/1200/noanimate/${targetUrl}`;
+  return `https://image.thum.io/get/image/fit/${width}x${height}/https://image.thum.io/get/wait/20/width/1200/crop/1200/viewportWidth/1200/noanimate/allowJPG/${targetUrl}`;
 }
 
 /**
@@ -31,5 +31,5 @@ export function getGeneratorThumbnailUrl(generatorId, width = 400, height = 400)
   
   const targetUrl = `${baseUrl}/generator-thumbnail/${generatorId}`;
   
-  return `https://image.thum.io/get/image/fit/${width}x${height}/https://image.thum.io/get/wait/10/width/1200/crop/1200/viewportWidth/1200/noanimate/${targetUrl}`;
+  return `https://image.thum.io/get/image/fit/${width}x${height}/https://image.thum.io/get/wait/20/width/1200/crop/1200/viewportWidth/1200/noanimate/allowJPG/${targetUrl}`;
 }
