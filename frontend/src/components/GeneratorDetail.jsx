@@ -8,7 +8,7 @@ import SVGPreview from './SVGPreview.jsx';
 import PreviewControls from './PreviewControls.jsx';
 import MintSuccessPopup from './MintSuccessPopup.jsx';
 import { estimateMint, getByteLength, formatStorageCost } from '../utils/storageCost.js';
-import { getTokenThumbnailUrl } from '../utils/thumbnail.js';
+import { getTokenThumbnailUrl, prefetchTokenThumbnail } from '../utils/thumbnail.js';
 import SmartThumbnail from './SmartThumbnail.jsx';
 
 export default function GeneratorDetail() {
@@ -403,6 +403,11 @@ export default function GeneratorDetail() {
         
         setMintedTokenData(tokenData);
         setShowSuccessPopup(true);
+        
+        // Prefetch token thumbnail with identical parameters to the ones used in display
+        prefetchTokenThumbnail(mintedTokenId, 200, 200).catch(err => {
+          console.warn('Token thumbnail prefetch failed:', err);
+        });
         
         // Update local generator state to reflect the new mint count
         setGenerator(prevGenerator => ({

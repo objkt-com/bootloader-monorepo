@@ -5,6 +5,7 @@ import CodeEditor from './CodeEditor.jsx';
 import SVGPreview from './SVGPreview.jsx';
 import PreviewControls from './PreviewControls.jsx';
 import { estimateCreateGenerator, getByteLength, formatStorageCost } from '../utils/storageCost.js';
+import { prefetchGeneratorThumbnail } from '../utils/thumbnail.js';
 
 export default function Create() {
   const [name, setName] = useState('');
@@ -539,6 +540,12 @@ for (let i = 0; i < letters.length; i++) {
         try {
           const nextId = await tezosService.getNextGeneratorId();
           const newGeneratorId = nextId - 1; // The ID that was just created
+          
+          // Prefetch generator thumbnail with identical parameters to the ones used in display
+          prefetchGeneratorThumbnail(newGeneratorId, 400, 400).catch(err => {
+            console.warn('Generator thumbnail prefetch failed:', err);
+          });
+          
           setTimeout(() => {
             navigate(`/generator/${newGeneratorId}`);
           }, 2000);
