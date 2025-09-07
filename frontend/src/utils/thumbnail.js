@@ -1,4 +1,5 @@
 // Utility functions for generating thumbnail URLs
+import { CONFIG } from "../config.js";
 import { tzktService } from "../services/tzkt.js";
 
 // Global cache buster - change this value to force refresh all thumbnails
