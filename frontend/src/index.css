@@ -2546,7 +2546,8 @@ small .inline-icon {
   }
 
   .editor-panel.show-on-mobile {
-    display: block;
+    display: flex;
+    height: 70vh; /* Match the same height as desktop editor-container */
   }
 
   .editor-container {
