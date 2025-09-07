@@ -1,6 +1,6 @@
 import smartpy as sp
 from smartpy.templates import fa2_lib as fa2
-from utils import bytes_utils
+from utils import bytes_utils, list_utils
 
 main = fa2.main
 
@@ -8,10 +8,23 @@ main = fa2.main
 def svgkt():
     import main
     import bytes_utils
+    import list_utils
 
     class EmptyContract(sp.Contract):
         def __init__(self):
             self.data = ()
+    
+    t_lambda_params: type = sp.record(
+        fragments=sp.list[sp.bytes],
+        token_id=sp.nat,
+        seed=sp.bytes,
+        iteration_number=sp.nat,
+        generator_name=sp.bytes,
+        generator_author_bytes=sp.bytes,
+        generator_version=sp.nat,
+        generator_code=sp.bytes
+    )
+    t_lambda: type = sp.lambda_(t_lambda_params, sp.map[sp.string, sp.bytes])
 
     # Order of inheritance: [Admin], [<policy>], <base class>, [<other mixins>].
     class SvgKT(
@@ -44,8 +57,15 @@ def svgkt():
             self.data.max_bytes_name = 100
             self.data.max_bytes_desc = 8000
             self.data.max_bytes_author = 36
+            self.data.next_generator_type_id = 0
             self.data.moderators = sp.cast(sp.big_map({}), sp.big_map[sp.address, sp.unit])
             self.data.generator_mints = sp.cast(sp.big_map({}), sp.big_map[sp.pair[sp.nat, sp.address], sp.nat])
+            self.data.generator_types = sp.cast(sp.big_map({}), sp.big_map[sp.nat, sp.record(
+                name=sp.bytes,
+                version=sp.bytes,
+                fragments=sp.list[sp.bytes],
+                fun=t_lambda
+            )])
             self.data.generators = sp.cast(sp.big_map({}), sp.big_map[sp.nat, sp.record(
                 name=sp.bytes,
                 created=sp.timestamp,
@@ -58,6 +78,7 @@ def svgkt():
                 reserved_editions=sp.nat,
                 flag=sp.nat,
                 version=sp.nat,
+                generator_type_id=sp.nat,
                 sale=sp.option[sp.record(
                     paused=sp.bool,
                     start_time=sp.option[sp.timestamp],
@@ -76,9 +97,21 @@ def svgkt():
         def remove_moderator(self, address: sp.address):
             assert sp.sender == self.data.administrator, "ONLY_ADMIN"
             del self.data.moderators[address]
+        
+        @sp.entrypoint
+        def add_generator_type(self, version: sp.bytes, name: sp.bytes, fragments: sp.list[sp.bytes], fun: t_lambda):
+            assert sp.sender == self.data.administrator, "ONLY_ADMIN"
+            self.data.generator_types[self.data.next_generator_type_id] = sp.record(name=name, version=version, fragments=fragments, fun=fun)
+            self.data.next_generator_type_id += 1
 
         @sp.entrypoint
-        def create_generator(self, name: sp.bytes, description: sp.bytes, code: sp.bytes, author_bytes: sp.bytes, reserved_editions: sp.nat):
+        def create_generator(self, name: sp.bytes, description: sp.bytes, code: sp.bytes, author_bytes: sp.bytes, reserved_editions: sp.nat, generator_type_id: sp.nat):
+            assert self.data.generator_types.contains(generator_type_id), "UNKOWN_GENERATOR_TYPE"
+            assert sp.len(name) <= self.data.max_bytes_name, "NAME_TOO_LONG"
+            assert sp.len(description) <= self.data.max_bytes_desc, "DESC_TOO_LONG"
+            assert sp.len(code) <= self.data.max_bytes_code, "CODE_TOO_LONG"
+            assert sp.len(author_bytes) <= self.data.max_bytes_author, "AUTHOR_TOO_LONG"
+
             self.data.generators[self.data.next_generator_id] = sp.record(
                 name=name,
                 created = sp.now,
@@ -91,12 +124,10 @@ def svgkt():
                 reserved_editions=reserved_editions,
                 flag=0,
                 version=1,
+                generator_type_id=generator_type_id,
                 sale=None,
             )
-            assert sp.len(name) <= self.data.max_bytes_name, "NAME_TOO_LONG"
-            assert sp.len(description) <= self.data.max_bytes_desc, "DESC_TOO_LONG"
-            assert sp.len(code) <= self.data.max_bytes_code, "CODE_TOO_LONG"
-            assert sp.len(author_bytes) <= self.data.max_bytes_author, "AUTHOR_TOO_LONG"
+
             self.data.next_generator_id += 1
 
         @sp.entrypoint
@@ -125,8 +156,16 @@ def svgkt():
                 reserved_editions=reserved_editions,
                 flag=generator.flag,
                 sale=generator.sale,
+                generator_type_id=generator.generator_type_id,
                 version=generator.version +1,
             )
+        
+        @sp.entrypoint
+        def delete_generator(self, generator_id: sp.nat):
+            generator = self.data.generators[generator_id]
+            assert sp.sender == generator.author, "ONLY_AUTHOR"
+            assert generator.n_tokens == 0, "TOKENS_MINTED"
+            del self.data.generators[generator_id]
 
         @sp.entrypoint
         def set_max_bytes_name(self, n_bytes: sp.nat):
@@ -198,34 +237,6 @@ def svgkt():
             sp.cast(platform_fee_bps, sp.nat)
             assert platform_fee_bps <= 10_000, "BPS_TOO_HIGH"
             self.data.platform_fee_bps = platform_fee_bps
-
-        @sp.entrypoint
-        def add_fragment(self, frag_id: sp.nat, frag: sp.bytes):
-            assert self.data.moderators.contains(sp.sender) or sp.sender == self.data.administrator, "ONLY_MODS"
-            self.data.frags[frag_id] = frag
-        
-        @sp.private(with_storage="read-write", with_operations=True)
-        def create_token_metadata(self, params):
-            svg_string =    self.data.frags[0] + \
-                            params.seed + \
-                            self.data.frags[1] + \
-                            params.generator_code + \
-                            self.data.frags[2]
-
-            iteration_bytes = bytes_utils.from_nat(params.iteration_number)
-            token_id_bytes = bytes_utils.from_nat(params.token_id)
-            self.data.token_metadata[params.token_id] = sp.record(
-                token_id=params.token_id,
-                token_info={
-                    "name": params.generator_name + sp.bytes("0x2023") + iteration_bytes,
-                    "artifactUri": svg_string,
-                    "thumbnailUri": sp.bytes("0x68747470733A2F2F6D656469612E7376676B742E636F6D2F7468756D626E61696C2F") + token_id_bytes + sp.bytes("0x3F763D") + bytes_utils.from_nat(params.generator_version), # cache buster for thumbnail generation
-                    "royalties": sp.bytes("0x7B22646563696D616C73223A322C22736861726573223A7B22") + params.generator_author_bytes + sp.bytes("0x223A357D7D"),
-                    "creators": sp.bytes("0x5B22") + params.generator_author_bytes + sp.bytes('0x225D'),
-                    "symbol": sp.bytes("0x53564A4B54"),
-                    "decimals": sp.bytes("0x30"),
-                }
-            )
         
         @sp.entrypoint
         def regenerate_token(self, token_id: sp.nat):
@@ -233,16 +244,18 @@ def svgkt():
             token_extra = self.data.token_extra[token_id]
             generator = self.data.generators[token_extra.generator_id]
             assert generator.version > token_extra.generator_version, "NO_UPDATE_POSSIBLE"
-            
-            self.create_token_metadata(sp.record(
-                token_id=token_id,
-                seed=token_extra.seed,
-                iteration_number=token_extra.iteration_number,
-                generator_name=generator.name,
-                generator_author_bytes=generator.author_bytes,
-                generator_version=generator.version,
-                generator_code=generator.code
-            ))
+            self.data.token_metadata[token_id] = sp.record(
+                token_id=token_id, 
+                token_info=self.data.generator_types[generator.generator_type_id].fun(sp.record(
+                    fragments=self.data.generator_types[generator.generator_type_id].fragments,
+                    token_id=token_id,
+                    seed=token_extra.seed,
+                    iteration_number=token_extra.iteration_number,
+                    generator_name=generator.name,
+                    generator_author_bytes=generator.author_bytes,
+                    generator_version=generator.version,
+                    generator_code=generator.code
+            )))
 
             self.data.token_extra[token_id].generator_version = generator.version
         
@@ -262,20 +275,25 @@ def svgkt():
             sp.send(self.data.rng_contract, sp.mutez(0))
 
             seed = bytes_utils.from_nat(bytes_utils.to_nat(e))
+            token_id = self.data.next_token_id
 
-            self.create_token_metadata(sp.record(
-                token_id=self.data.next_token_id,
-                seed=seed,
-                iteration_number=generator.n_tokens+1,
-                generator_name=generator.name,
-                generator_author_bytes=generator.author_bytes,
-                generator_version=generator.version,
-                generator_code=generator.code
-            ))
+            self.data.token_metadata[token_id] = sp.record(
+                token_id=token_id, 
+                token_info=self.data.generator_types[generator.generator_type_id].fun(sp.record(
+                fragments=self.data.generator_types[generator.generator_type_id].fragments,
+                    token_id=token_id,
+                    seed=seed,
+                    iteration_number=generator.n_tokens+1,
+                    generator_name=generator.name,
+                    generator_author_bytes=generator.author_bytes,
+                    generator_version=generator.version,
+                    generator_code=generator.code
+            )))
 
-            self.data.ledger[self.data.next_token_id] = recipient
+
+            self.data.ledger[token_id] = recipient
             self.data.generators[generator_id].n_tokens += 1
-            self.data.token_extra[self.data.next_token_id] = sp.record(generator_id=generator_id, seed=seed, generator_version=generator.version, iteration_number=generator.n_tokens+1)
+            self.data.token_extra[token_id] = sp.record(generator_id=generator_id, seed=seed, generator_version=generator.version, iteration_number=generator.n_tokens+1)
             self.data.next_token_id += 1
 
         @sp.entrypoint
@@ -315,24 +333,59 @@ def svgkt():
                     sp.send(self.data.rng_contract, sp.mutez(0))
 
                     seed = bytes_utils.from_nat(bytes_utils.to_nat(e))
+                    token_id = self.data.next_token_id
+                    self.data.token_metadata[token_id] = sp.record(
+                        token_id=token_id, 
+                        token_info=self.data.generator_types[generator.generator_type_id].fun(sp.record(
+                        fragments=self.data.generator_types[generator.generator_type_id].fragments,
+                            token_id=token_id,
+                            seed=seed,
+                            iteration_number=generator.n_tokens+1,
+                            generator_name=generator.name,
+                            generator_author_bytes=generator.author_bytes,
+                            generator_version=generator.version,
+                            generator_code=generator.code
+                    )))
 
-
-                    self.create_token_metadata(sp.record(
-                        token_id=self.data.next_token_id,
-                        seed=seed,
-                        iteration_number=generator.n_tokens+1,
-                        generator_name=generator.name,
-                        generator_author_bytes=generator.author_bytes,
-                        generator_version=generator.version,
-                        generator_code=generator.code
-                    ))
-
-                    self.data.ledger[self.data.next_token_id] = sp.sender
+                    self.data.ledger[token_id] = sp.sender
                     self.data.generators[generator_id].n_tokens += 1
-                    self.data.token_extra[self.data.next_token_id] = sp.record(generator_id=generator_id, seed=seed, generator_version=generator.version, iteration_number=generator.n_tokens+1)
+                    self.data.token_extra[token_id] = sp.record(generator_id=generator_id, seed=seed, generator_version=generator.version, iteration_number=generator.n_tokens+1)
                     self.data.next_token_id += 1
                 case None:
                     raise "NO_SALE_CONFIGURED"
+        
+    class LambdaHelper(sp.Contract):
+        def __init__(self, code):
+            self.data = sp.cast(code, t_lambda)
+        
+    def v0_0_1(params):
+        p = sp.cast(params, sp.record(
+            fragments=sp.list[sp.bytes],
+            token_id=sp.nat,
+            seed=sp.bytes,
+            iteration_number=sp.nat,
+            generator_name=sp.bytes,
+            generator_author_bytes=sp.bytes,
+            generator_version=sp.nat,
+            generator_code=sp.bytes
+        ))
+        svg_string =    list_utils.element_at((p.fragments, 0)) + \
+                        p.seed + \
+                        list_utils.element_at((p.fragments, 1)) + \
+                        p.generator_code + \
+                        list_utils.element_at((p.fragments, 2))
+
+        iteration_bytes = bytes_utils.from_nat(p.iteration_number)
+        token_id_bytes = bytes_utils.from_nat(p.token_id)
+        return {
+                "name": p.generator_name + sp.bytes("0x2023") + iteration_bytes,
+                "artifactUri": svg_string,
+                "thumbnailUri": sp.bytes("0x68747470733A2F2F6D656469612E7376676B742E636F6D2F7468756D626E61696C2F") + token_id_bytes + sp.bytes("0x3F763D") + bytes_utils.from_nat(p.generator_version), # cache buster for thumbnail generation
+                "royalties": sp.bytes("0x7B22646563696D616C73223A322C22736861726573223A7B22") + p.generator_author_bytes + sp.bytes("0x223A357D7D"),
+                "creators": sp.bytes("0x5B22") + p.generator_author_bytes + sp.bytes('0x225D'),
+                "symbol": sp.bytes("0x53564A4B54"),
+                "decimals": sp.bytes("0x30"),
+        }
 
 @sp.add_test()
 def test():
@@ -344,3 +397,9 @@ def test():
         admin.address, admin.address, sp.big_map({}), {}, []
     )
     scenario += contract
+
+@sp.add_test()
+def test():
+    scenario = sp.test_scenario("lambda_0_0_1")
+    scenario += svgkt.LambdaHelper(svgkt.v0_0_1)
+

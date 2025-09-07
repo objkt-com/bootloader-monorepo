@@ -3,6 +3,7 @@ from pytezos import pytezos
 from pytezos.client import PyTezosClient
 from pytezos.contract.interface import ContractInterface
 from pytezos.operation.result import OperationResult
+from pytezos.michelson.parse import michelson_to_micheline
 from enum import StrEnum
 import inspect
 import json
@@ -21,6 +22,7 @@ def load_code_and_storage(name):
     storage_glob = "%s/*storage.tz" % name
     code_path = glob.glob(code_glob)[0]
     storage_path = glob.glob(storage_glob)[0]
+
     contract = ContractInterface.from_file(code_path)
     with open(storage_path) as f:
         storage = contract.storage.decode(f.read())
@@ -36,9 +38,15 @@ def get_tezos_storage(**metadata):
         )
     }
 
+def load_lambda_from_name(name):
+    # read the Michelson storage text (which should be just "{ ... }")
+    storage_path = glob.glob(f"{name}/*storage.tz")[0]
+    with open(storage_path) as f:
+        return f.read().strip()
+
 class Network(StrEnum):
     localnet = 'http://localhost:20000'
-    ghostnet = 'https://ghostnet.smartpy.io'
+    ghostnet = 'https://ghostnet.tezos.ecadinfra.com'
     mainnet = 'https://rpc.tzkt.io/mainnet'
 
 class ContractDeployment:
@@ -195,7 +203,7 @@ class ContractDeployment:
         return False
 
     def set_pytezos_client(self, client: PyTezosClient):
-        self.pytezos_client = client
+        self.client = client
 
     def __get_address(self, operation_hash):
         while True:

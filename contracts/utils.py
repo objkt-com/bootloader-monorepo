@@ -101,3 +101,33 @@ def bytes_utils():
                 else:
                     res = res << 1
         return res
+
+@sp.module
+def list_utils():
+    def element_at(ab):
+        """Return the element of a list at a particular index.
+
+        Parameters:
+        ab (sp.pair[sp.list[sp.bytes], sp.nat]): The pair '(elements, index').
+
+        Returns:
+        sp.int: The value in 'elements' at the 'index' position.
+
+        Examples:
+        import smartpy.stdlib.list_utils as list_utils
+        list_utils.element_at(([1, 2, 3], 0)) == 1
+        list_utils.element_at(([1, 2, 3], 1)) == 2
+        list_utils.element_at(([1, 2, 3], 2)) == 3
+        """
+        (elements, idx) = sp.cast(ab, sp.pair[sp.list[sp.bytes], sp.nat])
+        assert idx >= 0 and idx < sp.len(elements)
+        it = 0
+        res = sp.bytes("0x")
+        brk = False
+        for e in elements:
+            if not brk:
+                if it == idx:
+                    res = e
+                    brk = True
+                it = it + 1
+        return res
