@@ -126,10 +126,11 @@ for (let i = 0; i < 5; i++) {
 
         <h3>Why This Platform?</h3>
         <p>
-          svgKT is a response to fxhash closing long form mints on Tezos, providing an open and non-curated alternative 
-          for generative artists on Tezos. This platform aims to fill that gap while making the process fun and 
-          accessible. The juxtaposition of seeing your code alongside the generated art is very intentional - it 
-          aims to demystify the creative process and show that generative art is fundamentally about creative coding.
+          With the void left by fxhash no longer supporting long-form mints on Tezos, svgKT offers an open and 
+          non-curated space for generative artists on the network. The platform is designed to make the process 
+          both accessible and enjoyable. Showing the code alongside the resulting artwork is a deliberate choice—like 
+          opening up a watch to see the intricate cogs in motion, it reveals the inner mechanics of the system and 
+          offers a unique perspective on how generative art emerges.
         </p>
 
         <h3>Why On-Chain?</h3>
