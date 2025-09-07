@@ -142,6 +142,9 @@ function Footer() {
           <a href="https://github.com/objkt-com/bootloader-monorepo" target="_blank" rel="noopener noreferrer">
             GitHub
           </a>
+          <a href="https://x.com/bootloader_art" target="_blank" rel="noopener noreferrer">
+            X
+          </a>
           <button 
             className="theme-toggle" 
             onClick={toggleTheme}

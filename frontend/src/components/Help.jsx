@@ -373,14 +373,6 @@ const {svg, rnd} = bl;`}</code></pre>
             <h4>Creator Verification</h4>
             <p>To attribute tokens to your account on objkt, go to your profile → Collaborations → Creator Verifications and verify your Tezos address.</p>
           </div>
-          <div className="feature-card">
-            <h4>Thumbnail Limitations</h4>
-            <p>Thumbnails are not generated dynamically on-chain (since they need to be images) and thus don't currently show on objkt marketplace.</p>
-          </div>
-          <div className="feature-card">
-            <h4>On-Chain Execution</h4>
-            <p>Your SVG runs directly in browsers and applications without external dependencies, ensuring permanent accessibility.</p>
-          </div>
         </div>
 
         <h2>Community & Support</h2>
