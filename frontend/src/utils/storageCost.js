@@ -3,8 +3,8 @@ const MUTEZ_PER_BYTE = 250;
 const TEZ_PER_MUTEZ = 1_000_000;
 
 // From calibration with your data
-const BASE_CREATE_NO_AB = 133; // bytes, does NOT include author_bytes
-const BASE_MINT = 932; // bytes, already includes your current fragments + static wrappers
+const BASE_CREATE_NO_AB = 164; // bytes, does NOT include author_bytes
+const BASE_MINT = 1915; // bytes, already includes your current fragments + static wrappers
 
 /**
  * Convert a byte count into {bytes, mutez, tez}.
