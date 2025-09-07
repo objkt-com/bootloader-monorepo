@@ -1963,7 +1963,7 @@ input:focus, textarea:focus {
   margin-bottom: var(--spacing-lg);
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-md);
 }
 
 :root[data-theme="dark"] .warning-banner {

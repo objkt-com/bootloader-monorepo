@@ -39,7 +39,7 @@ export default function CodeEditor({
         <div className="editor-environment">
           <button 
             className="help-btn"
-            onClick={() => navigate('/help')}
+            onClick={() => window.open('/help', '_blank')}
             title="View help documentation"
           >
             <HelpCircle size={16} />
