@@ -1,12 +1,12 @@
 export const NETWORKS = {
   mainnet: {
     name: "Mainnet",
-    rpcUrl: "https://mainnet.api.tez.ie",
+    rpcUrl: "https://tcinfra.net/rpc/tezos/mainnet",
     tzktApi: "https://api.tzkt.io",
   },
   ghostnet: {
     name: "Ghostnet",
-    rpcUrl: "https://ghostnet.tezos.ecadinfra.com",
+    rpcUrl: "https://tcinfra.net/rpc/tezos/ghostnet",
     tzktApi: "https://api.ghostnet.tzkt.io",
   },
 };
@@ -24,13 +24,7 @@ export const CONFIG = {
   // App branding
   branding: {
     projectName: "bootloader",
-    tagline: "On-chain SVG Generator Platform",
-  },
-
-  // Polling intervals (in milliseconds)
-  polling: {
-    contractStorage: 30000, // 30 seconds
-    transactionStatus: 2000, // 2 seconds
+    tagline: "open experimental on-chain long-form generative art",
   },
 };
 

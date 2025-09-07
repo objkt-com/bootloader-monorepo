@@ -10,20 +10,20 @@ export default function Help() {
 * bootloader v0.0.1
 */
 
-$b.svg.setAttribute('viewBox', '0 0 400 400');
-$b.svg.style.cssText = "background:white";
+bl.svg.setAttribute('viewBox', '0 0 400 400');
+bl.svg.style.cssText = "background:white";
 
 // Create 5 random circles
 for (let i = 0; i < 5; i++) {
   const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
   
-  circle.setAttribute('cx', 50 + $b.rnd() * 300);
-  circle.setAttribute('cy', 50 + $b.rnd() * 300);
-  circle.setAttribute('r', 20 + $b.rnd() * 40);
-  circle.setAttribute('fill', \`hsl(\${$b.rnd() * 360}, 70%, 60%)\`);
+  circle.setAttribute('cx', 50 + bl.rnd() * 300);
+  circle.setAttribute('cy', 50 + bl.rnd() * 300);
+  circle.setAttribute('r', 20 + bl.rnd() * 40);
+  circle.setAttribute('fill', \`hsl(\${bl.rnd() * 360}, 70%, 60%)\`);
   circle.setAttribute('opacity', 0.8);
   
-  $b.svg.appendChild(circle);
+  bl.svg.appendChild(circle);
 }`);
   
   const [previewSeed, setPreviewSeed] = useState(12345);
@@ -165,11 +165,12 @@ for (let i = 0; i < 5; i++) {
 
         <h2>Available Variables in Your Code</h2>
         
-        <p>Your generator code runs inside an SVG "bootloader" that provides access to the <code>$b</code> object. This is where your code executes. Currently there is no standard library - only these 4 properties are available (this will change in the future):</p>
+        <p>Your generator code runs inside an SVG "bootloader" that provides access to the <code>bl</code> object. This is where your code executes. Currently there is no standard library - only these 4 properties are available (this will change in the future):</p>
         
-        <h4>The $b Object</h4>
-        <pre className="code-preview"><code>{`// The $b object provided to your code:
-const $b = {
+
+        <h4>The bl Object</h4>
+        <pre className="code-preview"><code>{`// The bl object provided to your code:
+const bl = {
   rnd: sfc32(a,b,c,d),           // Deterministic random function (0-1)
   SEED: SEED,                    // Raw BigInt seed from blockchain
   svg: document.documentElement, // Reference to the root SVG element
@@ -177,10 +178,10 @@ const $b = {
 };
 
 // Your code is executed in this structure:
-(($b) => {
+((bl) => {
   // YOUR GENERATOR CODE GOES HERE
   // You can destructure for convenience:
-  const { rnd, svg, SEED, v } = $b;
+  const { rnd, svg, SEED, v } = bl;
   
   // Set up your SVG canvas
   svg.setAttribute('viewBox', '0 0 400 400');
@@ -195,13 +196,13 @@ const $b = {
   circle.setAttribute('cy', y);
   circle.setAttribute('r', 20 + rnd() * 30);
   svg.appendChild(circle);
-})($b);`}</code></pre>
+})(bl);`}</code></pre>
 
         <h2>Best Practices</h2>
         <div className="best-practices">
           <div className="practice-item">
             <h4>🎯 Use Deterministic Randomness</h4>
-            <p>Always use <code>$b.rnd()</code> instead of <code>Math.random()</code> to ensure reproducible results</p>
+            <p>Always use <code>bl.rnd()</code> instead of <code>Math.random()</code> to ensure reproducible results</p>
           </div>
           <div className="practice-item">
             <h4>🔒 Clean Code Scoping</h4>
@@ -358,8 +359,8 @@ svg = document.documentElement;`}</code></pre>
                 </a>
               </div>
               <div className="fragment-content">
-                <code>{`;function splitmix64(f){let n=f;return function(){let f=n=n+0x9e3779b97f4a7c15n&0xffffffffffffffffn;return f=((f=(f^f>>30n)*0xbf58476d1ce4e5b9n&0xffffffffffffffffn)^f>>27n)*0x94d049bb133111ebn&0xffffffffffffffffn,Number(4294967295n&(f^=f>>31n))>>>0}}function sfc32(f,n,$,t){return function(){$|=0;let e=((f|=0)+(n|=0)|0)+(t|=0)|0;return t=t+1|0,f=n^n>>>9,n=$+($<<3)|0,$=($=$<<21|$>>>11)+e|0,(e>>>0)/4294967296}}const sm=splitmix64(SEED),a=sm(),b=sm(),c=sm(),d=sm(),$b={rnd:sfc32(a,b,c,d),SEED:SEED,svg:document.documentElement,v:'0.0.1'};(($b)=>{`}</code>
-                <div className="fragment-note">Random number generator setup and $b object creation</div>
+                <code>{`;function splitmix64(f){let n=f;return function(){let f=n=n+0x9e3779b97f4a7c15n&0xffffffffffffffffn;return f=((f=(f^f>>30n)*0xbf58476d1ce4e5b9n&0xffffffffffffffffn)^f>>27n)*0x94d049bb133111ebn&0xffffffffffffffffn,Number(4294967295n&(f^=f>>31n))>>>0}}function sfc32(f,n,$,t){return function(){$|=0;let e=((f|=0)+(n|=0)|0)+(t|=0)|0;return t=t+1|0,f=n^n>>>9,n=$+($<<3)|0,$=($=$<<21|$>>>11)+e|0,(e>>>0)/4294967296}}const sm=splitmix64(SEED),a=sm(),b=sm(),c=sm(),d=sm(),bl={rnd:sfc32(a,b,c,d),SEED:SEED,svg:document.documentElement,v:'0.0.1'};((bl)=>{`}</code>
+                <div className="fragment-note">Random number generator setup and bl object creation</div>
               </div>
             </div>
             
@@ -369,7 +370,7 @@ svg = document.documentElement;`}</code></pre>
               <div className="fragment-header">Your Generator Code</div>
               <div className="fragment-content">
                 <pre className="fragment-code-example"><code>{`// Your creative code here
-const { rnd, svg } = $b;
+const { rnd, svg } = bl;
 
 svg.setAttribute('viewBox', '0 0 400 400');
 const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
@@ -392,7 +393,7 @@ svg.appendChild(circle);`}</code></pre>
                 </a>
               </div>
               <div className="fragment-content">
-                <code>{`})($b);]]></script>
+                <code>{`})(bl);]]></script>
 </svg>`}</code>
                 <div className="fragment-note">Closes the IIFE and completes the SVG structure</div>
               </div>
