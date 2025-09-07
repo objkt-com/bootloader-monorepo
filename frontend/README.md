@@ -36,9 +36,9 @@ npm run dev
 
 ### Configuration
 
-The app is configured to work with the bootloader contract at:
+The app is configured to work with the svgKT contract at:
 
-- **Contract Address**: `KT1DZrTdXKU35MzLygZkmyWHDuEu1hJhm4qn`
+- **Contract Address**: `KT1STnjUvPN5mexM1Pc2F3NNhXj3ZRp42Vtp`
 - **Network**: Mainnet (configurable in `src/config.js`)
 
 ## How It Works
@@ -126,7 +126,7 @@ frontend/
 
 ## Design Philosophy
 
-bootloader follows a minimalist design inspired by hicetnunc.xyz:
+svgKT follows a minimalist design inspired by hicetnunc.xyz:
 
 - **Monospace typography** (Courier New)
 - **Black and white color scheme**
@@ -136,7 +136,7 @@ bootloader follows a minimalist design inspired by hicetnunc.xyz:
 
 ## Smart Contract Integration
 
-The frontend interacts with the bootloader smart contract through:
+The frontend interacts with the svgKT smart contract through:
 
 - **create_generator**: Submit new generators
 - **update_generator**: Modify existing generators (author only)

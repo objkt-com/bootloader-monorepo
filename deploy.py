@@ -28,7 +28,7 @@ except Exception as e:
     randomiser_deployer.set_network(Network.ghostnet)
     randomiser_address = randomiser_deployer.deploy()
 
-nft_deployer = ContractDeployment.from_name('svgkt')
+nft_deployer = ContractDeployment.from_name('bootloader')
 nft_deployer.update_storage({
     "administrator": wallet.public_key_hash(),
     "rng_contract": randomiser_address,
