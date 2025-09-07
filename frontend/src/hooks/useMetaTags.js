@@ -68,7 +68,7 @@ export const generateMetaTags = {
       "Create and mint on-chain long-form generative art on Tezos. Build algorithmic art generators with JavaScript and SVG that live forever on the blockchain.",
     keywords:
       "generative art, NFT, Tezos, on-chain, algorithmic art, SVG, JavaScript, blockchain art, digital art, crypto art",
-    image: `${window.location.origin}/objkt_labs_logo.png`,
+    image: `${window.location.origin}/social.png`,
     url: window.location.href,
     type: "website",
   }),
@@ -79,7 +79,7 @@ export const generateMetaTags = {
       "Create your own on-chain generative art generator using JavaScript and SVG. Build algorithmic art that lives forever on the Tezos blockchain.",
     keywords:
       "create generative art, NFT generator, Tezos, on-chain art, algorithmic art, SVG generator, JavaScript art",
-    image: `${window.location.origin}/objkt_labs_logo.png`,
+    image: `${window.location.origin}/social.png`,
     url: window.location.href,
     type: "website",
   }),
@@ -120,7 +120,7 @@ export const generateMetaTags = {
       title: `${displayName} - bootloader:`,
       description,
       keywords: `${displayName}, generative art, NFT, Tezos, profile, on-chain art, algorithmic art`,
-      image: `${window.location.origin}/objkt_labs_logo.png`,
+      image: `${window.location.origin}/social.png`,
       url: window.location.href,
       type: "profile",
       author: displayName,
