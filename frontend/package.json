@@ -5,8 +5,11 @@
   "type": "module",
   "description": "bootloader - On-chain Generative Art Platform",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "vite --mode ghostnet",
+    "dev:ghostnet": "vite --mode ghostnet",
+    "dev:mainnet": "vite --mode mainnet",
+    "build": "vite build --mode mainnet",
+    "build:ghostnet": "vite build --mode ghostnet",
     "preview": "vite preview"
   },
   "dependencies": {

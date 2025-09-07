@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { tezosService } from '../services/tezos.js';
 import { tzktService } from '../services/tzkt.js';
 import { getNetworkConfig, getContractAddress } from '../config.js';
-import { getGeneratorThumbnailUrl, getTokenThumbnailUrl } from '../utils/thumbnail.js';
+import { getGeneratorThumbnailUrl, getNetwork, getTokenThumbnailUrl } from '../utils/thumbnail.js';
 import { getUserDisplayInfo, formatAddress } from '../utils/userDisplay.js';
 import SmartThumbnail from './SmartThumbnail.jsx';
 import { useMetaTags, generateMetaTags } from '../hooks/useMetaTags.js';
@@ -333,7 +333,7 @@ export default function Profile() {
                 >
                   <div className="token-preview-container">
                     <SmartThumbnail
-                      src={token.thumbnailUri || `https://media.bootloader.art/thumbnail/${token.tokenId}?cb=v10`}
+                      src={token.thumbnailUri || `https://media.bootloader.art/thumbnail/${token.tokenId}?n=${getNetwork()}`}
                       width="200"
                       height="200"
                       alt={token.name}

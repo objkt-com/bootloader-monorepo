@@ -929,7 +929,7 @@ export default function GeneratorDetail() {
                 >
                   <div className="token-preview-container">
                     <SmartThumbnail
-                      src={token.thumbnailUri || `https://media.bootloader.art/thumbnail/${token.tokenId}`}
+                      src={token.thumbnailUri || `https://media.bootloader.art/thumbnail/${token.tokenId}?n=${getNetwork()}`}
                       width="200"
                       height="200"
                       alt={`${generator.name || `Generator #${generator.id}`} #${token.tokenId}`}

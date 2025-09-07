@@ -1,5 +1,5 @@
 // Utility functions for generating thumbnail URLs
-import { tzktService } from '../services/tzkt.js';
+import { tzktService } from "../services/tzkt.js";
 
 // Global cache buster - change this value to force refresh all thumbnails
 const CACHE_BUSTER = "v10";
@@ -18,20 +18,26 @@ export async function getTokenThumbnailUrl(tokenId, tokenData = null) {
     }
 
     // Otherwise, fetch token metadata from chain
-    const tokenMetadataBigMap = await tzktService.getBigMapByPath("token_metadata");
+    const tokenMetadataBigMap = await tzktService.getBigMapByPath(
+      "token_metadata",
+    );
     if (!tokenMetadataBigMap) {
       console.warn("Token metadata bigmap not found, using fallback URL");
-      return `https://media.bootloader.art/thumbnail/${tokenId}`;
+      return `https://media.bootloader.art/thumbnail/${tokenId}?n=${getNetwork()}`;
     }
 
     const tokenMetadata = await tzktService.getBigMapKey(
       tokenMetadataBigMap.ptr,
-      tokenId.toString()
+      tokenId.toString(),
     );
 
-    if (tokenMetadata && tokenMetadata.value && tokenMetadata.value.token_info) {
+    if (
+      tokenMetadata &&
+      tokenMetadata.value &&
+      tokenMetadata.value.token_info
+    ) {
       const tokenInfo = tokenMetadata.value.token_info;
-      
+
       // Look for thumbnailUri in the token_info
       if (tokenInfo.thumbnailUri) {
         return tzktService.bytesToString(tokenInfo.thumbnailUri);
@@ -39,12 +45,14 @@ export async function getTokenThumbnailUrl(tokenId, tokenData = null) {
     }
 
     // Fallback to constructed URL if thumbnailUri not found
-    console.warn(`No thumbnailUri found for token ${tokenId}, using fallback URL`);
-    return `https://media.bootloader.art/thumbnail/${tokenId}`;
+    console.warn(
+      `No thumbnailUri found for token ${tokenId}, using fallback URL`,
+    );
+    return `https://media.bootloader.art/thumbnail/${tokenId}?n=${getNetwork()}`;
   } catch (error) {
     console.error(`Failed to get thumbnailUri for token ${tokenId}:`, error);
     // Fallback to constructed URL on error
-    return `https://media.bootloader.art/thumbnail/${tokenId}`;
+    return `https://media.bootloader.art/thumbnail/${tokenId}?n=${getNetwork()}`;
   }
 }
 
@@ -54,7 +62,7 @@ export async function getTokenThumbnailUrl(tokenId, tokenData = null) {
  * @returns {string} The thumbnail URL
  */
 export function getGeneratorThumbnailUrl(generatorId) {
-  return `https://media.bootloader.art/generator-thumbnail/${generatorId}?cb=${CACHE_BUSTER}`;
+  return `https://media.bootloader.art/generator-thumbnail/${generatorId}?v=${CACHE_BUSTER}&n=${getNetwork()}`;
 }
 
 /**
@@ -93,7 +101,7 @@ export async function prefetchTokenThumbnail(tokenId, tokenData = null) {
     } else {
       console.warn(
         `Token ${tokenId} thumbnail prefetch failed:`,
-        response.status
+        response.status,
       );
       return false;
     }
@@ -119,12 +127,23 @@ export async function prefetchGeneratorThumbnail(generatorId) {
     } else {
       console.warn(
         `Generator ${generatorId} thumbnail prefetch failed:`,
-        response.status
+        response.status,
       );
       return false;
     }
   } catch (error) {
     console.error(`Generator ${generatorId} thumbnail prefetch error:`, error);
     return false;
+  }
+}
+
+export function getNetwork() {
+  switch (CONFIG.network) {
+    case "ghostnet":
+      return "g";
+    case "shadownet":
+      return "s";
+    default:
+      return "m";
   }
 }

@@ -12,8 +12,8 @@ export const NETWORKS = {
 };
 
 export const CONFIG = {
-  // Network configuration
-  network: "ghostnet",
+  // Network configuration - use environment variable or default to ghostnet
+  network: import.meta.env.NETWORK || "ghostnet",
 
   // Contract addresses (generator contract is also the FA2 contract)
   contracts: {
