@@ -1,25 +1,22 @@
-# bootloader
+```assembly
+bootloader:
+    Open experimental on-chain long-form generative art on Tezos.
 
-Long form on-chain svg GM.
+.getting_started:
+    ; compile smart contracts
+    pipenv shell
+    pipenv install
+    python compile.py
 
-## Compile contract
+    ; deploy smart contracts
+    python deploy.py
 
-```sh
+    ; run frontend
+    cd frontend
+    npm install
+    npm run dev
+
 pipenv shell
 pip install pytezos tezos-smartpy
 python contracts/bootloader.py
-```
-
-## Deploy to ghostnet (hardcoded ghostnet address)
-
-```sh
-python deploy.py
-```
-
-## Frontend
-
-```sh
-cd frontend
-npm install
-npm run dev
 ```

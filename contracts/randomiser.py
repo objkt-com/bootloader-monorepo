@@ -42,15 +42,3 @@ def randomiser():
         def b(self):
             """Get current entropy bytes"""
             return self.data.b
-
-
-
-if "main" in __name__:
-    @sp.add_test()
-    def test_randomiser():
-        # Test scenario
-        scenario = sp.test_scenario("randomiser", randomiser)
-        
-        # Create contract instances
-        contract = randomiser.RandomiserMock()
-        scenario += contract

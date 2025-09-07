@@ -1,6 +1,6 @@
 import smartpy as sp
 from smartpy.templates import fa2_lib as fa2
-from utils import bytes_utils, list_utils
+from contracts.utils import bytes_utils, list_utils
 
 main = fa2.main
 
@@ -376,20 +376,4 @@ def bootloader():
                 "formats": sp.bytes("0x5B7B226D696D6554797065223A22696D6167652F6A706567222C22757269223A22") + thumbnail_uri_bytes + sp.bytes("0x227D5D"),
                 "decimals": sp.bytes("0x30"),
         }
-
-@sp.add_test()
-def test():
-    # Create and configure the test scenario
-    # Import the types from the FA2 library, the library itself, and the contract module, in that order.
-    scenario = sp.test_scenario("bootloader")
-    admin = sp.test_account("admin")
-    contract = bootloader.Bootloader(
-        admin.address, admin.address, sp.big_map({}), {}, []
-    )
-    scenario += contract
-
-@sp.add_test()
-def test():
-    scenario = sp.test_scenario("lambda_0_0_1")
-    scenario += bootloader.LambdaHelper(bootloader.v0_0_1)
 
