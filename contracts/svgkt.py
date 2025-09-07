@@ -53,10 +53,6 @@ def svgkt():
             self.data.treasury = admin_address
             self.data.platform_fee_bps = 2000
             self.data.rng_contract = rng_contract
-            self.data.max_bytes_code = 30000
-            self.data.max_bytes_name = 100
-            self.data.max_bytes_desc = 8000
-            self.data.max_bytes_author = 36
             self.data.next_bootloader_id = 0
             self.data.moderators = sp.cast(sp.big_map({}), sp.big_map[sp.address, sp.unit])
             self.data.generator_mints = sp.cast(sp.big_map({}), sp.big_map[sp.pair[sp.nat, sp.address], sp.nat])
@@ -179,26 +175,6 @@ def svgkt():
             assert sp.sender == generator.author, "ONLY_AUTHOR"
             assert generator.n_tokens == 0, "TOKENS_MINTED"
             del self.data.generators[generator_id]
-
-        @sp.entrypoint
-        def set_max_bytes_name(self, n_bytes: sp.nat):
-            assert self.data.moderators.contains(sp.sender) or sp.sender == self.data.administrator, "ONLY_MODS"
-            self.data.max_bytes_name = n_bytes
-
-        @sp.entrypoint
-        def set_max_bytes_desc(self, n_bytes: sp.nat):
-            assert self.data.moderators.contains(sp.sender) or sp.sender == self.data.administrator, "ONLY_MODS"
-            self.data.max_bytes_desc = n_bytes
-
-        @sp.entrypoint
-        def set_max_bytes_code(self, n_bytes: sp.nat):
-            assert self.data.moderators.contains(sp.sender) or sp.sender == self.data.administrator, "ONLY_MODS"
-            self.data.max_bytes_code = n_bytes
-
-        @sp.entrypoint
-        def set_max_bytes_author(self, n_bytes: sp.nat):
-            assert self.data.moderators.contains(sp.sender) or sp.sender == self.data.administrator, "ONLY_MODS"
-            self.data.max_bytes_author = n_bytes
 
         @sp.entrypoint
         def set_rng_contract(self, rng: sp.address):
