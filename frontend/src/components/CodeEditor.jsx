@@ -7,7 +7,8 @@ export default function CodeEditor({
   onChange, 
   readOnly = false, 
   height = '400px',
-  forkButton = null
+  forkButton = null,
+  className = ''
 }) {
   const navigate = useNavigate();
   const handleEditorChange = (newValue) => {
@@ -29,7 +30,7 @@ export default function CodeEditor({
   };
 
   return (
-    <div className="editor-panel">
+    <div className={`editor-panel ${className}`.trim()}>
       <div className="editor-header">
         <span>Generator Code</span>
         <div className="editor-environment">

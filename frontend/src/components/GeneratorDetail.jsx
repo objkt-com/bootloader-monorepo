@@ -41,6 +41,7 @@ export default function GeneratorDetail() {
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [mintedTokenData, setMintedTokenData] = useState(null);
   const [showFullscreenPreview, setShowFullscreenPreview] = useState(false);
+  const [showCodeOnMobile, setShowCodeOnMobile] = useState(false);
 
   // Handle escape key to close fullscreen
   useEffect(() => {
@@ -673,12 +674,23 @@ export default function GeneratorDetail() {
         </div>
       )}
 
+      {/* Mobile code toggle button */}
+      <div className="mobile-code-toggle">
+        <button 
+          onClick={() => setShowCodeOnMobile(!showCodeOnMobile)}
+          className="toggle-code-btn"
+        >
+          {showCodeOnMobile ? 'Hide Code' : 'Show Code'}
+        </button>
+      </div>
+
       <div className="editor-container">
         <CodeEditor
           value={isEditing ? editCode : formatCodeWithDescription(generator.description || '', generator.code)}
           onChange={isEditing ? setEditCode : () => {}}
           height="60vh"
           readOnly={!isEditing}
+          className={showCodeOnMobile ? 'show-on-mobile' : ''}
           forkButton={!isEditing ? (
             <button 
               className="fork-btn"
