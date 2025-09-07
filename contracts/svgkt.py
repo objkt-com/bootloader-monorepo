@@ -57,16 +57,16 @@ def svgkt():
             self.data.max_bytes_name = 100
             self.data.max_bytes_desc = 8000
             self.data.max_bytes_author = 36
-            self.data.next_generator_type_id = 0
+            self.data.next_bootloader_id = 0
             self.data.moderators = sp.cast(sp.big_map({}), sp.big_map[sp.address, sp.unit])
             self.data.generator_mints = sp.cast(sp.big_map({}), sp.big_map[sp.pair[sp.nat, sp.address], sp.nat])
-            self.data.generator_types = sp.cast(sp.big_map({}), sp.big_map[sp.nat, sp.record(
+            self.data.bootloaders = sp.cast(sp.big_map({}), sp.big_map[sp.nat, sp.record(
                 name=sp.bytes,
                 version=sp.bytes,
                 fragments=sp.list[sp.bytes],
                 fun=t_lambda,
             )])
-            self.data.generator_type_storage_limits = sp.cast(sp.big_map({}), sp.big_map[sp.nat, sp.record(
+            self.data.bootloader_storage_limits = sp.cast(sp.big_map({}), sp.big_map[sp.nat, sp.record(
                     code=sp.nat,
                     name=sp.nat,
                     desc=sp.nat,
@@ -106,18 +106,18 @@ def svgkt():
             del self.data.moderators[address]
         
         @sp.entrypoint
-        def add_generator_type(self, version: sp.bytes, name: sp.bytes, fragments: sp.list[sp.bytes], fun: t_lambda, storage_limits):
+        def add_bootloader(self, version: sp.bytes, name: sp.bytes, fragments: sp.list[sp.bytes], fun: t_lambda, storage_limits):
             assert sp.sender == self.data.administrator, "ONLY_ADMIN"
-            self.data.generator_types[self.data.next_generator_type_id] = sp.record(name=name, version=version, fragments=fragments, fun=fun)
-            self.data.generator_type_storage_limits[self.data.next_generator_type_id] = storage_limits
-            self.data.next_generator_type_id += 1
+            self.data.bootloaders[self.data.next_bootloader_id] = sp.record(name=name, version=version, fragments=fragments, fun=fun)
+            self.data.bootloader_storage_limits[self.data.next_bootloader_id] = storage_limits
+            self.data.next_bootloader_id += 1
         
 
 
         @sp.entrypoint
-        def create_generator(self, name: sp.bytes, description: sp.bytes, code: sp.bytes, author_bytes: sp.bytes, reserved_editions: sp.nat, generator_type_id: sp.nat):
-            assert self.data.generator_types.contains(generator_type_id), "UNKOWN_GENERATOR_TYPE"
-            storage_limits = self.data.generator_type_storage_limits[generator_type_id]
+        def create_generator(self, name: sp.bytes, description: sp.bytes, code: sp.bytes, author_bytes: sp.bytes, reserved_editions: sp.nat, bootloader_id: sp.nat):
+            assert self.data.bootloaders.contains(bootloader_id), "UNKOWN_bootloader"
+            storage_limits = self.data.bootloader_storage_limits[bootloader_id]
             assert sp.len(name) <= storage_limits.name, "NAME_TOO_LONG"
             assert sp.len(description) <= storage_limits.desc, "DESC_TOO_LONG"
             assert sp.len(code) <= storage_limits.code, "CODE_TOO_LONG"
@@ -135,7 +135,7 @@ def svgkt():
                 reserved_editions=reserved_editions,
                 flag=0,
                 version=1,
-                type_id=generator_type_id,
+                type_id=bootloader_id,
                 sale=None,
             )
 
@@ -146,7 +146,7 @@ def svgkt():
             generator = self.data.generators[generator_id]
             assert sp.sender == generator.author, "ONLY_AUTHOR"
 
-            storage_limits = self.data.generator_type_storage_limits[generator.type_id]
+            storage_limits = self.data.bootloader_storage_limits[generator.type_id]
             assert sp.len(name) <= storage_limits.name, "NAME_TOO_LONG"
             assert sp.len(description) <= storage_limits.desc, "DESC_TOO_LONG"
             assert sp.len(code) <= storage_limits.code, "CODE_TOO_LONG"
@@ -259,8 +259,8 @@ def svgkt():
             assert generator.version > token_extra.generator_version, "NO_UPDATE_POSSIBLE"
             self.data.token_metadata[token_id] = sp.record(
                 token_id=token_id, 
-                token_info=self.data.generator_types[generator.type_id].fun(sp.record(
-                    fragments=self.data.generator_types[generator.type_id].fragments,
+                token_info=self.data.bootloaders[generator.type_id].fun(sp.record(
+                    fragments=self.data.bootloaders[generator.type_id].fragments,
                     token_id=token_id,
                     seed=token_extra.seed,
                     iteration_number=token_extra.iteration_number,
@@ -292,8 +292,8 @@ def svgkt():
 
             self.data.token_metadata[token_id] = sp.record(
                 token_id=token_id, 
-                token_info=self.data.generator_types[generator.type_id].fun(sp.record(
-                fragments=self.data.generator_types[generator.type_id].fragments,
+                token_info=self.data.bootloaders[generator.type_id].fun(sp.record(
+                fragments=self.data.bootloaders[generator.type_id].fragments,
                     token_id=token_id,
                     seed=seed,
                     iteration_number=generator.n_tokens+1,
@@ -349,8 +349,8 @@ def svgkt():
                     token_id = self.data.next_token_id
                     self.data.token_metadata[token_id] = sp.record(
                         token_id=token_id, 
-                        token_info=self.data.generator_types[generator.type_id].fun(sp.record(
-                        fragments=self.data.generator_types[generator.type_id].fragments,
+                        token_info=self.data.bootloaders[generator.type_id].fun(sp.record(
+                        fragments=self.data.bootloaders[generator.type_id].fragments,
                             token_id=token_id,
                             seed=seed,
                             iteration_number=generator.n_tokens+1,
