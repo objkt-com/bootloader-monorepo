@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Dices } from 'lucide-react';
 
 export default function PreviewControls({ 
   seed, 
@@ -78,7 +79,7 @@ export default function PreviewControls({
             onClick={handleSeedClick}
             title="Generate new random seed"
           >
-            🎲
+            <Dices size={16} />
           </button>
         )}
       </div>

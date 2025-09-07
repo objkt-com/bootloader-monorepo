@@ -1884,6 +1884,24 @@ input:focus, textarea:focus {
   text-decoration: underline;
 }
 
+/* Inline icon styles */
+.inline-icon {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: var(--spacing-xs);
+  flex-shrink: 0;
+}
+
+/* Ensure icons in headings are properly aligned */
+h4 .inline-icon {
+  margin-top: -2px;
+}
+
+/* Icon alignment in small text */
+small .inline-icon {
+  margin-top: -1px;
+}
+
 .description-example {
   margin: var(--spacing-lg) 0;
 }
