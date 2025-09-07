@@ -919,9 +919,6 @@ export default function GeneratorDetail() {
         ) : (
           <div className="tokens-grid">
             {latestTokens.map((token) => {
-              // Use thum.io to generate thumbnail images
-              const thumbnailUrl = getTokenThumbnailUrl(token.tokenId);
-              
               return (
                 <a
                   key={token.tokenId}
@@ -932,7 +929,7 @@ export default function GeneratorDetail() {
                 >
                   <div className="token-preview-container">
                     <SmartThumbnail
-                      src={thumbnailUrl}
+                      src={token.thumbnailUri || `https://media.bootloader.art/thumbnail/${token.tokenId}`}
                       width="200"
                       height="200"
                       alt={`${generator.name || `Generator #${generator.id}`} #${token.tokenId}`}

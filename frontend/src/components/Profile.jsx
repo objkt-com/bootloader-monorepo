@@ -333,7 +333,7 @@ export default function Profile() {
                 >
                   <div className="token-preview-container">
                     <SmartThumbnail
-                      src={getTokenThumbnailUrl(token.tokenId)}
+                      src={token.thumbnailUri || `https://media.bootloader.art/thumbnail/${token.tokenId}?cb=v10`}
                       width="200"
                       height="200"
                       alt={token.name}

@@ -1,15 +1,51 @@
 // Utility functions for generating thumbnail URLs
+import { tzktService } from '../services/tzkt.js';
 
 // Global cache buster - change this value to force refresh all thumbnails
 const CACHE_BUSTER = "v10";
 
 /**
- * Generate a thumbnail URL for a token
+ * Get a thumbnail URL for a token from chain data
  * @param {number} tokenId - The token ID
- * @returns {string} The thumbnail URL
+ * @param {Object} tokenData - Optional token data if already available
+ * @returns {Promise<string>} The thumbnail URL from chain or fallback URL
  */
-export function getTokenThumbnailUrl(tokenId) {
-  return `https://media.bootloader.art/thumbnail/${tokenId}?cb=${CACHE_BUSTER}`;
+export async function getTokenThumbnailUrl(tokenId, tokenData = null) {
+  try {
+    // If token data is provided, use it directly
+    if (tokenData && tokenData.thumbnailUri) {
+      return tokenData.thumbnailUri;
+    }
+
+    // Otherwise, fetch token metadata from chain
+    const tokenMetadataBigMap = await tzktService.getBigMapByPath("token_metadata");
+    if (!tokenMetadataBigMap) {
+      console.warn("Token metadata bigmap not found, using fallback URL");
+      return `https://media.bootloader.art/thumbnail/${tokenId}`;
+    }
+
+    const tokenMetadata = await tzktService.getBigMapKey(
+      tokenMetadataBigMap.ptr,
+      tokenId.toString()
+    );
+
+    if (tokenMetadata && tokenMetadata.value && tokenMetadata.value.token_info) {
+      const tokenInfo = tokenMetadata.value.token_info;
+      
+      // Look for thumbnailUri in the token_info
+      if (tokenInfo.thumbnailUri) {
+        return tzktService.bytesToString(tokenInfo.thumbnailUri);
+      }
+    }
+
+    // Fallback to constructed URL if thumbnailUri not found
+    console.warn(`No thumbnailUri found for token ${tokenId}, using fallback URL`);
+    return `https://media.bootloader.art/thumbnail/${tokenId}`;
+  } catch (error) {
+    console.error(`Failed to get thumbnailUri for token ${tokenId}:`, error);
+    // Fallback to constructed URL on error
+    return `https://media.bootloader.art/thumbnail/${tokenId}`;
+  }
 }
 
 /**
@@ -22,12 +58,13 @@ export function getGeneratorThumbnailUrl(generatorId) {
 }
 
 /**
- * Generate a prefetch URL for a token (same as regular URL)
+ * Get a prefetch URL for a token (same as regular URL)
  * @param {number} tokenId - The token ID
- * @returns {string} The thumbnail URL
+ * @param {Object} tokenData - Optional token data if already available
+ * @returns {Promise<string>} The thumbnail URL from chain or fallback URL
  */
-export function getTokenThumbnailPrefetchUrl(tokenId) {
-  return getTokenThumbnailUrl(tokenId);
+export async function getTokenThumbnailPrefetchUrl(tokenId, tokenData = null) {
+  return await getTokenThumbnailUrl(tokenId, tokenData);
 }
 
 /**
@@ -42,11 +79,12 @@ export function getGeneratorThumbnailPrefetchUrl(generatorId) {
 /**
  * Call prefetch for a token thumbnail (simplified since we're using direct URLs)
  * @param {number} tokenId - The token ID
+ * @param {Object} tokenData - Optional token data if already available
  * @returns {Promise<boolean>} Success status
  */
-export async function prefetchTokenThumbnail(tokenId) {
+export async function prefetchTokenThumbnail(tokenId, tokenData = null) {
   try {
-    const prefetchUrl = getTokenThumbnailPrefetchUrl(tokenId);
+    const prefetchUrl = await getTokenThumbnailPrefetchUrl(tokenId, tokenData);
     const response = await fetch(prefetchUrl, { method: "HEAD" });
 
     if (response.ok) {
