@@ -64,8 +64,15 @@ def svgkt():
                 name=sp.bytes,
                 version=sp.bytes,
                 fragments=sp.list[sp.bytes],
-                fun=t_lambda
+                fun=t_lambda,
             )])
+            self.data.generator_type_storage_limits = sp.cast(sp.big_map({}), sp.big_map[sp.nat, sp.record(
+                    code=sp.nat,
+                    name=sp.nat,
+                    desc=sp.nat,
+                    author=sp.nat
+                )
+            ])
             self.data.generators = sp.cast(sp.big_map({}), sp.big_map[sp.nat, sp.record(
                 name=sp.bytes,
                 created=sp.timestamp,
@@ -78,7 +85,7 @@ def svgkt():
                 reserved_editions=sp.nat,
                 flag=sp.nat,
                 version=sp.nat,
-                generator_type_id=sp.nat,
+                type_id=sp.nat,
                 sale=sp.option[sp.record(
                     paused=sp.bool,
                     start_time=sp.option[sp.timestamp],
@@ -99,18 +106,22 @@ def svgkt():
             del self.data.moderators[address]
         
         @sp.entrypoint
-        def add_generator_type(self, version: sp.bytes, name: sp.bytes, fragments: sp.list[sp.bytes], fun: t_lambda):
+        def add_generator_type(self, version: sp.bytes, name: sp.bytes, fragments: sp.list[sp.bytes], fun: t_lambda, storage_limits):
             assert sp.sender == self.data.administrator, "ONLY_ADMIN"
             self.data.generator_types[self.data.next_generator_type_id] = sp.record(name=name, version=version, fragments=fragments, fun=fun)
+            self.data.generator_type_storage_limits[self.data.next_generator_type_id] = storage_limits
             self.data.next_generator_type_id += 1
+        
+
 
         @sp.entrypoint
         def create_generator(self, name: sp.bytes, description: sp.bytes, code: sp.bytes, author_bytes: sp.bytes, reserved_editions: sp.nat, generator_type_id: sp.nat):
             assert self.data.generator_types.contains(generator_type_id), "UNKOWN_GENERATOR_TYPE"
-            assert sp.len(name) <= self.data.max_bytes_name, "NAME_TOO_LONG"
-            assert sp.len(description) <= self.data.max_bytes_desc, "DESC_TOO_LONG"
-            assert sp.len(code) <= self.data.max_bytes_code, "CODE_TOO_LONG"
-            assert sp.len(author_bytes) <= self.data.max_bytes_author, "AUTHOR_TOO_LONG"
+            storage_limits = self.data.generator_type_storage_limits[generator_type_id]
+            assert sp.len(name) <= storage_limits.name, "NAME_TOO_LONG"
+            assert sp.len(description) <= storage_limits.desc, "DESC_TOO_LONG"
+            assert sp.len(code) <= storage_limits.code, "CODE_TOO_LONG"
+            assert sp.len(author_bytes) <= storage_limits.author, "AUTHOR_TOO_LONG"
 
             self.data.generators[self.data.next_generator_id] = sp.record(
                 name=name,
@@ -124,7 +135,7 @@ def svgkt():
                 reserved_editions=reserved_editions,
                 flag=0,
                 version=1,
-                generator_type_id=generator_type_id,
+                type_id=generator_type_id,
                 sale=None,
             )
 
@@ -134,10 +145,12 @@ def svgkt():
         def update_generator(self, generator_id: sp.nat, name: sp.bytes, description: sp.bytes, code: sp.bytes, author_bytes: sp.bytes, reserved_editions: sp.nat):
             generator = self.data.generators[generator_id]
             assert sp.sender == generator.author, "ONLY_AUTHOR"
-            assert sp.len(name) <= self.data.max_bytes_name, "NAME_TOO_LONG"
-            assert sp.len(description) <= self.data.max_bytes_desc, "DESC_TOO_LONG"
-            assert sp.len(code) <= self.data.max_bytes_code, "CODE_TOO_LONG"
-            assert sp.len(author_bytes) <= self.data.max_bytes_author, "AUTHOR_TOO_LONG"
+
+            storage_limits = self.data.generator_type_storage_limits[generator.type_id]
+            assert sp.len(name) <= storage_limits.name, "NAME_TOO_LONG"
+            assert sp.len(description) <= storage_limits.desc, "DESC_TOO_LONG"
+            assert sp.len(code) <= storage_limits.code, "CODE_TOO_LONG"
+            assert sp.len(author_bytes) <= storage_limits.author, "AUTHOR_TOO_LONG"
 
             # if geneartor has sale configured. Ensure reserved_editions are not more than remaining capacity
             match generator.sale:
@@ -156,7 +169,7 @@ def svgkt():
                 reserved_editions=reserved_editions,
                 flag=generator.flag,
                 sale=generator.sale,
-                generator_type_id=generator.generator_type_id,
+                type_id=generator.type_id,
                 version=generator.version +1,
             )
         
@@ -246,8 +259,8 @@ def svgkt():
             assert generator.version > token_extra.generator_version, "NO_UPDATE_POSSIBLE"
             self.data.token_metadata[token_id] = sp.record(
                 token_id=token_id, 
-                token_info=self.data.generator_types[generator.generator_type_id].fun(sp.record(
-                    fragments=self.data.generator_types[generator.generator_type_id].fragments,
+                token_info=self.data.generator_types[generator.type_id].fun(sp.record(
+                    fragments=self.data.generator_types[generator.type_id].fragments,
                     token_id=token_id,
                     seed=token_extra.seed,
                     iteration_number=token_extra.iteration_number,
@@ -279,8 +292,8 @@ def svgkt():
 
             self.data.token_metadata[token_id] = sp.record(
                 token_id=token_id, 
-                token_info=self.data.generator_types[generator.generator_type_id].fun(sp.record(
-                fragments=self.data.generator_types[generator.generator_type_id].fragments,
+                token_info=self.data.generator_types[generator.type_id].fun(sp.record(
+                fragments=self.data.generator_types[generator.type_id].fragments,
                     token_id=token_id,
                     seed=seed,
                     iteration_number=generator.n_tokens+1,
@@ -336,8 +349,8 @@ def svgkt():
                     token_id = self.data.next_token_id
                     self.data.token_metadata[token_id] = sp.record(
                         token_id=token_id, 
-                        token_info=self.data.generator_types[generator.generator_type_id].fun(sp.record(
-                        fragments=self.data.generator_types[generator.generator_type_id].fragments,
+                        token_info=self.data.generator_types[generator.type_id].fun(sp.record(
+                        fragments=self.data.generator_types[generator.type_id].fragments,
                             token_id=token_id,
                             seed=seed,
                             iteration_number=generator.n_tokens+1,
@@ -377,13 +390,15 @@ def svgkt():
 
         iteration_bytes = bytes_utils.from_nat(p.iteration_number)
         token_id_bytes = bytes_utils.from_nat(p.token_id)
+        thumbnail_uri_bytes = sp.bytes("0x68747470733A2F2F6D656469612E7376676B742E636F6D2F7468756D626E61696C2F") + token_id_bytes + sp.bytes("0x3F763D") + bytes_utils.from_nat(p.generator_version)
         return {
                 "name": p.generator_name + sp.bytes("0x2023") + iteration_bytes,
                 "artifactUri": svg_string,
-                "thumbnailUri": sp.bytes("0x68747470733A2F2F6D656469612E7376676B742E636F6D2F7468756D626E61696C2F") + token_id_bytes + sp.bytes("0x3F763D") + bytes_utils.from_nat(p.generator_version), # cache buster for thumbnail generation
+                "thumbnailUri": thumbnail_uri_bytes, # cache buster for thumbnail generation
                 "royalties": sp.bytes("0x7B22646563696D616C73223A322C22736861726573223A7B22") + p.generator_author_bytes + sp.bytes("0x223A357D7D"),
                 "creators": sp.bytes("0x5B22") + p.generator_author_bytes + sp.bytes('0x225D'),
                 "symbol": sp.bytes("0x53564A4B54"),
+                "formats": sp.bytes("0x5B7B226D696D6554797065223A22696D6167652F6A706567222C22757269223A22") + thumbnail_uri_bytes + sp.bytes("0x227D5D"),
                 "decimals": sp.bytes("0x30"),
         }
 

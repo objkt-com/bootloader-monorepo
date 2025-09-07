@@ -10,22 +10,20 @@ export default function Help() {
 * svgKT v0.0.1
 */
 
-const { rnd, svg } = $svgKT;
-
-svg.setAttribute('viewBox', '0 0 400 400');
-svg.style.cssText = "background:white";
+$svg.el.setAttribute('viewBox', '0 0 400 400');
+$svg.el.style.cssText = "background:white";
 
 // Create 5 random circles
 for (let i = 0; i < 5; i++) {
   const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
   
-  circle.setAttribute('cx', 50 + rnd() * 300);
-  circle.setAttribute('cy', 50 + rnd() * 300);
-  circle.setAttribute('r', 20 + rnd() * 40);
-  circle.setAttribute('fill', \`hsl(\${rnd() * 360}, 70%, 60%)\`);
+  circle.setAttribute('cx', 50 + $svg.rnd() * 300);
+  circle.setAttribute('cy', 50 + $svg.rnd() * 300);
+  circle.setAttribute('r', 20 + $svg.rnd() * 40);
+  circle.setAttribute('fill', \`hsl(\${$svg.rnd() * 360}, 70%, 60%)\`);
   circle.setAttribute('opacity', 0.8);
   
-  svg.appendChild(circle);
+  $svg.el.appendChild(circle);
 }`);
   
   const [previewSeed, setPreviewSeed] = useState(12345);
@@ -190,7 +188,7 @@ for (let i = 0; i < 5; i++) {
         
         <p>Your generator code runs inside an SVG "bootloader" that provides access to the <code>$svgKT</code> object. This is where your code executes. Currently there is no standard library - only these 4 properties are available (this will change in the future):</p>
         
-        <h4>The $svgKT Object</h4>
+        <h4>The $svg Object</h4>
         <pre style={{
           backgroundColor: '#f8f9fa',
           border: '1px solid #e9ecef',
@@ -203,21 +201,21 @@ for (let i = 0; i < 5; i++) {
           width: '100%',
           display: 'block'
         }}><code>{`// The $svgKT object provided to your code:
-const $svgKT = {
+const $svg = {
   rnd: sfc32(a,b,c,d),           // Deterministic random function (0-1)
   SEED: SEED,                    // Raw BigInt seed from blockchain
-  svg: document.documentElement, // Reference to the root SVG element
+  el: document.documentElement, // Reference to the root SVG element
   v: '0.0.1'                    // Template version string
 };
 
 // Your code is executed in this structure:
-(($svgKT) => {
+(($svg) => {
   // YOUR GENERATOR CODE GOES HERE
   // You can destructure for convenience:
-  const { rnd, svg, SEED, v } = $svgKT;
+  const { rnd, el, SEED, v } = $svgKT;
   
   // Set up your SVG canvas
-  svg.setAttribute('viewBox', '0 0 400 400');
+  el.setAttribute('viewBox', '0 0 400 400');
   
   // Use rnd() for deterministic randomness
   const x = rnd() * 400;
@@ -228,8 +226,8 @@ const $svgKT = {
   circle.setAttribute('cx', x);
   circle.setAttribute('cy', y);
   circle.setAttribute('r', 20 + rnd() * 30);
-  svg.appendChild(circle);
-})($svgKT);`}</code></pre>
+  el.appendChild(circle);
+})($svg);`}</code></pre>
 
         <h2>Best Practices</h2>
         <div className="best-practices">
