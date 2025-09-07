@@ -1892,7 +1892,7 @@ input:focus, textarea:focus {
   /* Mobile-friendly actions layout */
   .actions {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: flex-end;
     gap: var(--spacing-md);
   }
 
