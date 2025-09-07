@@ -263,6 +263,7 @@ for (let i = 0; i < 5; i++) {
           value={code}
           onChange={setCode}
           height="60vh"
+          className='show-on-mobile'
         />
         
         <div className="preview-panel">
