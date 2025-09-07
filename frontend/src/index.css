@@ -269,6 +269,35 @@ input:focus, textarea:focus {
   gap: var(--spacing-lg);
 }
 
+.network-switch {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  color: var(--color-gray-dark);
+  gap: var(--spacing-xs);
+}
+
+.current-network {
+  font-weight: 500;
+  color: var(--color-black);
+}
+
+.network-separator {
+  color: var(--color-gray-dark);
+  margin: 0 var(--spacing-xs);
+}
+
+.network-link {
+  color: var(--color-gray-dark);
+  text-decoration: none;
+  transition: color 0.1s ease;
+}
+
+.network-link:hover {
+  color: var(--color-black);
+  text-decoration: underline;
+}
+
 .footer-links {
   display: flex;
   gap: var(--spacing-lg);
@@ -2062,6 +2091,18 @@ input:focus, textarea:focus {
     flex-direction: column;
     gap: var(--spacing-md);
     text-align: center;
+  }
+
+  .network-switch {
+    order: 1;
+  }
+
+  .footer-links {
+    order: 2;
+  }
+
+  .footer-info {
+    order: 3;
   }
 
   .editor-container {

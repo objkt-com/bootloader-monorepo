@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { useState, useEffect, createContext, useContext } from 'react';
 import { tezosService } from './services/tezos.js';
+import { CONFIG } from './config.js';
 import WalletConnection from './components/WalletConnection.jsx';
 import Home from './components/Home.jsx';
 import Create from './components/Create.jsx';
@@ -88,6 +89,12 @@ function Navigation() {
 function Footer() {
   const { theme, toggleTheme } = useTheme();
   
+  const currentNetwork = CONFIG.network;
+  const otherNetwork = currentNetwork === 'mainnet' ? 'ghostnet' : 'mainnet';
+  const otherNetworkUrl = currentNetwork === 'mainnet' 
+    ? 'https://ghostnet.bootloader.art' 
+    : 'https://bootloader.art';
+  
   return (
     <footer className="footer">
       <div className="footer-content">
@@ -104,6 +111,19 @@ function Footer() {
             {theme === 'light' ? 'dark' : 'light'}
           </button>
         </div>
+        
+        <div className="network-switch">
+          <span className="current-network">[{currentNetwork}] </span>
+          <span className="network-separator"> - </span>
+          <a 
+            href={otherNetworkUrl} 
+            className="network-link"
+            title={`Switch to ${otherNetwork}`}
+          >
+            switch to {otherNetwork}
+          </a>
+        </div>
+        
         <div className="footer-info">
           powered by <a href="https://objkt.com" target="_blank" rel="noopener noreferrer">objkt</a> and <a href="https://tzkt.io" target="_blank" rel="noopener noreferrer">tzkt</a>
         </div>
