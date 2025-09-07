@@ -7,23 +7,23 @@ import PreviewControls from './PreviewControls.jsx';
 export default function Help() {
   const [exampleCode, setExampleCode] = useState(`/*
 * Five Random Circles
-* svgKT v0.0.1
+* bootloader v0.0.1
 */
 
-$svg.el.setAttribute('viewBox', '0 0 400 400');
-$svg.el.style.cssText = "background:white";
+$b.svg.setAttribute('viewBox', '0 0 400 400');
+$b.svg.style.cssText = "background:white";
 
 // Create 5 random circles
 for (let i = 0; i < 5; i++) {
   const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
   
-  circle.setAttribute('cx', 50 + $svg.rnd() * 300);
-  circle.setAttribute('cy', 50 + $svg.rnd() * 300);
-  circle.setAttribute('r', 20 + $svg.rnd() * 40);
-  circle.setAttribute('fill', \`hsl(\${$svg.rnd() * 360}, 70%, 60%)\`);
+  circle.setAttribute('cx', 50 + $b.rnd() * 300);
+  circle.setAttribute('cy', 50 + $b.rnd() * 300);
+  circle.setAttribute('r', 20 + $b.rnd() * 40);
+  circle.setAttribute('fill', \`hsl(\${$b.rnd() * 360}, 70%, 60%)\`);
   circle.setAttribute('opacity', 0.8);
   
-  $svg.el.appendChild(circle);
+  $b.svg.appendChild(circle);
 }`);
   
   const [previewSeed, setPreviewSeed] = useState(12345);
@@ -50,10 +50,10 @@ for (let i = 0; i < 5; i++) {
         }}>
           <div style={{fontSize: '24px'}}>⚠️</div>
           <div>
-            <strong>Experimental Software Notice:</strong> svgKT is experimental alpha software that has not been audited. 
+            <strong>Experimental Software Notice:</strong> bootloader is experimental alpha software that has not been audited. 
             This is an open source project available at{' '}
-            <a href="https://github.com/objkt-com/svgkt-monorepo/" target="_blank" rel="noopener noreferrer">
-              github.com/objkt-com/svgkt-monorepo/
+            <a href="https://github.com/objkt-com/bootloader-monorepo/" target="_blank" rel="noopener noreferrer">
+              github.com/objkt-com/bootloader-monorepo/
             </a>. 
             Use at your own risk. Always test with small amounts and understand the risks before deploying significant resources.
           </div>
@@ -93,11 +93,11 @@ for (let i = 0; i < 5; i++) {
           </div>
         </div>
 
-        <h1>svgKT Documentation</h1>
+        <h1>bootloader Documentation</h1>
 
-        <h2>What is svgKT?</h2>
+        <h2>What is bootloader?</h2>
         <p>
-          svgKT is an open-source experimental on-chain long-form generative art platform built on Tezos. It empowers artists and developers
+          bootloader is an open-source experimental on-chain long-form generative art platform built on Tezos. It empowers artists and developers
           to create generative art algorithms that produce unique SVG images directly on the blockchain. Using a{' '}
           <a href="https://en.wikipedia.org/wiki/WYSIWYG" target="_blank" rel="noopener noreferrer">WYSIWYG</a>{' '}
           (What You See Is What You Get) editor, the platform presents code alongside live previews, creating an intuitive environment 
@@ -118,7 +118,7 @@ for (let i = 0; i < 5; i++) {
           relying on external storage and viewers.
         </p>
         <p>
-          With svgKT, we are reintroducing this bootloader in a raw form, giving it new life in the context of 
+          With bootloader, we are reintroducing this concept in a raw form, giving it new life in the context of 
           long-form generative art. Here the works are fully on-chain, each mint animated by random seeds from 
           the blockchain itself, producing unique yet reproducible variations that remain durable, self-contained, 
           and alive within the chain's own data.
@@ -126,7 +126,7 @@ for (let i = 0; i < 5; i++) {
 
         <h3>Why This Platform?</h3>
         <p>
-          With the void left by fxhash no longer supporting long-form mints on Tezos, svgKT offers an open and 
+          With the void left by fxhash no longer supporting long-form mints on Tezos, bootloader offers an open and 
           non-curated space for generative artists on the network. The platform is designed to make the process 
           both accessible and enjoyable. Showing the code alongside the resulting artwork is a deliberate choice—like 
           opening up a watch to see the intricate cogs in motion, it reveals the inner mechanics of the system and 
@@ -135,7 +135,7 @@ for (let i = 0; i < 5; i++) {
 
         <h3>Why On-Chain?</h3>
         <p>
-          svgKT demonstrates how platforms can be built without any backend systems, relying only on publicly available 
+          bootloader demonstrates how platforms can be built without any backend systems, relying only on publicly available 
           infrastructure like indexer APIs (tzkt and objkt). These APIs are open to anyone, showing that experimental 
           tools and platforms like this are accessible to any developer. Of course, this approach comes with limitations - 
           such as no thumbnails showing on objkt marketplace - but the trade-off is complete self-containment and independence.
@@ -187,9 +187,9 @@ for (let i = 0; i < 5; i++) {
 
         <h2>Available Variables in Your Code</h2>
         
-        <p>Your generator code runs inside an SVG "bootloader" that provides access to the <code>$svgKT</code> object. This is where your code executes. Currently there is no standard library - only these 4 properties are available (this will change in the future):</p>
+        <p>Your generator code runs inside an SVG "bootloader" that provides access to the <code>$b</code> object. This is where your code executes. Currently there is no standard library - only these 4 properties are available (this will change in the future):</p>
         
-        <h4>The $svg Object</h4>
+        <h4>The $b Object</h4>
         <pre style={{
           backgroundColor: '#f8f9fa',
           border: '1px solid #e9ecef',
@@ -201,22 +201,22 @@ for (let i = 0; i < 5; i++) {
           marginBottom: '24px',
           width: '100%',
           display: 'block'
-        }}><code>{`// The $svgKT object provided to your code:
-const $svg = {
+        }}><code>{`// The $b object provided to your code:
+const $b = {
   rnd: sfc32(a,b,c,d),           // Deterministic random function (0-1)
   SEED: SEED,                    // Raw BigInt seed from blockchain
-  el: document.documentElement, // Reference to the root SVG element
+  svg: document.documentElement, // Reference to the root SVG element
   v: '0.0.1'                    // Template version string
 };
 
 // Your code is executed in this structure:
-(($svg) => {
+(($b) => {
   // YOUR GENERATOR CODE GOES HERE
   // You can destructure for convenience:
-  const { rnd, el, SEED, v } = $svgKT;
+  const { rnd, svg, SEED, v } = $b;
   
   // Set up your SVG canvas
-  el.setAttribute('viewBox', '0 0 400 400');
+  svg.setAttribute('viewBox', '0 0 400 400');
   
   // Use rnd() for deterministic randomness
   const x = rnd() * 400;
@@ -227,14 +227,14 @@ const $svg = {
   circle.setAttribute('cx', x);
   circle.setAttribute('cy', y);
   circle.setAttribute('r', 20 + rnd() * 30);
-  el.appendChild(circle);
-})($svg);`}</code></pre>
+  svg.appendChild(circle);
+})($b);`}</code></pre>
 
         <h2>Best Practices</h2>
         <div className="best-practices">
           <div className="practice-item">
             <h4>🎯 Use Deterministic Randomness</h4>
-            <p>Always use <code>$svgKT.rnd()</code> instead of <code>Math.random()</code> to ensure reproducible results</p>
+            <p>Always use <code>$b.rnd()</code> instead of <code>Math.random()</code> to ensure reproducible results</p>
           </div>
           <div className="practice-item">
             <h4>🔒 Clean Code Scoping</h4>
@@ -287,7 +287,7 @@ const $svg = {
 
         <h3>Generator Description from Comments</h3>
         <p>
-          svgKT automatically extracts your generator's description from the first multi-line comment in your code.
+          bootloader automatically extracts your generator's description from the first multi-line comment in your code.
           This description is stored on-chain separately from your code and displayed to users when they view your generator.
         </p>
         <div className="description-example">
@@ -391,8 +391,8 @@ svg = document.documentElement;`}</code></pre>
                 </a>
               </div>
               <div className="fragment-content">
-                <code>{`;function splitmix64(f){let n=f;return function(){let f=n=n+0x9e3779b97f4a7c15n&0xffffffffffffffffn;return f=((f=(f^f>>30n)*0xbf58476d1ce4e5b9n&0xffffffffffffffffn)^f>>27n)*0x94d049bb133111ebn&0xffffffffffffffffn,Number(4294967295n&(f^=f>>31n))>>>0}}function sfc32(f,n,$,t){return function(){$|=0;let e=((f|=0)+(n|=0)|0)+(t|=0)|0;return t=t+1|0,f=n^n>>>9,n=$+($<<3)|0,$=($=$<<21|$>>>11)+e|0,(e>>>0)/4294967296}}const sm=splitmix64(SEED),a=sm(),b=sm(),c=sm(),d=sm(),$svgKT={rnd:sfc32(a,b,c,d),SEED:SEED,svg:document.documentElement,v:'0.0.1'};(($svgKT)=>{`}</code>
-                <div className="fragment-note">Random number generator setup and $svgKT object creation</div>
+                <code>{`;function splitmix64(f){let n=f;return function(){let f=n=n+0x9e3779b97f4a7c15n&0xffffffffffffffffn;return f=((f=(f^f>>30n)*0xbf58476d1ce4e5b9n&0xffffffffffffffffn)^f>>27n)*0x94d049bb133111ebn&0xffffffffffffffffn,Number(4294967295n&(f^=f>>31n))>>>0}}function sfc32(f,n,$,t){return function(){$|=0;let e=((f|=0)+(n|=0)|0)+(t|=0)|0;return t=t+1|0,f=n^n>>>9,n=$+($<<3)|0,$=($=$<<21|$>>>11)+e|0,(e>>>0)/4294967296}}const sm=splitmix64(SEED),a=sm(),b=sm(),c=sm(),d=sm(),$b={rnd:sfc32(a,b,c,d),SEED:SEED,svg:document.documentElement,v:'0.0.1'};(($b)=>{`}</code>
+                <div className="fragment-note">Random number generator setup and $b object creation</div>
               </div>
             </div>
             
@@ -402,7 +402,7 @@ svg = document.documentElement;`}</code></pre>
               <div className="fragment-header">Your Generator Code</div>
               <div className="fragment-content">
                 <pre style={{whiteSpace: 'pre-wrap', wordWrap: 'break-word'}}><code>{`// Your creative code here
-const { rnd, svg } = $svgKT;
+const { rnd, svg } = $b;
 
 svg.setAttribute('viewBox', '0 0 400 400');
 const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
@@ -425,7 +425,7 @@ svg.appendChild(circle);`}</code></pre>
                 </a>
               </div>
               <div className="fragment-content">
-                <code>{`})($svgKT);]]></script>
+                <code>{`})($b);]]></script>
 </svg>`}</code>
                 <div className="fragment-note">Closes the IIFE and completes the SVG structure</div>
               </div>
@@ -551,7 +551,7 @@ svg.appendChild(circle);`}</code></pre>
 
         <h2>Storage Costs and Mint Pricing</h2>
         <p>
-          Understanding the cost structure of svgKT helps you optimize your generators and set appropriate mint prices.
+          Understanding the cost structure of bootloader helps you optimize your generators and set appropriate mint prices.
         </p>
         <div className="pricing-section">
           <div className="pricing-item">
@@ -603,8 +603,8 @@ svg.appendChild(circle);`}</code></pre>
 
         <h2>Community & Support</h2>
         <p>
-          svgKT is an open-source project. You can find the code, report issues, and contribute 
-          on <a href="https://github.com/objkt-com/svgkt-monorepo" target="_blank" rel="noopener noreferrer">GitHub</a>.
+          bootloader is an open-source project. You can find the code, report issues, and contribute 
+          on <a href="https://github.com/objkt-com/bootloader-monorepo" target="_blank" rel="noopener noreferrer">GitHub</a>.
           Join our community to share your creations and learn from other generative artists.
         </p>
 

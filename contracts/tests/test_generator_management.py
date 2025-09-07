@@ -10,7 +10,7 @@ This module tests all generator-related functionality:
 - Generator flagging by moderators
 """
 
-from svgkt import svgkt
+from bootloader import bootloader
 from randomiser import randomiser
 import smartpy as sp
 import os
@@ -24,7 +24,7 @@ def test_generator_creation():
     - Initial generator state
     - Author assignment
     """
-    scenario = sp.test_scenario("Generator Creation", [svgkt, randomiser])
+    scenario = sp.test_scenario("Generator Creation", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -32,7 +32,7 @@ def test_generator_creation():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -83,7 +83,7 @@ def test_generator_updates():
     - Version increment on update
     - Reserved editions validation with existing sales
     """
-    scenario = sp.test_scenario("Generator Updates", [svgkt, randomiser])
+    scenario = sp.test_scenario("Generator Updates", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -92,7 +92,7 @@ def test_generator_updates():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -146,7 +146,7 @@ def test_reserved_editions_validation():
     - Reserved editions cannot exceed sale capacity
     - Reserved editions can be updated within limits
     """
-    scenario = sp.test_scenario("Reserved Editions Validation", [svgkt, randomiser])
+    scenario = sp.test_scenario("Reserved Editions Validation", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -154,7 +154,7 @@ def test_reserved_editions_validation():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -218,7 +218,7 @@ def test_input_validation():
     - Author bytes length limits
     - Empty bytes handling
     """
-    scenario = sp.test_scenario("Input Validation", [svgkt, randomiser])
+    scenario = sp.test_scenario("Input Validation", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -226,7 +226,7 @@ def test_input_validation():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -311,7 +311,7 @@ def test_byte_limit_configuration():
     - New limits are enforced on creation/update
     - Non-mods cannot set limits
     """
-    scenario = sp.test_scenario("Byte Limit Configuration", [svgkt, randomiser])
+    scenario = sp.test_scenario("Byte Limit Configuration", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -320,7 +320,7 @@ def test_byte_limit_configuration():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -367,7 +367,7 @@ def test_generator_flagging():
     - Non-mods cannot flag generators
     - Flag values are stored correctly
     """
-    scenario = sp.test_scenario("Generator Flagging", [svgkt, randomiser])
+    scenario = sp.test_scenario("Generator Flagging", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -377,7 +377,7 @@ def test_generator_flagging():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -423,7 +423,7 @@ def test_large_numbers_edge_case():
     - Large reserved editions
     - Maximum values within reasonable limits
     """
-    scenario = sp.test_scenario("Large Numbers Edge Case", [svgkt, randomiser])
+    scenario = sp.test_scenario("Large Numbers Edge Case", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -431,7 +431,7 @@ def test_large_numbers_edge_case():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),

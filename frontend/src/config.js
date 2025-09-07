@@ -23,7 +23,7 @@ export const CONFIG = {
 
   // App branding
   branding: {
-    projectName: "svgKT",
+    projectName: "bootloader",
     tagline: "On-chain SVG Generator Platform",
   },
 

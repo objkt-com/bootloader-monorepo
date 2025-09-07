@@ -394,7 +394,7 @@ export default function GeneratorDetail() {
           authorDisplayName: authorDisplayInfo.displayName,
           svgDataUri: svgDataUri,
           objktUrl: `https://${getObjktDomain()}/tokens/${getTokenContractAddress()}/${mintedTokenId}`,
-          generatorUrl: `https://svgkt.com/generator/${generator.id}`
+          generatorUrl: `https://bootloader.art/generator/${generator.id}`
         };
         
         setMintedTokenData(tokenData);

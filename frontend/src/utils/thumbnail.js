@@ -1,7 +1,7 @@
 // Utility functions for generating thumbnail URLs
 
 // Global cache buster - change this value to force refresh all thumbnails
-const CACHE_BUSTER = 'v10';
+const CACHE_BUSTER = "v10";
 
 /**
  * Generate a thumbnail URL for a token
@@ -9,7 +9,7 @@ const CACHE_BUSTER = 'v10';
  * @returns {string} The thumbnail URL
  */
 export function getTokenThumbnailUrl(tokenId) {
-  return `https://media.svgkt.com/thumbnail/${tokenId}?cb=${CACHE_BUSTER}`;
+  return `https://media.bootloader.art/thumbnail/${tokenId}?cb=${CACHE_BUSTER}`;
 }
 
 /**
@@ -18,7 +18,7 @@ export function getTokenThumbnailUrl(tokenId) {
  * @returns {string} The thumbnail URL
  */
 export function getGeneratorThumbnailUrl(generatorId) {
-  return `https://media.svgkt.com/generator-thumbnail/${generatorId}?cb=${CACHE_BUSTER}`;
+  return `https://media.bootloader.art/generator-thumbnail/${generatorId}?cb=${CACHE_BUSTER}`;
 }
 
 /**
@@ -47,13 +47,16 @@ export function getGeneratorThumbnailPrefetchUrl(generatorId) {
 export async function prefetchTokenThumbnail(tokenId) {
   try {
     const prefetchUrl = getTokenThumbnailPrefetchUrl(tokenId);
-    const response = await fetch(prefetchUrl, { method: 'HEAD' });
-    
+    const response = await fetch(prefetchUrl, { method: "HEAD" });
+
     if (response.ok) {
       console.log(`Token ${tokenId} thumbnail prefetch successful`);
       return true;
     } else {
-      console.warn(`Token ${tokenId} thumbnail prefetch failed:`, response.status);
+      console.warn(
+        `Token ${tokenId} thumbnail prefetch failed:`,
+        response.status
+      );
       return false;
     }
   } catch (error) {
@@ -70,13 +73,16 @@ export async function prefetchTokenThumbnail(tokenId) {
 export async function prefetchGeneratorThumbnail(generatorId) {
   try {
     const prefetchUrl = getGeneratorThumbnailPrefetchUrl(generatorId);
-    const response = await fetch(prefetchUrl, { method: 'HEAD' });
-    
+    const response = await fetch(prefetchUrl, { method: "HEAD" });
+
     if (response.ok) {
       console.log(`Generator ${generatorId} thumbnail prefetch successful`);
       return true;
     } else {
-      console.warn(`Generator ${generatorId} thumbnail prefetch failed:`, response.status);
+      console.warn(
+        `Generator ${generatorId} thumbnail prefetch failed:`,
+        response.status
+      );
       return false;
     }
   } catch (error) {

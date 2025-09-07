@@ -31,7 +31,7 @@ function Navigation() {
     <header className="header">
       <div className="header-content">
         <div className="logo">
-          <Link to="/">svgKT</Link>
+          <Link to="/">bootloader:</Link>
         </div>
         
         <nav className="nav">
@@ -55,7 +55,7 @@ function Footer() {
       <div className="footer-content">
         <div className="footer-links">
           <Link to="/help">Help</Link>
-          <a href="https://github.com/svgkt-monorepo/svgkt-monorepo" target="_blank" rel="noopener noreferrer">
+          <a href="https://github.com/objkt-com/bootloader-monorepo" target="_blank" rel="noopener noreferrer">
             GitHub
           </a>
         </div>

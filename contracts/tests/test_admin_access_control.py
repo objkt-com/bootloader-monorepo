@@ -8,7 +8,7 @@ This module tests all administrative functions and access control mechanisms:
 - Admin transfer functionality
 """
 
-from svgkt import svgkt
+from bootloader import bootloader
 from randomiser import randomiser
 import smartpy as sp
 import os
@@ -31,7 +31,7 @@ def test_admin_only_operations():
     - Removing moderators
     - Setting administrator
     """
-    scenario = sp.test_scenario("Admin Only Operations", [svgkt, randomiser])
+    scenario = sp.test_scenario("Admin Only Operations", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -41,7 +41,7 @@ def test_admin_only_operations():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -100,7 +100,7 @@ def test_moderator_permissions():
     - Flagging generators
     - Setting byte limits
     """
-    scenario = sp.test_scenario("Moderator Permissions", [svgkt, randomiser])
+    scenario = sp.test_scenario("Moderator Permissions", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -113,7 +113,7 @@ def test_moderator_permissions():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -186,7 +186,7 @@ def test_access_control_enforcement():
     - Non-mods cannot set treasury, platform fees, add fragments, etc.
     - Non-authors cannot update generators or set sales
     """
-    scenario = sp.test_scenario("Access Control Enforcement", [svgkt, randomiser])
+    scenario = sp.test_scenario("Access Control Enforcement", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -196,7 +196,7 @@ def test_access_control_enforcement():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -271,14 +271,14 @@ def test_platform_fee_limits():
     - Platform fees cannot exceed 10000 BPS (100%)
     - Valid platform fee changes work correctly
     """
-    scenario = sp.test_scenario("Platform Fee Limits", [svgkt, randomiser])
+    scenario = sp.test_scenario("Platform Fee Limits", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
 
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),

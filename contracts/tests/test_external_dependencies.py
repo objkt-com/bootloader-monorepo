@@ -9,7 +9,7 @@ This module tests external dependencies and various edge cases:
 - Edge cases and boundary conditions
 """
 
-from svgkt import svgkt
+from bootloader import bootloader
 from randomiser import randomiser
 import smartpy as sp
 import os
@@ -40,7 +40,7 @@ def test_missing_fragments():
     - Contract requires all necessary fragments
     - Fragment dependencies are properly checked
     """
-    scenario = sp.test_scenario("Missing Fragments", [svgkt, randomiser])
+    scenario = sp.test_scenario("Missing Fragments", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -49,7 +49,7 @@ def test_missing_fragments():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -102,7 +102,7 @@ def test_rng_contract_missing_view():
     - Airdrop fails when RNG contract lacks 'rb' view
     - Contract handles missing view gracefully
     """
-    scenario = sp.test_scenario("RNG Contract Missing View", [svgkt, randomiser])
+    scenario = sp.test_scenario("RNG Contract Missing View", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -111,7 +111,7 @@ def test_rng_contract_missing_view():
     no_rng_contract = test_utils.NoRngContract()
     scenario += no_rng_contract
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=no_rng_contract.address, 
         contract_metadata=sp.big_map({}),
@@ -175,7 +175,7 @@ def test_rng_contract_update():
     - Non-mods cannot update RNG contract
     - New RNG contract is used for subsequent operations
     """
-    scenario = sp.test_scenario("RNG Contract Update", [svgkt, randomiser])
+    scenario = sp.test_scenario("RNG Contract Update", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -188,7 +188,7 @@ def test_rng_contract_update():
     rng2 = test_utils.MockRngContract()
     scenario += rng2
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng1.address, 
         contract_metadata=sp.big_map({}),
@@ -227,7 +227,7 @@ def test_fragment_management():
     - Overwriting existing fragments
     - Fragment access control
     """
-    scenario = sp.test_scenario("Fragment Management", [svgkt, randomiser])
+    scenario = sp.test_scenario("Fragment Management", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -236,7 +236,7 @@ def test_fragment_management():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -293,7 +293,7 @@ def test_contract_interaction_edge_cases():
     - Large entropy values
     - Contract address generation
     """
-    scenario = sp.test_scenario("Contract Interaction Edge Cases", [svgkt, randomiser])
+    scenario = sp.test_scenario("Contract Interaction Edge Cases", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -302,7 +302,7 @@ def test_contract_interaction_edge_cases():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -368,7 +368,7 @@ def test_boundary_conditions():
     - Minimum values for various parameters
     - Edge cases in calculations
     """
-    scenario = sp.test_scenario("Boundary Conditions", [svgkt, randomiser])
+    scenario = sp.test_scenario("Boundary Conditions", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -376,7 +376,7 @@ def test_boundary_conditions():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -431,7 +431,7 @@ def test_state_consistency():
     - Token counters are properly maintained
     - Reserved editions are properly tracked
     """
-    scenario = sp.test_scenario("State Consistency", [svgkt, randomiser])
+    scenario = sp.test_scenario("State Consistency", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -440,7 +440,7 @@ def test_state_consistency():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -554,7 +554,7 @@ def test_complex_scenarios():
     - Generator updates during active sales
     - Multiple generators with different configurations
     """
-    scenario = sp.test_scenario("Complex Scenarios", [svgkt, randomiser])
+    scenario = sp.test_scenario("Complex Scenarios", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -564,7 +564,7 @@ def test_complex_scenarios():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
