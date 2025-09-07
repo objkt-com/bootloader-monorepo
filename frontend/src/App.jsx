@@ -58,7 +58,7 @@ function NetworkBanner() {
   return (
     <div className="network-banner">
       <div className="network-banner-content">
-        {currentNetwork}
+       [{currentNetwork}]
       </div>
     </div>
   );
