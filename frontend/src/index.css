@@ -511,16 +511,19 @@ input:focus, textarea:focus {
 }
 
 .help-btn {
-  background: transparent;
-  border: none;
+  background: var(--color-gray-light);
+  border: var(--border-width) solid var(--color-black);
   cursor: pointer;
   padding: 4px 6px;
   font-size: 16px;
   font-family: var(--font-mono);
   font-weight: 500;
-  color: var(--color-gray-dark);
-  border-radius: 2px;
+  color: var(--color-black);
+  border-radius: var(--border-radius);
   transition: all 0.1s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .help-btn:hover {
@@ -597,42 +600,62 @@ input:focus, textarea:focus {
 }
 
 .seed-value {
-  color: var(--color-gray-dark);
+  color: var(--color-black);
   cursor: pointer;
-  padding: 2px 4px;
-  border-radius: 2px;
-  transition: background-color 0.1s ease;
+  padding: 4px 6px;
+  border-radius: var(--border-radius);
+  transition: all 0.1s ease;
   min-width: 50px;
   text-align: center;
+  background: var(--color-gray-light);
+  border: var(--border-width) solid var(--color-black);
+  font-size: 12px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .seed-value:hover {
-  background-color: var(--color-gray-light);
+  background: var(--color-black);
+  color: var(--color-white);
 }
 
 .seed-input {
   width: 80px;
   font-size: 12px;
-  padding: 2px 4px;
+  padding: 4px 6px;
   border: var(--border-width) solid var(--color-black);
-  background: var(--color-white);
+  background: var(--color-gray-light);
   font-family: var(--font-mono);
   text-align: center;
-  border-radius: 2px;
+  border-radius: var(--border-radius);
+  color: var(--color-gray-dark);
+  font-weight: 500;
+}
+
+.seed-input:focus {
+  outline: none;
+  border-color: var(--color-black);
+  background: var(--color-white);
+  color: var(--color-black);
 }
 
 .seed-random-btn {
-  background: transparent;
-  border: none;
+  background: var(--color-gray-light);
+  border: var(--border-width) solid var(--color-black);
   cursor: pointer;
   padding: 4px 6px;
   font-size: 16px;
   font-family: var(--font-mono);
   font-weight: 500;
-  color: var(--color-gray-dark);
-  border-radius: 2px;
+  color: var(--color-black);
+  border-radius: var(--border-radius);
   transition: all 0.1s ease;
-  margin-left: 2px;
+  margin-left: var(--spacing-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .seed-random-btn:hover {
@@ -650,17 +673,20 @@ input:focus, textarea:focus {
 }
 
 .refresh-btn {
-  background: transparent;
-  border: none;
+  background: var(--color-gray-light);
+  border: var(--border-width) solid var(--color-black);
   cursor: pointer;
   padding: 4px 6px;
   font-size: 16px;
   font-family: var(--font-mono);
   font-weight: 500;
-  color: var(--color-gray-dark);
-  border-radius: 2px;
+  color: var(--color-black);
+  border-radius: var(--border-radius);
   transition: all 0.1s ease;
   margin-left: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .refresh-btn:hover {
@@ -2250,7 +2276,7 @@ small .inline-icon {
 .fullscreen-controls {
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
+  gap: var(--spacing-sm);
 }
 
 .fullscreen-controls .preview-controls {
@@ -2298,12 +2324,17 @@ small .inline-icon {
 }
 
 .fullscreen-btn {
-  font-size: 12px;
-  padding: 2px 6px;
-  background: var(--color-white);
+  font-size: 16px;
+  font-weight: 500;
+  padding: 4px 6px;
+  background: var(--color-gray-light);
   border: var(--border-width) solid var(--color-black);
-  cursor: pointer;
   border-radius: var(--border-radius);
+  cursor: pointer;
+  color: var(--color-black);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: all 0.1s ease;
 }
 
@@ -2313,25 +2344,24 @@ small .inline-icon {
 }
 
 .close-fullscreen-btn {
-  font-size: 18px;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  background: var(--color-white);
-  border: var(--border-width) solid var(--color-white);
+  background: var(--color-gray-light);
+  border: var(--border-width) solid var(--color-black);
   cursor: pointer;
+  padding: 4px 6px;
+  font-size: 16px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  color: var(--color-black);
   border-radius: var(--border-radius);
   transition: all 0.1s ease;
-  width: 32px;
-  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-black);
 }
 
 .close-fullscreen-btn:hover {
   background: var(--color-black);
   color: var(--color-white);
-  border-color: var(--color-white);
 }
 
 .fullscreen-preview {

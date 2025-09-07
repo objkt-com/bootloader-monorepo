@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { Maximize2, X } from 'lucide-react';
 import { tezosService } from '../services/tezos.js';
 import { tzktService } from '../services/tzkt.js';
 import { getNetworkConfig, getContractAddress } from '../config.js';
@@ -718,7 +719,7 @@ export default function GeneratorDetail() {
                 onClick={() => setShowFullscreenPreview(true)}
                 title="View fullscreen"
               >
-                ⛶
+                <Maximize2 size={16} />
               </button>
             </div>
           </div>
@@ -984,7 +985,7 @@ export default function GeneratorDetail() {
                   onClick={() => setShowFullscreenPreview(false)}
                   title="Close fullscreen"
                 >
-                  ✕
+                  <X size={16} />
                 </button>
               </div>
             </div>
