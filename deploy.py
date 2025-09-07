@@ -50,7 +50,6 @@ bootloader = load_lambda_from_name('lambda_0_0_1')
 
 print(nft.add_bootloader(
     version='0.0.1'.encode(), 
-    name='bootloader'.encode(), 
     fragments=[f.encode() for f in fragments], 
     fun=bootloader,
     storage_limits={

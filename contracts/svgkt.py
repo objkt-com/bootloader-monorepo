@@ -57,7 +57,6 @@ def svgkt():
             self.data.moderators = sp.cast(sp.big_map({}), sp.big_map[sp.address, sp.unit])
             self.data.generator_mints = sp.cast(sp.big_map({}), sp.big_map[sp.pair[sp.nat, sp.address], sp.nat])
             self.data.bootloaders = sp.cast(sp.big_map({}), sp.big_map[sp.nat, sp.record(
-                name=sp.bytes,
                 version=sp.bytes,
                 fragments=sp.list[sp.bytes],
                 fun=t_lambda,
@@ -102,9 +101,9 @@ def svgkt():
             del self.data.moderators[address]
         
         @sp.entrypoint
-        def add_bootloader(self, version: sp.bytes, name: sp.bytes, fragments: sp.list[sp.bytes], fun: t_lambda, storage_limits):
+        def add_bootloader(self, version: sp.bytes, fragments: sp.list[sp.bytes], fun: t_lambda, storage_limits):
             assert sp.sender == self.data.administrator, "ONLY_ADMIN"
-            self.data.bootloaders[self.data.next_bootloader_id] = sp.record(name=name, version=version, fragments=fragments, fun=fun)
+            self.data.bootloaders[self.data.next_bootloader_id] = sp.record(version=version, fragments=fragments, fun=fun)
             self.data.bootloader_storage_limits[self.data.next_bootloader_id] = storage_limits
             self.data.next_bootloader_id += 1
         
