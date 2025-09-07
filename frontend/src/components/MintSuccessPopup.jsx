@@ -31,7 +31,7 @@ export default function MintSuccessPopup({
       ? `@${authorTwitter}` 
       : (authorDisplayName || 'the artist');
     
-    const tweetText = `I just minted "${tokenName}" by ${authorIdentifier}. A long-form generative onchain SVG via @svgkt_art ${generatorUrl || ''}`.trim();
+    const tweetText = `I just minted "${tokenName}" by ${authorIdentifier}. A long-form generative onchain SVG via @bootloader_art ${generatorUrl || ''}`.trim();
     const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
     window.open(tweetUrl, '_blank', 'noopener,noreferrer');
   };

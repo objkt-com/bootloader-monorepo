@@ -11,7 +11,7 @@ This module tests all minting-related functionality:
 - Pause behavior with airdrops
 """
 
-from svgkt import svgkt
+from bootloader import bootloader
 from randomiser import randomiser
 import smartpy as sp
 import os
@@ -26,7 +26,7 @@ def test_public_minting():
     - Generator token count updates
     - Token extra data storage
     """
-    scenario = sp.test_scenario("Public Minting", [svgkt, randomiser])
+    scenario = sp.test_scenario("Public Minting", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -35,7 +35,7 @@ def test_public_minting():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -108,7 +108,7 @@ def test_free_minting():
     - Overpaying for free mint fails
     - Free mint with correct amount (zero)
     """
-    scenario = sp.test_scenario("Free Minting", [svgkt, randomiser])
+    scenario = sp.test_scenario("Free Minting", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -118,7 +118,7 @@ def test_free_minting():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -187,7 +187,7 @@ def test_airdrop_functionality():
     - Airdrop works when sale is paused
     - Airdrop fails when no reserved editions left
     """
-    scenario = sp.test_scenario("Airdrop Functionality", [svgkt, randomiser])
+    scenario = sp.test_scenario("Airdrop Functionality", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -197,7 +197,7 @@ def test_airdrop_functionality():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -284,7 +284,7 @@ def test_airdrop_with_paused_sale():
     - Airdrop works when sale is paused
     - Public minting fails when paused
     """
-    scenario = sp.test_scenario("Airdrop with Paused Sale", [svgkt, randomiser])
+    scenario = sp.test_scenario("Airdrop with Paused Sale", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -294,7 +294,7 @@ def test_airdrop_with_paused_sale():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -361,7 +361,7 @@ def test_edition_limits():
     - Sold out conditions
     - Airdrop can exceed public limit but not total limit
     """
-    scenario = sp.test_scenario("Edition Limits", [svgkt, randomiser])
+    scenario = sp.test_scenario("Edition Limits", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -371,7 +371,7 @@ def test_edition_limits():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -449,7 +449,7 @@ def test_reserved_editions_comprehensive():
     - Airdrop decrements reserved editions
     - Mixed minting and airdrop scenarios
     """
-    scenario = sp.test_scenario("Reserved Editions Comprehensive", [svgkt, randomiser])
+    scenario = sp.test_scenario("Reserved Editions Comprehensive", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -459,7 +459,7 @@ def test_reserved_editions_comprehensive():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -547,7 +547,7 @@ def test_sold_out_conditions():
     - Complete sold out (no reserved editions)
     - Airdrop behavior when sold out
     """
-    scenario = sp.test_scenario("Sold Out Conditions", [svgkt, randomiser])
+    scenario = sp.test_scenario("Sold Out Conditions", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -556,7 +556,7 @@ def test_sold_out_conditions():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),

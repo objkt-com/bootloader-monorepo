@@ -10,7 +10,7 @@ This module tests all payment-related functionality:
 - Zero payment handling
 """
 
-from svgkt import svgkt
+from bootloader import bootloader
 from randomiser import randomiser
 import smartpy as sp
 import os
@@ -42,7 +42,7 @@ def test_platform_fee_calculation():
     - Remaining amount sent to author
     - Fee calculation with different percentages
     """
-    scenario = sp.test_scenario("Platform Fee Calculation", [svgkt, randomiser])
+    scenario = sp.test_scenario("Platform Fee Calculation", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -54,7 +54,7 @@ def test_platform_fee_calculation():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -117,7 +117,7 @@ def test_maximum_platform_fee():
     - All payment goes to treasury when fee is 100%
     - Author receives nothing when fee is 100%
     """
-    scenario = sp.test_scenario("Maximum Platform Fee", [svgkt, randomiser])
+    scenario = sp.test_scenario("Maximum Platform Fee", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -129,7 +129,7 @@ def test_maximum_platform_fee():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -191,7 +191,7 @@ def test_zero_platform_fee():
     - All payment goes to author when fee is 0%
     - Treasury receives nothing when fee is 0%
     """
-    scenario = sp.test_scenario("Zero Platform Fee", [svgkt, randomiser])
+    scenario = sp.test_scenario("Zero Platform Fee", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -203,7 +203,7 @@ def test_zero_platform_fee():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -266,7 +266,7 @@ def test_free_minting_no_payments():
     - No payment to author for free mints
     - Zero amount handling
     """
-    scenario = sp.test_scenario("Free Minting No Payments", [svgkt, randomiser])
+    scenario = sp.test_scenario("Free Minting No Payments", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -278,7 +278,7 @@ def test_free_minting_no_payments():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -340,7 +340,7 @@ def test_treasury_payment_failure():
     - Minting fails when treasury rejects payment
     - Contract handles treasury rejection gracefully
     """
-    scenario = sp.test_scenario("Treasury Payment Failure", [svgkt, randomiser])
+    scenario = sp.test_scenario("Treasury Payment Failure", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -352,7 +352,7 @@ def test_treasury_payment_failure():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -411,7 +411,7 @@ def test_fee_precision():
     - Large amounts with fees
     - Edge cases in fee calculation
     """
-    scenario = sp.test_scenario("Fee Precision", [svgkt, randomiser])
+    scenario = sp.test_scenario("Fee Precision", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -423,7 +423,7 @@ def test_fee_precision():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -488,7 +488,7 @@ def test_multiple_payments_accumulation():
     - Multiple mints with different amounts
     - Fee accumulation over time
     """
-    scenario = sp.test_scenario("Multiple Payments Accumulation", [svgkt, randomiser])
+    scenario = sp.test_scenario("Multiple Payments Accumulation", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -500,7 +500,7 @@ def test_multiple_payments_accumulation():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -575,7 +575,7 @@ def test_dynamic_fee_changes():
     - Different fees for different mints
     - Fee changes don't affect existing tokens
     """
-    scenario = sp.test_scenario("Dynamic Fee Changes", [svgkt, randomiser])
+    scenario = sp.test_scenario("Dynamic Fee Changes", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -587,7 +587,7 @@ def test_dynamic_fee_changes():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),

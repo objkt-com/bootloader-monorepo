@@ -10,7 +10,7 @@ This module tests all FA2-related functionality:
 - Owner-only operations
 """
 
-from svgkt import svgkt
+from bootloader import bootloader
 from randomiser import randomiser
 import smartpy as sp
 import os
@@ -23,7 +23,7 @@ def test_token_transfers():
     - Transfer ownership changes
     - Transfer validation
     """
-    scenario = sp.test_scenario("Token Transfers", [svgkt, randomiser])
+    scenario = sp.test_scenario("Token Transfers", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -33,7 +33,7 @@ def test_token_transfers():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -98,7 +98,7 @@ def test_token_burning():
     - Non-owner cannot burn tokens
     - Token removal from ledger
     """
-    scenario = sp.test_scenario("Token Burning", [svgkt, randomiser])
+    scenario = sp.test_scenario("Token Burning", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -108,7 +108,7 @@ def test_token_burning():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -184,7 +184,7 @@ def test_token_regeneration():
     - Generator version tracking
     - No regeneration when no update available
     """
-    scenario = sp.test_scenario("Token Regeneration", [svgkt, randomiser])
+    scenario = sp.test_scenario("Token Regeneration", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -193,7 +193,7 @@ def test_token_regeneration():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -284,7 +284,7 @@ def test_thumbnail_updates():
     - Admin can update thumbnails
     - Non-privileged users cannot update thumbnails
     """
-    scenario = sp.test_scenario("Thumbnail Updates", [svgkt, randomiser])
+    scenario = sp.test_scenario("Thumbnail Updates", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -294,7 +294,7 @@ def test_thumbnail_updates():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -382,7 +382,7 @@ def test_token_metadata_creation():
     - Iteration numbers are tracked correctly
     - Token metadata structure is correct
     """
-    scenario = sp.test_scenario("Token Metadata Creation", [svgkt, randomiser])
+    scenario = sp.test_scenario("Token Metadata Creation", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -391,7 +391,7 @@ def test_token_metadata_creation():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -460,7 +460,7 @@ def test_multiple_token_operations():
     - Multiple burns in single transaction
     - Mixed token operations
     """
-    scenario = sp.test_scenario("Multiple Token Operations", [svgkt, randomiser])
+    scenario = sp.test_scenario("Multiple Token Operations", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -470,7 +470,7 @@ def test_multiple_token_operations():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -554,7 +554,7 @@ def test_token_ownership_validation():
     - Ownership changes are properly tracked
     - Operations fail with correct errors for non-owners
     """
-    scenario = sp.test_scenario("Token Ownership Validation", [svgkt, randomiser])
+    scenario = sp.test_scenario("Token Ownership Validation", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -564,7 +564,7 @@ def test_token_ownership_validation():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),

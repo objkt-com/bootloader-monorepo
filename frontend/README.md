@@ -1,6 +1,6 @@
-# svgKT - On-chain SVG Generator Platform
+# bootloader - On-chain Generative Art Platform
 
-A minimalist web interface for the svgKT smart contract that allows users to create, edit, and mint generative SVG art on the Tezos blockchain.
+A minimalist web interface for the bootloader smart contract that allows users to create, edit, and mint generative SVG art on the Tezos blockchain.
 
 ## Features
 
@@ -21,11 +21,13 @@ A minimalist web interface for the svgKT smart contract that allows users to cre
 ### Installation
 
 1. Install dependencies:
+
 ```bash
 npm install
 ```
 
 2. Start the development server:
+
 ```bash
 npm run dev
 ```
@@ -34,7 +36,8 @@ npm run dev
 
 ### Configuration
 
-The app is configured to work with the svgKT contract at:
+The app is configured to work with the bootloader contract at:
+
 - **Contract Address**: `KT1DZrTdXKU35MzLygZkmyWHDuEu1hJhm4qn`
 - **Network**: Mainnet (configurable in `src/config.js`)
 
@@ -52,6 +55,7 @@ The platform uses a fragment-based architecture where:
 ### Code Editor
 
 The Monaco Editor provides:
+
 - JavaScript syntax highlighting
 - Boilerplate code display (read-only)
 - Live preview as you type
@@ -72,10 +76,10 @@ When writing generator code, you have access to:
 
 ```javascript
 // Create random circles
-for(let i=0; i<80; i++){
-  let radius = 5 + (90 * rnd() | 0);
-  let x = radius + (rnd() * (800 - 2 * radius) | 0);
-  let y = radius + (rnd() * (600 - 2 * radius) | 0);
+for (let i = 0; i < 80; i++) {
+  let radius = 5 + ((90 * rnd()) | 0);
+  let x = radius + ((rnd() * (800 - 2 * radius)) | 0);
+  let y = radius + ((rnd() * (600 - 2 * radius)) | 0);
   let circle = document.createElementNS(NS, "circle");
   circle.setAttribute("cx", x);
   circle.setAttribute("cy", y);
@@ -122,7 +126,7 @@ frontend/
 
 ## Design Philosophy
 
-svgKT follows a minimalist design inspired by hicetnunc.xyz:
+bootloader follows a minimalist design inspired by hicetnunc.xyz:
 
 - **Monospace typography** (Courier New)
 - **Black and white color scheme**
@@ -132,7 +136,7 @@ svgKT follows a minimalist design inspired by hicetnunc.xyz:
 
 ## Smart Contract Integration
 
-The frontend interacts with the svgKT smart contract through:
+The frontend interacts with the bootloader smart contract through:
 
 - **create_generator**: Submit new generators
 - **update_generator**: Modify existing generators (author only)

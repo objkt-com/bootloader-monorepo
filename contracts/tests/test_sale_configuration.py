@@ -10,7 +10,7 @@ This module tests all sale-related functionality:
 - Zero editions edge case
 """
 
-from svgkt import svgkt
+from bootloader import bootloader
 from randomiser import randomiser
 import smartpy as sp
 import os
@@ -23,7 +23,7 @@ def test_sale_configuration():
     - Non-author cannot set sale
     - Sale parameters are stored correctly
     """
-    scenario = sp.test_scenario("Sale Configuration", [svgkt, randomiser])
+    scenario = sp.test_scenario("Sale Configuration", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -32,7 +32,7 @@ def test_sale_configuration():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -91,7 +91,7 @@ def test_edition_limits_and_reductions():
     - Edition reduction is allowed when no tokens minted
     - Edition increment is not allowed after minting starts
     """
-    scenario = sp.test_scenario("Edition Limits and Reductions", [svgkt, randomiser])
+    scenario = sp.test_scenario("Edition Limits and Reductions", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -100,7 +100,7 @@ def test_edition_limits_and_reductions():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -203,7 +203,7 @@ def test_max_per_wallet():
     - Different wallets can mint independently
     - No limit when max_per_wallet is None
     """
-    scenario = sp.test_scenario("Max Per Wallet", [svgkt, randomiser])
+    scenario = sp.test_scenario("Max Per Wallet", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -213,7 +213,7 @@ def test_max_per_wallet():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -294,7 +294,7 @@ def test_sale_states():
     - Price mismatch rejection
     - No sale configuration rejection
     """
-    scenario = sp.test_scenario("Sale States", [svgkt, randomiser])
+    scenario = sp.test_scenario("Sale States", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -303,7 +303,7 @@ def test_sale_states():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -411,7 +411,7 @@ def test_timestamp_boundaries():
     - Minting exactly at start time
     - Minting before and after start time
     """
-    scenario = sp.test_scenario("Timestamp Boundaries", [svgkt, randomiser])
+    scenario = sp.test_scenario("Timestamp Boundaries", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -420,7 +420,7 @@ def test_timestamp_boundaries():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -474,7 +474,7 @@ def test_zero_editions_edge_case():
     - Setting zero editions should prevent all public minting
     - Airdrop should still work if reserved editions available
     """
-    scenario = sp.test_scenario("Zero Editions Edge Case", [svgkt, randomiser])
+    scenario = sp.test_scenario("Zero Editions Edge Case", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -483,7 +483,7 @@ def test_zero_editions_edge_case():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -538,7 +538,7 @@ def test_large_sale_parameters():
     - Large max per wallet values
     - Maximum reasonable values
     """
-    scenario = sp.test_scenario("Large Sale Parameters", [svgkt, randomiser])
+    scenario = sp.test_scenario("Large Sale Parameters", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -546,7 +546,7 @@ def test_large_sale_parameters():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),
@@ -588,7 +588,7 @@ def test_price_exactness():
     - Underpaying is not allowed
     - Exact payment works
     """
-    scenario = sp.test_scenario("Price Exactness", [svgkt, randomiser])
+    scenario = sp.test_scenario("Price Exactness", [bootloader, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -597,7 +597,7 @@ def test_price_exactness():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin_address=admin.address,
         rng_contract=rng.address, 
         contract_metadata=sp.big_map({}),

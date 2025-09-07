@@ -1,9 +1,9 @@
 {
-  "name": "svgkt-frontend",
+  "name": "bootloader-frontend",
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "description": "svgKT - On-chain SVG Generator Platform",
+  "description": "bootloader - On-chain Generative Art Platform",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

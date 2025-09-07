@@ -5,7 +5,7 @@ from utils import bytes_utils, list_utils
 main = fa2.main
 
 @sp.module  
-def svgkt():
+def bootloader():
     import main
     import bytes_utils
     import list_utils
@@ -27,7 +27,7 @@ def svgkt():
     t_lambda: type = sp.lambda_(t_lambda_params, sp.map[sp.string, sp.bytes])
 
     # Order of inheritance: [Admin], [<policy>], <base class>, [<other mixins>].
-    class SvgKT(
+    class Bootloader(
         main.Admin,
         main.Nft,
         main.MintNft,
@@ -381,9 +381,9 @@ def svgkt():
 def test():
     # Create and configure the test scenario
     # Import the types from the FA2 library, the library itself, and the contract module, in that order.
-    scenario = sp.test_scenario("svgkt")
+    scenario = sp.test_scenario("bootloader")
     admin = sp.test_account("admin")
-    contract = svgkt.SvgKT(
+    contract = bootloader.Bootloader(
         admin.address, admin.address, sp.big_map({}), {}, []
     )
     scenario += contract
@@ -391,5 +391,5 @@ def test():
 @sp.add_test()
 def test():
     scenario = sp.test_scenario("lambda_0_0_1")
-    scenario += svgkt.LambdaHelper(svgkt.v0_0_1)
+    scenario += bootloader.LambdaHelper(bootloader.v0_0_1)
 

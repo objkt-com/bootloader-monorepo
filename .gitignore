@@ -1,6 +1,6 @@
 # Project specific
-svgkt/
-svgkt_test/
+bootloader/
+bootloader_test/
 randomiser/
 lambda_0_0_1/
 
