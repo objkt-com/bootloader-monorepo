@@ -111,7 +111,7 @@ def bootloader():
 
         @sp.entrypoint
         def create_generator(self, name: sp.bytes, description: sp.bytes, code: sp.bytes, author_bytes: sp.bytes, reserved_editions: sp.nat, bootloader_id: sp.nat):
-            assert self.data.bootloaders.contains(bootloader_id), "UNKOWN_bootloader"
+            assert self.data.bootloaders.contains(bootloader_id), "UNKNOWN_BOOTLOADER"
             storage_limits = self.data.bootloader_storage_limits[bootloader_id]
             assert sp.len(name) <= storage_limits.name, "NAME_TOO_LONG"
             assert sp.len(description) <= storage_limits.desc, "DESC_TOO_LONG"
@@ -315,7 +315,8 @@ def bootloader():
                             sp.send(self.data.treasury, platform_fee)
                         if rest > sp.mutez(0):
                             sp.send(generator.author, rest)
-                                        # get_entropy
+
+                    # get_entropy
                     c = sp.create_contract_operation(EmptyContract, None, sp.mutez(0), ())
                     e = sp.view("rb", self.data.rng_contract, sp.sha256(entropy + sp.pack(c.address)+sp.pack(generator.n_tokens)), sp.bytes).unwrap_some()
                     sp.send(self.data.rng_contract, sp.mutez(0))
@@ -405,7 +406,7 @@ def bootloader():
         iteration_bytes = bytes_utils.from_nat(p.iteration_number)
         token_id_bytes = bytes_utils.from_nat(p.token_id)
 
-        # "https://media.bootloader.com/thumbnail/" + token_id + "?v=" + generator_version
+        # "https://media.bootloader.com/thumbnail/" + token_id + "?v=" + generator_version + n=g (ghostnet flag)
         thumbnail_uri_bytes = (
             sp.bytes("0x68747470733a2f2f6d656469612e626f6f746c6f616465722e636f6d2f7468756d626e61696c2f")
             + token_id_bytes
