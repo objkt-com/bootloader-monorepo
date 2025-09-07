@@ -298,8 +298,7 @@ for (let i = 0; i < 5; i++) {
       {error && <div className="error">{error}</div>}
       {success && <div className="success">{success}</div>}
 
-      <div className="actions">
-        <button onClick={() => navigate('/')}>Cancel</button>
+      <div className="actions" style={{ justifyContent: 'flex-end' }}>
         <div className="action-with-cost">
         <button 
           onClick={handleCreate}
