@@ -89,8 +89,6 @@ export default function SVGPreview({ code, seed = 12345, width = 400, height = 3
       <iframe
         src={svgUrl}
         style={{ 
-          border: '1px solid #ccc', 
-          background: 'white',
           overflow: 'hidden'
         }}
         scrolling="no"

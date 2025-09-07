@@ -38,17 +38,8 @@ for (let i = 0; i < 5; i++) {
     <div className="help-container">
       <div className="help-content">
         {/* Experimental Software Warning */}
-        <div className="warning-banner" style={{
-          backgroundColor: '#fff3cd',
-          border: '1px solid #ffeaa7',
-          borderRadius: '8px',
-          padding: '16px',
-          marginBottom: '24px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px'
-        }}>
-          <div style={{fontSize: '24px'}}>⚠️</div>
+        <div className="warning-banner">
+          <div className="warning-icon">⚠️</div>
           <div>
             <strong>Experimental Software Notice:</strong> bootloader is experimental alpha software that has not been audited. 
             This is an open source project available at{' '}
@@ -60,33 +51,20 @@ for (let i = 0; i < 5; i++) {
         </div>
 
         {/* objkt labs branding */}
-        <div className="objkt-labs-branding" style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          marginBottom: '32px',
-          padding: '16px',
-          backgroundColor: '#f8f9fa',
-          borderRadius: '8px',
-          border: '1px solid #e9ecef'
-        }}>
+        <div className="objkt-labs-branding">
           <img 
             src="/objkt_labs_logo.png" 
             alt="objkt labs" 
-            style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '8px'
-            }}
+            className="objkt-labs-logo"
           />
           <div>
-            <div style={{fontWeight: 'bold', marginBottom: '4px'}}>Part of objkt labs</div>
-            <div style={{fontSize: '14px', color: '#666', marginBottom: '8px'}}>
+            <div className="objkt-labs-title">Part of objkt labs</div>
+            <div className="objkt-labs-description">
               objkt labs encompasses residencies, educational initiatives, and experimental content for the Tezos ecosystem.
               This entire project is an open source mono-repo.
             </div>
-            <div style={{fontSize: '14px'}}>
-              <a href="https://x.com/objktlabs" target="_blank" rel="noopener noreferrer" style={{color: '#1da1f2', textDecoration: 'none'}}>
+            <div className="objkt-labs-link">
+              <a href="https://x.com/objktlabs" target="_blank" rel="noopener noreferrer">
                 Follow @objktlabs on X →
               </a>
             </div>
@@ -190,18 +168,7 @@ for (let i = 0; i < 5; i++) {
         <p>Your generator code runs inside an SVG "bootloader" that provides access to the <code>$b</code> object. This is where your code executes. Currently there is no standard library - only these 4 properties are available (this will change in the future):</p>
         
         <h4>The $b Object</h4>
-        <pre style={{
-          backgroundColor: '#f8f9fa',
-          border: '1px solid #e9ecef',
-          borderRadius: '8px',
-          padding: '16px',
-          fontSize: '14px',
-          lineHeight: '1.4',
-          overflow: 'auto',
-          marginBottom: '24px',
-          width: '100%',
-          display: 'block'
-        }}><code>{`// The $b object provided to your code:
+        <pre className="code-preview"><code>{`// The $b object provided to your code:
 const $b = {
   rnd: sfc32(a,b,c,d),           // Deterministic random function (0-1)
   SEED: SEED,                    // Raw BigInt seed from blockchain
@@ -312,7 +279,7 @@ svg = document.documentElement;`}</code></pre>
         </p>
 
         <div className="assembly-diagram">
-          <h4 style={{marginTop: '1rem', marginBottom: '1.5rem', textAlign: 'center'}}>NFT Name Assembly</h4>
+          <h4 className="assembly-title">NFT Name Assembly</h4>
           <div className="fragment-flow">
             <div className="fragment-box">
               <div className="fragment-header">generator.name</div>
@@ -355,7 +322,7 @@ svg = document.documentElement;`}</code></pre>
         </div>
 
         <div className="assembly-diagram">
-          <h4 style={{marginTop: '1rem', marginBottom: '1.5rem', textAlign: 'center'}}>SVG Fragment Assembly Process</h4>
+          <h4 className="assembly-title">SVG Fragment Assembly Process</h4>
           <div className="fragment-flow">
             <div className="fragment-box">
               <div className="fragment-header">
@@ -401,7 +368,7 @@ svg = document.documentElement;`}</code></pre>
             <div className="fragment-box user-code">
               <div className="fragment-header">Your Generator Code</div>
               <div className="fragment-content">
-                <pre style={{whiteSpace: 'pre-wrap', wordWrap: 'break-word'}}><code>{`// Your creative code here
+                <pre className="fragment-code-example"><code>{`// Your creative code here
 const { rnd, svg } = $b;
 
 svg.setAttribute('viewBox', '0 0 400 400');
@@ -449,101 +416,101 @@ svg.appendChild(circle);`}</code></pre>
           Here are the fields stored for each generator:
         </p>
 
-        <div style={{overflowX: 'auto', marginBottom: '2rem'}}>
-          <table style={{width: '100%', borderCollapse: 'collapse', fontSize: '14px'}}>
+        <div className="help-table-container">
+          <table className="help-table">
             <thead>
-              <tr style={{backgroundColor: '#f5f5f5'}}>
-                <th style={{padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd'}}>Field</th>
-                <th style={{padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd'}}>Type</th>
-                <th style={{padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd'}}>Max Size</th>
-                <th style={{padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd'}}>Description</th>
-                <th style={{padding: '12px', textAlign: 'left', borderBottom: '2px solid #ddd'}}>Mutable</th>
+              <tr>
+                <th>Field</th>
+                <th>Type</th>
+                <th>Max Size</th>
+                <th>Description</th>
+                <th>Mutable</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}><code>name</code></td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>bytes</td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>100 bytes</td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>Display name for your generator</td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>✅</td>
+                <td><code>name</code></td>
+                <td>bytes</td>
+                <td>100 bytes</td>
+                <td>Display name for your generator</td>
+                <td>✅</td>
               </tr>
               <tr>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}><code>description</code></td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>bytes</td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>8,000 bytes</td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>Extracted from first /* */ comment in code</td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>✅</td>
+                <td><code>description</code></td>
+                <td>bytes</td>
+                <td>8,000 bytes</td>
+                <td>Extracted from first /* */ comment in code</td>
+                <td>✅</td>
               </tr>
               <tr>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}><code>code</code></td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>bytes</td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>30,000 bytes</td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>Your JavaScript generator code</td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>✅</td>
+                <td><code>code</code></td>
+                <td>bytes</td>
+                <td>30,000 bytes</td>
+                <td>Your JavaScript generator code</td>
+                <td>✅</td>
               </tr>
               <tr>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}><code>author</code></td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>address</td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>36 bytes</td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>Your Tezos address</td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>❌</td>
+                <td><code>author</code></td>
+                <td>address</td>
+                <td>36 bytes</td>
+                <td>Your Tezos address</td>
+                <td>❌</td>
               </tr>
               <tr>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}><code>author_bytes</code></td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>bytes</td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>36 bytes</td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>Hex-encoded address for NFT metadata</td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>✅</td>
+                <td><code>author_bytes</code></td>
+                <td>bytes</td>
+                <td>36 bytes</td>
+                <td>Hex-encoded address for NFT metadata</td>
+                <td>✅</td>
               </tr>
               <tr>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}><code>created</code></td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>timestamp</td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>8 bytes</td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>Creation timestamp</td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>❌</td>
+                <td><code>created</code></td>
+                <td>timestamp</td>
+                <td>8 bytes</td>
+                <td>Creation timestamp</td>
+                <td>❌</td>
               </tr>
               <tr>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}><code>last_update</code></td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>timestamp</td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>8 bytes</td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>Last modification timestamp</td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>Auto</td>
+                <td><code>last_update</code></td>
+                <td>timestamp</td>
+                <td>8 bytes</td>
+                <td>Last modification timestamp</td>
+                <td>Auto</td>
               </tr>
               <tr>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}><code>n_tokens</code></td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>nat</td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>~4 bytes</td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>Number of tokens minted</td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>Auto</td>
+                <td><code>n_tokens</code></td>
+                <td>nat</td>
+                <td>~4 bytes</td>
+                <td>Number of tokens minted</td>
+                <td>Auto</td>
               </tr>
               <tr>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}><code>reserved_editions</code></td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>nat</td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>~4 bytes</td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>Number of editions reserved for airdrops</td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>✅</td>
+                <td><code>reserved_editions</code></td>
+                <td>nat</td>
+                <td>~4 bytes</td>
+                <td>Number of editions reserved for airdrops</td>
+                <td>✅</td>
               </tr>
               <tr>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}><code>flag</code></td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>nat</td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>~4 bytes</td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>Moderation flag (0 = normal, other values for UI filtering)</td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>Mods only</td>
+                <td><code>flag</code></td>
+                <td>nat</td>
+                <td>~4 bytes</td>
+                <td>Moderation flag (0 = normal, other values for UI filtering)</td>
+                <td>Mods only</td>
               </tr>
               <tr>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}><code>version</code></td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>nat</td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>~4 bytes</td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>Generator version (increments on updates)</td>
-                <td style={{padding: '10px', borderBottom: '1px solid #eee'}}>Auto</td>
+                <td><code>version</code></td>
+                <td>nat</td>
+                <td>~4 bytes</td>
+                <td>Generator version (increments on updates)</td>
+                <td>Auto</td>
               </tr>
               <tr>
-                <td style={{padding: '10px'}}><code>sale</code></td>
-                <td style={{padding: '10px'}}>option</td>
-                <td style={{padding: '10px'}}>~32 bytes</td>
-                <td style={{padding: '10px'}}>Sale configuration (price, editions, etc.)</td>
-                <td style={{padding: '10px'}}>✅</td>
+                <td><code>sale</code></td>
+                <td>option</td>
+                <td>~32 bytes</td>
+                <td>Sale configuration (price, editions, etc.)</td>
+                <td>✅</td>
               </tr>
             </tbody>
           </table>
