@@ -191,6 +191,7 @@ class TezosService {
           code: this.stringToBytes(encodedCode),
           author_bytes: this.stringToBytes(this.userAddress || ""),
           reserved_editions: reservedEditions,
+          generator_type_id: 0,
         })
         .send();
 

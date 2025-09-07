@@ -52,5 +52,11 @@ print(nft.add_generator_type(
     version='0.0.1'.encode(), 
     name='bootloader'.encode(), 
     fragments=[f.encode() for f in fragments], 
-    fun=bootloader
+    fun=bootloader,
+    storage_limits={
+        "code": 30000,
+        "desc": 8000,
+        "name": 100,
+        "author": 36,
+    }
 ).send(min_confirmations=1).hash())
