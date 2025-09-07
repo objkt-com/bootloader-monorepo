@@ -91,7 +91,7 @@ export default function WalletConnection() {
         onClick={handleConnect} 
         disabled={isConnecting}
       >
-        {isConnecting ? 'connecting...' : 'connect wallet'}
+        {isConnecting ? 'connecting...' : 'connect'}
       </button>
     </div>
   );
