@@ -263,7 +263,7 @@ for (let i = 0; i < 5; i++) {
         <CodeEditor
           value={code}
           onChange={setCode}
-          height="60vh"
+          height="100%"
           className='show-on-mobile'
         />
         

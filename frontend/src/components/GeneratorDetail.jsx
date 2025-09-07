@@ -689,7 +689,7 @@ export default function GeneratorDetail() {
         <CodeEditor
           value={isEditing ? editCode : formatCodeWithDescription(generator.description || '', generator.code)}
           onChange={isEditing ? setEditCode : () => {}}
-          height="60vh"
+          height="100%"
           readOnly={!isEditing}
           className={showCodeOnMobile ? 'show-on-mobile' : ''}
           forkButton={!isEditing ? (
