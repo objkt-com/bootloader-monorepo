@@ -9,7 +9,8 @@ _getting_started:
     python compile.py
 
     ; deploy smart contracts
-    python deploy.py
+    export TEZOS_PRIVATE_KEY=your-private-key
+    python deploy.py --network ghostnet
 
     ; run frontend
     cd frontend

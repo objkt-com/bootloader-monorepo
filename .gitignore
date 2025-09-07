@@ -2,7 +2,7 @@
 bootloader/
 bootloader_test/
 randomiser/
-lambda_0_0_1/
+lambda_0_0_1*/
 
 # Python
 __pycache__/

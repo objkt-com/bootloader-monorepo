@@ -384,3 +384,43 @@ def bootloader():
             "formats": sp.bytes("0x5B7B226D696D6554797065223A22696D6167652F6A706567222C22757269223A22") + thumbnail_uri_bytes + sp.bytes("0x227D5D"),
             "decimals": sp.bytes("0x30"),
         }
+
+    def v0_0_1_ghostnet(params):
+        p = sp.cast(params, sp.record(
+            fragments=sp.list[sp.bytes],
+            token_id=sp.nat,
+            seed=sp.bytes,
+            iteration_number=sp.nat,
+            generator_name=sp.bytes,
+            generator_author_bytes=sp.bytes,
+            generator_version=sp.nat,
+            generator_code=sp.bytes
+        ))
+        svg_string =    list_utils.element_at((p.fragments, 0)) + \
+                        p.seed + \
+                        list_utils.element_at((p.fragments, 1)) + \
+                        p.generator_code + \
+                        list_utils.element_at((p.fragments, 2))
+
+        iteration_bytes = bytes_utils.from_nat(p.iteration_number)
+        token_id_bytes = bytes_utils.from_nat(p.token_id)
+
+        # "https://media.bootloader.com/thumbnail/" + token_id + "?v=" + generator_version
+        thumbnail_uri_bytes = (
+            sp.bytes("0x68747470733a2f2f6d656469612e626f6f746c6f616465722e636f6d2f7468756d626e61696c2f")
+            + token_id_bytes
+            + sp.bytes("0x3F763D")
+            + bytes_utils.from_nat(p.generator_version)
+            + sp.bytes("0x6E3D67")
+        )
+
+        return {
+            "name": p.generator_name + sp.bytes("0x2023") + iteration_bytes,
+            "artifactUri": svg_string,
+            "thumbnailUri": thumbnail_uri_bytes,
+            "royalties": sp.bytes("0x7B22646563696D616C73223A322C22736861726573223A7B22") + p.generator_author_bytes + sp.bytes("0x223A357D7D"),
+            "creators": sp.bytes("0x5B22") + p.generator_author_bytes + sp.bytes('0x225D'),
+            "symbol": sp.bytes("0x53564A4B54"),
+            "formats": sp.bytes("0x5B7B226D696D6554797065223A22696D6167652F6A706567222C22757269223A22") + thumbnail_uri_bytes + sp.bytes("0x227D5D"),
+            "decimals": sp.bytes("0x30"),
+        }

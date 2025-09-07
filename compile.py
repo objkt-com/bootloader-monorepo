@@ -5,8 +5,6 @@ from contracts.randomiser import randomiser
 
 @sp.add_test()
 def test():
-    # Create and configure the test scenario
-    # Import the types from the FA2 library, the library itself, and the contract module, in that order.
     scenario = sp.test_scenario("bootloader")
     admin = sp.test_account("admin")
     contract = bootloader.Bootloader(
@@ -20,9 +18,14 @@ def test():
     scenario += bootloader.LambdaHelper(bootloader.v0_0_1)
 
 @sp.add_test()
+def test():
+    scenario = sp.test_scenario("lambda_0_0_1_ghostnet")
+    scenario += bootloader.LambdaHelper(bootloader.v0_0_1_ghostnet)
+
+
+
+@sp.add_test()
 def test_randomiser():
     # Test scenario
     scenario = sp.test_scenario("randomiser", randomiser)
-    
-    # Create contract instances
     scenario += randomiser.RandomiserMock()
