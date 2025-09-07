@@ -354,14 +354,10 @@ def svgkt():
                 case None:
                     raise "NO_SALE_CONFIGURED"
         
-        @sp.entrypoint
-        def dummy_lambda(self, params: t_lambda):
-            self.data.next_token_id = len(sp.pack(params))
-
     class LambdaHelper(sp.Contract):
         def __init__(self, code):
             self.data = sp.cast(code, t_lambda)
-
+        
     def v0_0_1(params):
         p = sp.cast(params, sp.record(
             fragments=sp.list[sp.bytes],
@@ -401,9 +397,9 @@ def test():
         admin.address, admin.address, sp.big_map({}), {}, []
     )
     scenario += contract
-    contract.dummy_lambda(svgkt.v0_0_1)
 
-# @sp.add_test()
-# def test():
-#     scenario = sp.test_scenario("lambda_0_0_1")
-#     scenario += svgkt.LambdaHelper(svgkt.v0_0_1)
+@sp.add_test()
+def test():
+    scenario = sp.test_scenario("lambda_0_0_1")
+    scenario += svgkt.LambdaHelper(svgkt.v0_0_1)
+
