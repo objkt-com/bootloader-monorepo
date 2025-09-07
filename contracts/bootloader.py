@@ -410,13 +410,13 @@ def bootloader():
         iteration_bytes = bytes_utils.from_nat(p.iteration_number)
         token_id_bytes = bytes_utils.from_nat(p.token_id)
 
-        # "https://media.bootloader.art/thumbnail/" + token_id + "?v=" + generator_version + n=g (ghostnet flag)
+        # "https://media.bootloader.art/thumbnail/" + token_id + "?v=" + generator_version + &n=g (ghostnet flag)
         thumbnail_uri_bytes = (
             sp.bytes("0x68747470733a2f2f6d656469612e626f6f746c6f616465722e6172742f7468756d626e61696c2f")
             + token_id_bytes
             + sp.bytes("0x3F763D")
             + bytes_utils.from_nat(p.generator_version)
-            + sp.bytes("0x6E3D67")
+            + sp.bytes("0x266E3D67")
         )
 
         return {
