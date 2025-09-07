@@ -1777,6 +1777,15 @@ input:focus, textarea:focus {
     grid-template-columns: 1fr;
     height: auto;
   }
+
+  .preview-panel {
+    min-height: 50vh;
+  }
+
+  .preview-content {
+    min-height: 50vh;
+    aspect-ratio: 1;
+  }
   
   .generator-detail {
     grid-template-columns: 1fr;
@@ -1826,6 +1835,46 @@ input:focus, textarea:focus {
 
   .example-code pre {
     font-size: 11px;
+  }
+
+  /* Mobile-friendly actions layout */
+  .actions {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+  }
+
+  .actions-left {
+    justify-content: flex-end;
+    order: 1;
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+    flex-wrap: wrap;
+  }
+
+  /* Keep buttons in the same row */
+  .actions-left > button:not(.action-with-cost button) {
+    flex-shrink: 0;
+  }
+
+  .actions-right {
+    justify-content: flex-end;
+    order: 2;
+  }
+
+  /* Action-with-cost elements inside actions-left should appear on new line */
+  .actions-left .action-with-cost {
+    align-items: flex-end;
+    width: 100%;
+    order: 999;
+    flex-basis: 100%;
+  }
+
+  /* Action-with-cost elements inside actions-right maintain their position */
+  .actions-right .action-with-cost {
+    align-items: flex-end;
   }
 
 }
