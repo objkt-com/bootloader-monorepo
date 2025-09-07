@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Dices } from 'lucide-react';
+import { Dices, RefreshCw } from 'lucide-react';
 
 export default function PreviewControls({ 
   seed, 
@@ -86,7 +86,7 @@ export default function PreviewControls({
       
       {showRefresh && onRefresh && (
         <button onClick={handleRefresh} className="refresh-btn" title="Reload with same seed">
-          Reload
+          <RefreshCw size={16} />
         </button>
       )}
     </div>

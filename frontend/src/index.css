@@ -487,6 +487,7 @@ input:focus, textarea:focus {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  font-weight: 500;
 }
 
 .editor-environment {
@@ -513,10 +514,10 @@ input:focus, textarea:focus {
   background: transparent;
   border: none;
   cursor: pointer;
-  padding: 4px 8px;
-  font-size: 14px;
+  padding: 4px 6px;
+  font-size: 16px;
   font-family: var(--font-mono);
-  font-weight: bold;
+  font-weight: 500;
   color: var(--color-gray-dark);
   border-radius: 2px;
   transition: all 0.1s ease;
@@ -564,7 +565,7 @@ input:focus, textarea:focus {
 .preview-controls {
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
+  gap: var(--spacing-sm);
   font-size: 12px;
 }
 
@@ -621,18 +622,22 @@ input:focus, textarea:focus {
 }
 
 .seed-random-btn {
-  font-size: 10px;
-  padding: 2px 4px;
-  margin-left: 2px;
   background: transparent;
   border: none;
   cursor: pointer;
+  padding: 4px 6px;
+  font-size: 16px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  color: var(--color-gray-dark);
   border-radius: 2px;
-  transition: background-color 0.1s ease;
+  transition: all 0.1s ease;
+  margin-left: 2px;
 }
 
 .seed-random-btn:hover {
-  background-color: var(--color-gray-light);
+  background: var(--color-black);
+  color: var(--color-white);
 }
 
 .token-id-input {
@@ -645,9 +650,22 @@ input:focus, textarea:focus {
 }
 
 .refresh-btn {
-  font-size: 12px;
-  padding: 2px 6px;
-  margin-left: 5px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  font-size: 16px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  color: var(--color-gray-dark);
+  border-radius: 2px;
+  transition: all 0.1s ease;
+  margin-left: 2px;
+}
+
+.refresh-btn:hover {
+  background: var(--color-black);
+  color: var(--color-white);
 }
 
 .fork-btn {
