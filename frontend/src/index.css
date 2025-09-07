@@ -132,13 +132,19 @@ input:focus, textarea:focus {
 
 .main-content {
   flex: 1;
+  padding-top: 80px; /* Account for fixed header height */
 }
 
 /* Header */
 .header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: var(--color-white);
   border-bottom: var(--border-width) solid var(--color-black);
   padding: 0.5rem 0;
-  margin-bottom: var(--spacing-xl);
+  z-index: 100;
 }
 
 .header-content {
