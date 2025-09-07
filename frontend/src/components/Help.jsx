@@ -328,9 +328,6 @@ svg = document.documentElement;`}</code></pre>
             <div className="fragment-box">
               <div className="fragment-header">
                 Fragment 0 
-                <a href="https://better-call.dev/ghostnet/KT1STnjUvPN5mexM1Pc2F3NNhXj3ZRp42Vtp/storage/big_map/477485/exprtZBwZUeYYYfUs9B9Rg2ywHezVHnCCnmF9WsDQVrs582dSK63dC" target="_blank" rel="noopener noreferrer" style={{marginLeft: '8px', fontSize: '12px'}}>
-                  (view on-chain)
-                </a>
               </div>
               <div className="fragment-content">
                 <code>{`data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg">
@@ -354,9 +351,6 @@ svg = document.documentElement;`}</code></pre>
             <div className="fragment-box">
               <div className="fragment-header">
                 Fragment 1 
-                <a href="https://better-call.dev/ghostnet/KT1STnjUvPN5mexM1Pc2F3NNhXj3ZRp42Vtp/storage/big_map/477485/exprtZBwZUeYYYfUs9B9Rg2ywHezVHnCCnmF9WsDQVrs582dSK63dC" target="_blank" rel="noopener noreferrer" style={{marginLeft: '8px', fontSize: '12px'}}>
-                  (view on-chain)
-                </a>
               </div>
               <div className="fragment-content">
                 <code>{`;function splitmix64(f){let n=f;return function(){let f=n=n+0x9e3779b97f4a7c15n&0xffffffffffffffffn;return f=((f=(f^f>>30n)*0xbf58476d1ce4e5b9n&0xffffffffffffffffn)^f>>27n)*0x94d049bb133111ebn&0xffffffffffffffffn,Number(4294967295n&(f^=f>>31n))>>>0}}function sfc32(f,n,$,t){return function(){$|=0;let e=((f|=0)+(n|=0)|0)+(t|=0)|0;return t=t+1|0,f=n^n>>>9,n=$+($<<3)|0,$=($=$<<21|$>>>11)+e|0,(e>>>0)/4294967296}}const sm=splitmix64(SEED),a=sm(),b=sm(),c=sm(),d=sm(),bl={rnd:sfc32(a,b,c,d),SEED:SEED,svg:document.documentElement,v:'0.0.1'};((bl)=>{`}</code>
@@ -388,9 +382,6 @@ svg.appendChild(circle);`}</code></pre>
             <div className="fragment-box">
               <div className="fragment-header">
                 Fragment 2
-                <a href="https://better-call.dev/ghostnet/KT1STnjUvPN5mexM1Pc2F3NNhXj3ZRp42Vtp/storage/big_map/477485/exprtZBwZUeYYYfUs9B9Rg2ywHezVHnCCnmF9WsDQVrs582dSK63dC" target="_blank" rel="noopener noreferrer" style={{marginLeft: '8px', fontSize: '12px'}}>
-                  (view on-chain)
-                </a>
               </div>
               <div className="fragment-content">
                 <code>{`})(bl);]]></script>

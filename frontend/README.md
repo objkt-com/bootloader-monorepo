@@ -38,7 +38,7 @@ npm run dev
 
 The app is configured to work with the svgKT contract at:
 
-- **Contract Address**: `KT1STnjUvPN5mexM1Pc2F3NNhXj3ZRp42Vtp`
+- **Contract Address**: Contract Address
 - **Network**: Mainnet (configurable in `src/config.js`)
 
 ## How It Works
