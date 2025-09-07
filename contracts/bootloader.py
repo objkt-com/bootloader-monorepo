@@ -107,8 +107,6 @@ def bootloader():
             self.data.bootloader_storage_limits[self.data.next_bootloader_id] = storage_limits
             self.data.next_bootloader_id += 1
         
-
-
         @sp.entrypoint
         def create_generator(self, name: sp.bytes, description: sp.bytes, code: sp.bytes, author_bytes: sp.bytes, reserved_editions: sp.nat, bootloader_id: sp.nat):
             assert self.data.bootloaders.contains(bootloader_id), "UNKNOWN_BOOTLOADER"
@@ -174,6 +172,12 @@ def bootloader():
             assert sp.sender == generator.author, "ONLY_AUTHOR"
             assert generator.n_tokens == 0, "TOKENS_MINTED"
             del self.data.generators[generator_id]
+
+        @sp.entrypoint
+        def set_metadata(self, updates: sp.map[sp.string, sp.bytes]):
+            assert sp.sender == self.data.administrator, "ONLY_ADMIN"
+            for update in updates.items():
+                self.data.metadata[update.key] = update.value
 
         @sp.entrypoint
         def set_rng_contract(self, rng: sp.address):

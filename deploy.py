@@ -5,9 +5,8 @@ import os
 import sys
 from pytezos import pytezos
 from pytezos.crypto.key import Key
-from pytezos.michelson.parse import michelson_to_micheline
 from hashlib import sha256
-from utils import ContractDeployment, Network, load_lambda_from_name
+from utils import ContractDeployment, Network, load_lambda_from_name, get_tezos_storage
 from templates import get_fragments_from_template
 
 def get_wallet_from_env():
@@ -103,10 +102,18 @@ def main():
         
         randomiser_address = randomiser_deployer.deploy()
     
+    metadata = get_tezos_storage(
+        name="bootloader:",
+        description="open experimental on-chain long-form generative art",
+        imageUri="ipfs://bafkreic2zzpvkzfztgwrlavpit2psrip5xcgqfov4hq6ec4r5ds5didxim",
+        homepage=f"https://{'ghostnet.' if args.network == 'ghostnet' else ''}bootloader.art",
+    )
+    
     # Deploy bootloader contract
     print("Deploying bootloader contract")
     nft_deployer = ContractDeployment.from_name('bootloader')
     nft_deployer.update_storage({
+        "metadata": metadata,
         "administrator": wallet.public_key_hash(),
         "rng_contract": randomiser_address,
         "treasury": wallet.public_key_hash(),
