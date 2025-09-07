@@ -77,17 +77,22 @@ export default function WalletConnection() {
         <Link to={`/profile/${userAddress}`} className="user-address-link">
           {formatAddress(userAddress)}
         </Link>
-        <button onClick={handleDisconnect}>disconnect</button>
+        <button onClick={handleDisconnect} className="disconnect-btn">
+          <span className="disconnect-text">disconnect</span>
+          <span className="disconnect-icon">×</span>
+        </button>
       </div>
     );
   }
 
   return (
-    <button 
-      onClick={handleConnect} 
-      disabled={isConnecting}
-    >
-      {isConnecting ? 'connecting...' : 'connect wallet'}
-    </button>
+    <div className="wallet-info">
+      <button 
+        onClick={handleConnect} 
+        disabled={isConnecting}
+      >
+        {isConnecting ? 'connecting...' : 'connect wallet'}
+      </button>
+    </div>
   );
 }

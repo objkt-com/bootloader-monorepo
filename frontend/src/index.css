@@ -180,6 +180,21 @@ input:focus, textarea:focus {
   gap: var(--spacing-md);
 }
 
+.disconnect-btn {
+  position: relative;
+}
+
+.disconnect-text {
+  display: inline;
+}
+
+.disconnect-icon {
+  display: none;
+  font-size: 18px;
+  font-weight: bold;
+  line-height: 1;
+}
+
 .user-address-link {
   color: var(--text-primary);
   text-decoration: none;
@@ -1717,13 +1732,39 @@ input:focus, textarea:focus {
   }
 
   .header-content {
-    flex-direction: column;
-    gap: var(--spacing-md);
-    align-items: stretch;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+    padding: 0 var(--spacing-md);
+  }
+
+  .logo {
+    flex: 1;
+    min-width: 0;
   }
 
   .nav {
-    justify-content: center;
+    order: 2;
+    flex-shrink: 0;
+  }
+
+  .wallet-info {
+    order: 3;
+    flex-shrink: 0;
+  }
+
+  /* Mobile disconnect button - show icon instead of text */
+  .disconnect-text {
+    display: none;
+  }
+
+  .disconnect-icon {
+    display: inline;
+  }
+
+  .disconnect-btn {
+    padding: var(--spacing-sm);
+    min-width: auto;
+    width: auto;
   }
 
   .footer-content {

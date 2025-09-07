@@ -35,14 +35,12 @@ function Navigation() {
         </div>
         
         <nav className="nav">
-          {isConnected && (
-            <Link 
-              to="/create" 
-              className={location.pathname === '/create' ? 'active' : ''}
-            >
-              + create
-            </Link>
-          )}
+          <Link 
+            to="/create" 
+            className={location.pathname === '/create' ? 'active' : ''}
+          >
+            + create
+          </Link>
         </nav>
         
         <WalletConnection />
