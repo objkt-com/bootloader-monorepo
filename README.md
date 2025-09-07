@@ -1,8 +1,8 @@
 ```assembly
 bootloader:
-    Open experimental on-chain long-form generative art on Tezos.
+    ; an open experimental on-chain long-form generative art platform on Tezos
 
-.getting_started:
+_getting_started:
     ; compile smart contracts
     pipenv shell
     pipenv install
@@ -16,7 +16,6 @@ bootloader:
     npm install
     npm run dev
 
-pipenv shell
-pip install pytezos tezos-smartpy
-python contracts/bootloader.py
+_objkt_labs:
+    ; part of objkt labs
 ```
