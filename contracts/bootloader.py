@@ -372,7 +372,7 @@ def bootloader():
         token_id_bytes = bytes_utils.from_nat(p.token_id)
 
         # "https://media.bootloader.art/thumbnail/" + token_id + "?v=" + generator_version
-        thumbnail_uri_bytes = (
+        display_uri_bytes = (
             sp.bytes("0x68747470733a2f2f6d656469612e626f6f746c6f616465722e6172742f7468756d626e61696c2f")
             + token_id_bytes
             + sp.bytes("0x3F763D")
@@ -382,11 +382,11 @@ def bootloader():
         return {
             "name": p.generator_name + sp.bytes("0x2023") + iteration_bytes,
             "artifactUri": svg_string,
-            "thumbnailUri": thumbnail_uri_bytes,
+            "displayUri": display_uri_bytes,
             "royalties": sp.bytes("0x7B22646563696D616C73223A322C22736861726573223A7B22") + p.generator_author_bytes + sp.bytes("0x223A357D7D"),
             "creators": sp.bytes("0x5B22") + p.generator_author_bytes + sp.bytes('0x225D'),
             "symbol": sp.bytes("0x53564A4B54"),
-            "formats": sp.bytes("0x5B7B226D696D6554797065223A22696D6167652F6A706567222C22757269223A22") + thumbnail_uri_bytes + sp.bytes("0x227D5D"),
+            "formats": sp.bytes("0x5B7B226D696D6554797065223A22696D6167652F6A706567222C22757269223A22") + display_uri_bytes + sp.bytes("0x227D5D"),
             "decimals": sp.bytes("0x30"),
         }
 
@@ -411,7 +411,7 @@ def bootloader():
         token_id_bytes = bytes_utils.from_nat(p.token_id)
 
         # "https://media.bootloader.art/thumbnail/" + token_id + "?v=" + generator_version + &n=g (ghostnet flag)
-        thumbnail_uri_bytes = (
+        display_uri_bytes = (
             sp.bytes("0x68747470733a2f2f6d656469612e626f6f746c6f616465722e6172742f7468756d626e61696c2f")
             + token_id_bytes
             + sp.bytes("0x3F763D")
@@ -422,10 +422,10 @@ def bootloader():
         return {
             "name": p.generator_name + sp.bytes("0x2023") + iteration_bytes,
             "artifactUri": svg_string,
-            "thumbnailUri": thumbnail_uri_bytes,
+            "displayUri": display_uri_bytes,
             "royalties": sp.bytes("0x7B22646563696D616C73223A322C22736861726573223A7B22") + p.generator_author_bytes + sp.bytes("0x223A357D7D"),
             "creators": sp.bytes("0x5B22") + p.generator_author_bytes + sp.bytes('0x225D'),
             "symbol": sp.bytes("0x53564A4B54"),
-            "formats": sp.bytes("0x5B7B226D696D6554797065223A22696D6167652F6A706567222C22757269223A22") + thumbnail_uri_bytes + sp.bytes("0x227D5D"),
+            "formats": sp.bytes("0x5B7B226D696D6554797065223A22696D6167652F6A706567222C22757269223A22") + display_uri_bytes + sp.bytes("0x227D5D"),
             "decimals": sp.bytes("0x30"),
         }
