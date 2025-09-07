@@ -360,7 +360,7 @@ svg = document.documentElement;`}</code></pre>
             <div className="fragment-box">
               <div className="fragment-header">
                 Fragment 0 
-                <a href="https://better-call.dev/ghostnet/KT1TTnYpBpUwjPiKYu3uL68i4G7AZSu36Ug3/storage/big_map/477232/exprtZBwZUeYYYfUs9B9Rg2ywHezVHnCCnmF9WsDQVrs582dSK63dC" target="_blank" rel="noopener noreferrer" style={{marginLeft: '8px', fontSize: '12px'}}>
+                <a href="https://better-call.dev/ghostnet/KT1SKRKmm3XBCMqWKNvY5dpMuymyefHvummJ/storage/big_map/477471/exprtZBwZUeYYYfUs9B9Rg2ywHezVHnCCnmF9WsDQVrs582dSK63dC" target="_blank" rel="noopener noreferrer" style={{marginLeft: '8px', fontSize: '12px'}}>
                   (view on-chain)
                 </a>
               </div>
@@ -386,7 +386,7 @@ svg = document.documentElement;`}</code></pre>
             <div className="fragment-box">
               <div className="fragment-header">
                 Fragment 1 
-                <a href="https://better-call.dev/ghostnet/KT1TTnYpBpUwjPiKYu3uL68i4G7AZSu36Ug3/storage/big_map/477232/expru2dKqDfZG8hu4wNGkiyunvq2hdSKuVYtcKta7BWP6Q18oNxKjS" target="_blank" rel="noopener noreferrer" style={{marginLeft: '8px', fontSize: '12px'}}>
+                <a href="https://better-call.dev/ghostnet/KT1SKRKmm3XBCMqWKNvY5dpMuymyefHvummJ/storage/big_map/477471/exprtZBwZUeYYYfUs9B9Rg2ywHezVHnCCnmF9WsDQVrs582dSK63dC" target="_blank" rel="noopener noreferrer" style={{marginLeft: '8px', fontSize: '12px'}}>
                   (view on-chain)
                 </a>
               </div>
@@ -420,7 +420,7 @@ svg.appendChild(circle);`}</code></pre>
             <div className="fragment-box">
               <div className="fragment-header">
                 Fragment 2
-                <a href="https://better-call.dev/ghostnet/KT1TTnYpBpUwjPiKYu3uL68i4G7AZSu36Ug3/storage/big_map/477232/expruDuAZnFKqmLoisJqUGqrNzXTvw7PJM2rYk97JErM5FHCerQqgn" target="_blank" rel="noopener noreferrer" style={{marginLeft: '8px', fontSize: '12px'}}>
+                <a href="https://better-call.dev/ghostnet/KT1SKRKmm3XBCMqWKNvY5dpMuymyefHvummJ/storage/big_map/477471/exprtZBwZUeYYYfUs9B9Rg2ywHezVHnCCnmF9WsDQVrs582dSK63dC" target="_blank" rel="noopener noreferrer" style={{marginLeft: '8px', fontSize: '12px'}}>
                   (view on-chain)
                 </a>
               </div>
