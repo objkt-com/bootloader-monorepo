@@ -47,6 +47,22 @@ function ThemeProvider({ children }) {
   );
 }
 
+function NetworkBanner() {
+  const currentNetwork = CONFIG.network;
+  
+  if (currentNetwork === 'mainnet') {
+    return null;
+  }
+  
+  return (
+    <div className="network-banner">
+      <div className="network-banner-content">
+        {currentNetwork}
+      </div>
+    </div>
+  );
+}
+
 function Navigation() {
   const location = useLocation();
   const [isConnected, setIsConnected] = useState(false);
@@ -65,24 +81,27 @@ function Navigation() {
   }, []);
   
   return (
-    <header className="header">
-      <div className="header-content">
-        <div className="logo">
-          <Link to="/">bootloader:</Link>
+    <>
+      <NetworkBanner />
+      <header className="header">
+        <div className="header-content">
+          <div className="logo">
+            <Link to="/">bootloader:</Link>
+          </div>
+          
+          <nav className="nav">
+            <Link 
+              to="/create" 
+              className={location.pathname === '/create' ? 'active' : ''}
+            >
+              + create
+            </Link>
+          </nav>
+          
+          <WalletConnection />
         </div>
-        
-        <nav className="nav">
-          <Link 
-            to="/create" 
-            className={location.pathname === '/create' ? 'active' : ''}
-          >
-            + create
-          </Link>
-        </nav>
-        
-        <WalletConnection />
-      </div>
-    </header>
+      </header>
+    </>
   );
 }
 
