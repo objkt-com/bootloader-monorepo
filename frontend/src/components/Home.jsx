@@ -4,6 +4,7 @@ import { tezosService } from '../services/tezos.js';
 import { getGeneratorThumbnailUrl } from '../utils/thumbnail.js';
 import { getUserDisplayInfo } from '../utils/userDisplay.js';
 import SmartThumbnail from './SmartThumbnail.jsx';
+import { useMetaTags, generateMetaTags } from '../hooks/useMetaTags.js';
 
 export default function Home() {
   const [generators, setGenerators] = useState([]);
@@ -16,6 +17,10 @@ export default function Home() {
   useEffect(() => {
     loadGenerators();
   }, []);
+
+  // Set meta tags for home page
+  const metaTags = generateMetaTags.home();
+  useMetaTags(metaTags);
 
   // Timer to update countdowns every second
   useEffect(() => {

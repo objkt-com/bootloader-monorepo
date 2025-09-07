@@ -6,6 +6,7 @@ import SVGPreview from './SVGPreview.jsx';
 import PreviewControls from './PreviewControls.jsx';
 import { estimateCreateGenerator, getByteLength, formatStorageCost } from '../utils/storageCost.js';
 import { prefetchGeneratorThumbnail } from '../utils/thumbnail.js';
+import { useMetaTags, generateMetaTags } from '../hooks/useMetaTags.js';
 
 export default function Create() {
   const [name, setName] = useState('');
@@ -160,6 +161,10 @@ for (let i = 0; i < 5; i++) {
       setCode(defaultCode);
     }
   }, [location.state]);
+
+  // Set meta tags for create page
+  const metaTags = generateMetaTags.create();
+  useMetaTags(metaTags);
 
   const refreshPreview = () => {
     // Force a re-render with the same seed by updating a dummy state or triggering SVGPreview refresh

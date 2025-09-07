@@ -11,6 +11,7 @@ import { estimateMint, estimateUpdateGenerator, getByteLength, formatStorageCost
 import { getTokenThumbnailUrl, prefetchTokenThumbnail } from '../utils/thumbnail.js';
 import { getUserDisplayInfo, formatAddress } from '../utils/userDisplay.js';
 import SmartThumbnail from './SmartThumbnail.jsx';
+import { useMetaTags, generateMetaTags } from '../hooks/useMetaTags.js';
 
 export default function GeneratorDetail() {
   const { id } = useParams();
@@ -158,6 +159,12 @@ export default function GeneratorDetail() {
       loadAuthorProfile();
     }
   }, [generator]);
+
+  // Generate meta tags when generator and author info are available
+  const metaTags = generator && authorDisplayInfo ? 
+    generateMetaTags.generator(generator, authorDisplayInfo) : 
+    null;
+  useMetaTags(metaTags);
 
   // Timer for countdown updates
   useEffect(() => {

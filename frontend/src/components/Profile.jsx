@@ -6,6 +6,7 @@ import { getNetworkConfig, getContractAddress } from '../config.js';
 import { getGeneratorThumbnailUrl, getTokenThumbnailUrl } from '../utils/thumbnail.js';
 import { getUserDisplayInfo, formatAddress } from '../utils/userDisplay.js';
 import SmartThumbnail from './SmartThumbnail.jsx';
+import { useMetaTags, generateMetaTags } from '../hooks/useMetaTags.js';
 
 export default function Profile() {
   const { address } = useParams();
@@ -24,6 +25,12 @@ export default function Profile() {
     loadUserProfile();
     loadOwnedTokens(); // Load owned tokens immediately for the count
   }, [address]);
+
+  // Generate meta tags when user data is available
+  const metaTags = userDisplayInfo && generators.length >= 0 && ownedTokens.length >= 0 ? 
+    generateMetaTags.profile(address, userDisplayInfo, generators.length, ownedTokens.length) : 
+    null;
+  useMetaTags(metaTags);
 
   useEffect(() => {
     if (activeTab === 'owned') {
