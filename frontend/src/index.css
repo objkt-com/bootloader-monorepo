@@ -156,7 +156,7 @@ input:focus, textarea:focus {
 
 .main-content {
   flex: 1;
-  padding-top: 104px; /* Account for fixed header height + network banner */
+  padding-top: var(--main-content-padding-top, 80px);
 }
 
 /* Network Banner */
@@ -184,7 +184,7 @@ input:focus, textarea:focus {
 /* Header */
 .header {
   position: fixed;
-  top: 24px;
+  top: var(--header-top, 0px);
   left: 0;
   right: 0;
   background: var(--color-white);

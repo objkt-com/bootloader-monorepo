@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { useState, useEffect, createContext, useContext } from 'react';
+import React from 'react';
 import { tezosService } from './services/tezos.js';
 import { CONFIG } from './config.js';
 import WalletConnection from './components/WalletConnection.jsx';
@@ -61,6 +62,25 @@ function NetworkBanner() {
       </div>
     </div>
   );
+}
+
+// Add CSS custom property to body based on network
+function NetworkStyleProvider({ children }) {
+  const currentNetwork = CONFIG.network;
+  
+  React.useEffect(() => {
+    if (currentNetwork === 'mainnet') {
+      document.documentElement.style.setProperty('--network-banner-height', '0px');
+      document.documentElement.style.setProperty('--header-top', '0px');
+      document.documentElement.style.setProperty('--main-content-padding-top', '80px'); // Header height only
+    } else {
+      document.documentElement.style.setProperty('--network-banner-height', '16px');
+      document.documentElement.style.setProperty('--header-top', '16px');
+      document.documentElement.style.setProperty('--main-content-padding-top', '96px'); // Header height + banner height
+    }
+  }, [currentNetwork]);
+  
+  return children;
 }
 
 function Navigation() {
@@ -154,30 +174,32 @@ function Footer() {
 function App() {
   return (
     <ThemeProvider>
-      <Router>
-        <Routes>
-          {/* Thumbnail routes without navigation/footer */}
-          <Route path="/thumbnail/:tokenId" element={<ThumbnailRenderer />} />
-          <Route path="/generator-thumbnail/:generatorId" element={<GeneratorThumbnailRenderer />} />
-          
-          {/* All other routes with navigation/footer */}
-          <Route path="/*" element={
-            <>
-              <Navigation />
-              <main className="main-content">
-                <Routes>
-                  <Route path="/" element={<Home />} />
-                  <Route path="/create" element={<Create />} />
-                  <Route path="/generator/:id" element={<GeneratorDetail />} />
-                  <Route path="/profile/:address" element={<Profile />} />
-                  <Route path="/help" element={<Help />} />
-                </Routes>
-              </main>
-              <Footer />
-            </>
-          } />
-        </Routes>
-      </Router>
+      <NetworkStyleProvider>
+        <Router>
+          <Routes>
+            {/* Thumbnail routes without navigation/footer */}
+            <Route path="/thumbnail/:tokenId" element={<ThumbnailRenderer />} />
+            <Route path="/generator-thumbnail/:generatorId" element={<GeneratorThumbnailRenderer />} />
+            
+            {/* All other routes with navigation/footer */}
+            <Route path="/*" element={
+              <>
+                <Navigation />
+                <main className="main-content">
+                  <Routes>
+                    <Route path="/" element={<Home />} />
+                    <Route path="/create" element={<Create />} />
+                    <Route path="/generator/:id" element={<GeneratorDetail />} />
+                    <Route path="/profile/:address" element={<Profile />} />
+                    <Route path="/help" element={<Help />} />
+                  </Routes>
+                </main>
+                <Footer />
+              </>
+            } />
+          </Routes>
+        </Router>
+      </NetworkStyleProvider>
     </ThemeProvider>
   );
 }
