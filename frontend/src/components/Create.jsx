@@ -138,14 +138,14 @@ const defaultCode = `/**
 
 bl.svg.setAttribute('viewBox', '0 0 400 400');
 
-// create 5 random circles
+// Create 5 random circles
 for (let i = 0; i < 5; i++) {
   const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
   
   circle.setAttribute('cx', 60 + bl.rnd() * 280);
   circle.setAttribute('cy', 60 + bl.rnd() * 280);
   circle.setAttribute('r', 20 + bl.rnd() * 40);
-  circle.setAttribute('fill', \`hsl(${bl.rnd() * 360}, 70%, 60%)\`);
+  circle.setAttribute('fill', \`hsl(\${bl.rnd() * 360}, 70%, 60%)\`);
   circle.setAttribute('opacity', 0.8);
   
   bl.svg.appendChild(circle);
@@ -261,7 +261,7 @@ for (let i = 0; i < 5; i++) {
         <CodeEditor
           value={code}
           onChange={setCode}
-          height="100%"
+          height="60vh"
           className='show-on-mobile'
         />
         
