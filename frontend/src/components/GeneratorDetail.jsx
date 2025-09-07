@@ -672,7 +672,7 @@ export default function GeneratorDetail() {
           onChange={isEditing ? setEditCode : () => {}}
           height="60vh"
           readOnly={!isEditing}
-          forkButton={!isAuthor && !isEditing ? (
+          forkButton={!isEditing ? (
             <button 
               className="fork-btn"
               onClick={handleFork}
