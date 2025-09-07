@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Editor from '@monaco-editor/react';
+import { useTheme } from '../App.jsx';
 
 export default function CodeEditor({ 
   value, 
@@ -11,6 +12,8 @@ export default function CodeEditor({
   className = ''
 }) {
   const navigate = useNavigate();
+  const { theme } = useTheme();
+  
   const handleEditorChange = (newValue) => {
     onChange(newValue || '');
   };
@@ -22,7 +25,6 @@ export default function CodeEditor({
     lineNumbers: 'on',
     scrollBeyondLastLine: false,
     automaticLayout: true,
-    theme: 'vs',
     readOnly: readOnly,
     wordWrap: 'on',
     tabSize: 2,
@@ -50,6 +52,7 @@ export default function CodeEditor({
         value={value || ''}
         onChange={handleEditorChange}
         options={editorOptions}
+        theme={theme === 'dark' ? 'vs-dark' : 'vs'}
       />
     </div>
   );
