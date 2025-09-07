@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Editor from '@monaco-editor/react';
+import { HelpCircle } from 'lucide-react';
 import { useTheme } from '../App.jsx';
 
 export default function CodeEditor({ 
@@ -41,7 +42,7 @@ export default function CodeEditor({
             onClick={() => navigate('/help')}
             title="View help documentation"
           >
-            ?
+            <HelpCircle size={16} />
           </button>
           {forkButton}
         </div>

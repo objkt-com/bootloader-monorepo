@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { Maximize2, X } from 'lucide-react';
 import { tezosService } from '../services/tezos.js';
 import CodeEditor from './CodeEditor.jsx';
 import SVGPreview from './SVGPreview.jsx';
@@ -282,7 +283,7 @@ for (let i = 0; i < 5; i++) {
                 onClick={() => setShowFullscreenPreview(true)}
                 title="View fullscreen"
               >
-                ⛶
+                <Maximize2 size={16} />
               </button>
             </div>
           </div>
@@ -367,7 +368,7 @@ for (let i = 0; i < 5; i++) {
                   onClick={() => setShowFullscreenPreview(false)}
                   title="Close fullscreen"
                 >
-                  ✕
+                  <X size={16} />
                 </button>
               </div>
             </div>

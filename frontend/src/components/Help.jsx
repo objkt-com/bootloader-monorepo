@@ -3,11 +3,29 @@ import { Link } from 'react-router-dom';
 import CodeEditor from './CodeEditor.jsx';
 import SVGPreview from './SVGPreview.jsx';
 import PreviewControls from './PreviewControls.jsx';
+import { CONFIG } from '../config.js';
+import { 
+  AlertTriangle, 
+  Palette, 
+  RefreshCw, 
+  DollarSign, 
+  Target, 
+  RotateCcw, 
+  Settings, 
+  Search, 
+  Crosshair, 
+  Lock, 
+  Ruler, 
+  TestTube, 
+  Paintbrush, 
+  Zap,
+  Lightbulb
+} from 'lucide-react';
 
 export default function Help() {
   const [exampleCode, setExampleCode] = useState(`/*
 * Five Random Circles
-* bootloader v0.0.1
+* bootloader: v0.0.1
 */
 
 bl.svg.setAttribute('viewBox', '0 0 400 400');
@@ -39,9 +57,9 @@ for (let i = 0; i < 5; i++) {
       <div className="help-content">
         {/* Experimental Software Warning */}
         <div className="warning-banner">
-          <div className="warning-icon">⚠️</div>
+          <div className="warning-icon"><AlertTriangle size={20} /></div>
           <div>
-            <strong>Experimental Software Notice:</strong> bootloader is experimental alpha software that has not been audited. 
+            <strong>Experimental Software Notice:</strong> bootloader: is experimental alpha software that has not been audited. 
             This is an open source project available at{' '}
             <a href="https://github.com/objkt-com/bootloader-monorepo/" target="_blank" rel="noopener noreferrer">
               github.com/objkt-com/bootloader-monorepo/
@@ -50,88 +68,18 @@ for (let i = 0; i < 5; i++) {
           </div>
         </div>
 
-        {/* objkt labs branding */}
-        <div className="objkt-labs-branding">
-          <img 
-            src="/objkt_labs_logo.png" 
-            alt="objkt labs" 
-            className="objkt-labs-logo"
-          />
-          <div>
-            <div className="objkt-labs-title">Part of objkt labs</div>
-            <div className="objkt-labs-description">
-              objkt labs encompasses residencies, educational initiatives, and experimental content for the Tezos ecosystem.
-              This entire project is an open source mono-repo.
-            </div>
-            <div className="objkt-labs-link">
-              <a href="https://x.com/objktlabs" target="_blank" rel="noopener noreferrer">
-                Follow @objktlabs on X →
-              </a>
-            </div>
-          </div>
-        </div>
 
-        <h1>bootloader Documentation</h1>
+        <h1>bootloader: Documentation</h1>
 
-        <h2>What is bootloader?</h2>
+        <h2>What is bootloader:?</h2>
         <p>
-          bootloader is an open-source experimental on-chain long-form generative art platform built on Tezos. It empowers artists and developers
-          to create generative art algorithms that produce unique SVG images directly on the blockchain. Using a{' '}
+          bootloader: is an open-source experimental on-chain long-form generative art platform built on Tezos. It empowers artists and developers
+          to create generative art algorithms that come to live through a SVG <em>bootloader</em> and stored directly on the blockchain. Using a{' '}
           <a href="https://en.wikipedia.org/wiki/WYSIWYG" target="_blank" rel="noopener noreferrer">WYSIWYG</a>{' '}
-          (What You See Is What You Get) editor, the platform presents code alongside live previews, creating an intuitive environment 
-          that invites users to explore, experiment, and discover the creative possibilities of generative art through code.
+          (What You See Is What You Get) editor, bootloader: juxtaposes editable code alongside live previews, creating an intuitive environment 
+          that invites users to explore the generative system's hard-coded rules and it's (audio)-visual manifestation.
         </p>
 
-        <h3>Why SVG?</h3>
-        <p>
-          SVG is one of the more esoteric formats in the digital landscape — part image, part code, part container. 
-          What looks like a simple XML file can also act as an engine, carrying instructions, executing logic, and 
-          shaping visuals directly in the browser.
-        </p>
-        <p>
-          This potential first revealed itself on Tezos in 2021, when artists on hic et nunc discovered a hack: 
-          embedding JavaScript inside SVGs so that a "picture file" could suddenly become interactive. Mini-games, 
-          drawing tools, and generative systems began appearing on-chain through this trick, reviving the spirit 
-          of early net art and showing how NFTs could be both artifact and algorithm. Yet all of this lived on IPFS, 
-          relying on external storage and viewers.
-        </p>
-        <p>
-          With bootloader, we are reintroducing this concept in a raw form, giving it new life in the context of 
-          long-form generative art. Here the works are fully on-chain, each mint animated by random seeds from 
-          the blockchain itself, producing unique yet reproducible variations that remain durable, self-contained, 
-          and alive within the chain's own data.
-        </p>
-
-        <h3>Why This Platform?</h3>
-        <p>
-          With the void left by fxhash no longer supporting long-form mints on Tezos, bootloader offers an open and 
-          non-curated space for generative artists on the network. The platform is designed to make the process 
-          both accessible and enjoyable. Showing the code alongside the resulting artwork is a deliberate choice—like 
-          opening up a watch to see the intricate cogs in motion, it reveals the inner mechanics of the system and 
-          offers a unique perspective on how generative art emerges.
-        </p>
-
-        <h3>Why On-Chain?</h3>
-        <p>
-          bootloader demonstrates how platforms can be built without any backend systems, relying only on publicly available 
-          infrastructure like indexer APIs (tzkt and objkt). These APIs are open to anyone, showing that experimental 
-          tools and platforms like this are accessible to any developer. Of course, this approach comes with limitations - 
-          such as no thumbnails showing on objkt marketplace - but the trade-off is complete self-containment and independence.
-        </p>
-
-        <h2>Quick Start Guide</h2>
-        <div className="getting-started">
-          <ol>
-            <li><strong>Connect your Tezos wallet</strong> - You'll need XTZ for transaction fees</li>
-            <li><strong>Click "Create"</strong> - Start with the provided template or write from scratch</li>
-            <li><strong>Write your generative code</strong> - Use SVG DOM manipulation and the <code>rnd()</code> function</li>
-            <li><strong>Test in the preview</strong> - Try different seeds to see variations</li>
-            <li><strong>Deploy to blockchain</strong> - Your code becomes permanently stored on Tezos</li>
-            <li><strong>Set up sales</strong> - Configure pricing and edition limits</li>
-          </ol>
-        </div>
-
-        <h2>Try It Now: Interactive Example</h2>
         <p>Edit the code below to see how changes affect the generated artwork:</p>
         
         <div className="editor-container" style={{height: '350px'}}>
@@ -163,99 +111,211 @@ for (let i = 0; i < 5; i++) {
           </div>
         </div>
 
-        <h2>Available Variables in Your Code</h2>
-        
-        <p>Your generator code runs inside an SVG "bootloader" that provides access to the <code>bl</code> object. This is where your code executes. Currently there is no standard library - only these 4 properties are available (this will change in the future):</p>
-        
+        <h3>Why SVG?</h3>
+        <p>
+          SVG is one of the more esoteric formats in the digital landscape — part image, part code, part container. 
+          What looks like a simple XML file can also act as an engine, carrying instructions, executing logic, and 
+          shaping visuals directly in the browser.
+        </p>
+        <p>
+          This potential first revealed itself on Tezos in 2021, when artists on hic et nunc discovered a hack: 
+          embedding JavaScript inside SVGs so that a "picture file" could suddenly become interactive. Mini-games, 
+          drawing tools, and generative systems began appearing on-chain through this trick, reviving the spirit 
+          of early net art and showing how NFTs could be both artifact and algorithm.
+        </p>
+        <p>
+          With bootloader:, we are reintroducing this concept in a raw form, giving it new life in the context of 
+          long-form generative art. Here the works are fully on-chain, each mint animated by random seeds from 
+          the blockchain itself, producing unique yet reproducible variations that remain durable, self-contained, 
+          and alive within the chain's own data.
+        </p>
 
-        <h4>The bl Object</h4>
-        <pre className="code-preview"><code>{`// The bl object provided to your code:
-const bl = {
-  rnd: sfc32(a,b,c,d),           // Deterministic random function (0-1)
-  SEED: SEED,                    // Raw BigInt seed from blockchain
-  svg: document.documentElement, // Reference to the root SVG element
-  v: '0.0.1'                    // Template version string
-};
+        <h3>Why bootloader:?</h3>
+        <p>
+          With the void left by fxhash no longer supporting long-form mints on Tezos, bootloader: offers an open and 
+          non-curated space for generative artists on the network. The platform is designed to make the process 
+          both accessible and enjoyable. Showing the code alongside the resulting artwork is a deliberate choice - like 
+          opening up a watch to see the intricate cogs in motion, it reveals the inner mechanics of the system and 
+          invites viewers to mess with the code.
+        </p>
 
-// Your code is executed in this structure:
-((bl) => {
-  // YOUR GENERATOR CODE GOES HERE
-  // You can destructure for convenience:
-  const { rnd, svg, SEED, v } = bl;
+        <h2>The SVG <code>bootloader</code></h2>
+
+        <p>
+          Your generator code runs inside an SVG <code>bootloader</code> that assembles your artwork at mint time. 
+          The <code>bootloader</code> provides a minimal but powerful runtime environment through the <code>bl</code> object:
+        </p>
+
+        <div className="bootloader-fragments">
+          <div className="fragment-compact">
+            <h4>On-Chain Assembly Process</h4>
+            <p>
+              When collectors mint your generator, the contract assembles a complete SVG data URI on-chain by combining 
+              template fragments with your code and blockchain entropy. This assembled data URI becomes the NFT's 
+              <code>artifactUri</code>, stored permanently on the blockchain:
+            </p>
+            <pre className="code-preview"><code>{`data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg">
+<script><![CDATA[
+  const SEED = 123456789012345678901234567890n; // ← Blockchain entropy
+  // ... random number generator setup (sfc32, splitmix64) ...
   
-  // Set up your SVG canvas
-  svg.setAttribute('viewBox', '0 0 400 400');
+  const bl = {
+    rnd: sfc32(a,b,c,d),           // Deterministic random (0-1)
+    SEED: SEED,                    // Raw BigInt from blockchain
+    svg: document.documentElement, // Root SVG element
+    v: '0.0.1'                    // bootloader: version
+  };
   
-  // Use rnd() for deterministic randomness
-  const x = rnd() * 400;
-  const y = rnd() * 400;
-  
-  // Create and append SVG elements
-  const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-  circle.setAttribute('cx', x);
-  circle.setAttribute('cy', y);
-  circle.setAttribute('r', 20 + rnd() * 30);
-  svg.appendChild(circle);
-})(bl);`}</code></pre>
+  ((bl) => {
+    // YOUR GENERATOR CODE INSERTED HERE
+    bl.svg.setAttribute('viewBox', '0 0 400 400');
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', 200 + bl.rnd() * 100);
+    circle.setAttribute('cy', 200 + bl.rnd() * 100);
+    circle.setAttribute('r', 50);
+    bl.svg.appendChild(circle);
+  })(bl);
+]]></script>
+</svg>`}</code></pre>
+            <div className="assembly-note">
+              <p>
+                <strong>Key Point:</strong> This entire data URI (including your code and the unique seed) is stored 
+                as the token's <code>artifactUri</code> in the blockchain's token metadata. Each minted token contains 
+                a complete, self-executing SVG that generates the same artwork every time it's viewed.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <p>
+          This deliberately minimal <code>bootloader</code> focuses on the essentials: deterministic randomness, SVG manipulation, 
+          and blockchain entropy. 
+        </p>
+
+        <div className="explore-fragments">
+          <h4><Search size={18} className="inline-icon" /> Explore the Fragments On-Chain</h4>
+          <p>
+            Want to see the actual template fragments stored on the blockchain? You can explore the contract storage 
+            and examine the <code>bootloaders</code> bigmap to see how the fragments are stored:
+          </p>
+          <div className="contract-links">
+            <p>
+              <strong>Ghostnet:</strong>{' '}
+              {CONFIG.contracts.ghostnet ? (
+                <a 
+                  href={`https://better-call.dev/ghostnet/${CONFIG.contracts.ghostnet}/storage`}
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                >
+                  better-call.dev/ghostnet/{CONFIG.contracts.ghostnet}/storage
+                </a>
+              ) : (
+                <em>Contract not yet deployed</em>
+              )}
+            </p>
+            <p>
+              <strong>Mainnet:</strong>{' '}
+              {CONFIG.contracts.mainnet ? (
+                <a 
+                  href={`https://better-call.dev/mainnet/${CONFIG.contracts.mainnet}/storage`}
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                >
+                  better-call.dev/mainnet/{CONFIG.contracts.mainnet}/storage
+                </a>
+              ) : (
+                <em>Contract not yet deployed</em>
+              )}
+            </p>
+          </div>
+          <p>
+            <small>
+              <Lightbulb size={16} className="inline-icon" /> <strong>Tip:</strong> Look for the <code>bootloaders</code> bigmap in the storage to see the template 
+              fragments that get assembled with your generator code during minting.
+            </small>
+          </p>
+        </div>
 
         <h2>Best Practices</h2>
         <div className="best-practices">
           <div className="practice-item">
-            <h4>🎯 Use Deterministic Randomness</h4>
+            <h4><Target size={18} className="inline-icon" /> Use Deterministic Randomness</h4>
             <p>Always use <code>bl.rnd()</code> instead of <code>Math.random()</code> to ensure reproducible results</p>
           </div>
           <div className="practice-item">
-            <h4>🔒 Clean Code Scoping</h4>
+            <h4><Lock size={18} className="inline-icon" /> Clean Code Scoping</h4>
             <p>Your code is automatically wrapped in an IIFE (Immediately Invoked Function Expression) by the template, so you don't need to worry about variable conflicts. The template handles scoping for you.</p>
           </div>
           <div className="practice-item">
-            <h4>📏 Optimize Code Size</h4>
+            <h4><Ruler size={18} className="inline-icon" /> Optimize Code Size</h4>
             <p>Your code is stored on-chain, so keep it concise. Each byte costs storage fees.</p>
           </div>
           <div className="practice-item">
-            <h4>🧪 Test Thoroughly</h4>
+            <h4><TestTube size={18} className="inline-icon" /> Test Thoroughly</h4>
             <p>Try many different seeds to ensure your generator produces good variations</p>
           </div>
           <div className="practice-item">
-            <h4>🎨 Consider Scalability</h4>
+            <h4><Paintbrush size={18} className="inline-icon" /> Consider Scalability</h4>
             <p>Design your art to look good at different sizes and aspect ratios</p>
           </div>
           <div className="practice-item">
-            <h4>⚡ Performance Matters</h4>
+            <h4><Zap size={18} className="inline-icon" /> Performance Matters</h4>
             <p>Avoid infinite loops or computationally expensive operations</p>
           </div>
         </div>
 
         <h2>How It Works: Technical Overview</h2>
         
-        <h3>Generator Lifecycle</h3>
-        <div className="contract-diagram">
-          <div className="contract-flow">
-            <div className="contract-step">
-              <h4>1. Generator Creation</h4>
-              <p>Artists create generators by submitting their JavaScript code, name, and description to the blockchain. The generator is stored permanently with metadata including creation time and author.</p>
+        <div className="technical-overview">
+          <div className="overview-section">
+            <h4><Palette size={18} className="inline-icon" /> Generator Creation & Updates</h4>
+            <p>
+              Artists create generators with JavaScript code stored permanently on-chain. Generators are <strong>updatable</strong> - 
+              authors can modify code, descriptions, and settings at any time. Each update increments the version number 
+              (v1 → v2 → v3...) while preserving creation date and authorship.
+            </p>
+          </div>
+
+          <div className="overview-section">
+            <h4><Target size={18} className="inline-icon" /> Minting Process</h4>
+            <p>
+              When collectors mint, the contract generates blockchain entropy and assembles a complete SVG by combining 
+              <code>bootloader</code> fragments with your generator code. This SVG becomes the NFT's <code>artifactUri</code>, 
+              stored permanently on-chain with unique randomness for each token.
+            </p>
+          </div>
+
+          <div className="overview-section highlight-section">
+            <h4><RefreshCw size={18} className="inline-icon" /> Token Regeneration</h4>
+            <p>
+              <strong>Key Feature:</strong> Token owners can regenerate their NFTs when the original generator 
+              has been updated to a newer version. This allows collectors to benefit from bug fixes and improvements 
+              while preserving their original seed and iteration number.
+            </p>
+            <div className="regeneration-details">
+              <ul>
+                <li>Only available when generator version &gt; token's current version</li>
+                <li>Preserves original seed and iteration number for consistency</li>
+                <li>Free operation (only pay storage difference)</li>
+                <li><strong>Example:</strong> Own token #42 from v2? Artist updates to v3? Regenerate to get v3 improvements with the same unique seed.</li>
+              </ul>
             </div>
-            
-            <div className="contract-step">
-              <h4>2. Generator Updates</h4>
-              <p>Only the original author can update their generator's code, name, or description. The creation date and authorship remain unchanged.</p>
-            </div>
-            
-            <div className="contract-step">
-              <h4>3. Sale Configuration</h4>
-              <p>Authors configure sales by setting price, edition limits, start time, and pause status. Edition sizes can only be reduced if tokens have already been minted.</p>
-            </div>
-            
-            <div className="contract-step">
-              <h4>4. Minting Process</h4>
-              <p>Users mint tokens by paying the set price. The contract generates blockchain entropy, assembles the complete SVG by combining fragments with the generator code, and creates an NFT with the SVG as the artifact URI.</p>
-            </div>
+          </div>
+
+          <div className="overview-section">
+            <h4><Settings size={18} className="inline-icon" /> Platform Features</h4>
+            <ul>
+              <li><strong>Sale Configuration:</strong> Flexible pricing, edition limits, per-wallet limits, pause/resume</li>
+              <li><strong>Airdrops:</strong> Authors can reserve editions for direct distribution</li>
+              <li><strong>Versioning:</strong> New mints use latest version, existing tokens stay at their version until regenerated</li>
+              <li><strong>Permanence:</strong> Generators become permanent once tokens are minted</li>
+            </ul>
           </div>
         </div>
 
         <h3>Generator Description from Comments</h3>
         <p>
-          bootloader automatically extracts your generator's description from the first multi-line comment in your code.
+          bootloader: automatically extracts your generator's description from the first multi-line comment in your code.
           This description is stored on-chain separately from your code and displayed to users when they view your generator.
         </p>
         <div className="description-example">
@@ -266,251 +326,16 @@ Each circle has a unique color based on the deterministic random seed.
 */
 
 // Your generator code follows...
-svg = document.documentElement;`}</code></pre>
+const {svg, rnd} = bl;`}</code></pre>
           <p>
             The text inside the first <code>/* */</code> comment block becomes your generator's description.
             Any comments outside of the description section will be written on-chain into the code section.
           </p>
         </div>
 
-        <h3>NFT Assembly During Mint</h3>
-        <p>
-          When someone mints your generator, the contract assembles a complete SVG using template fragments and creates the NFT metadata.
-          Here's the real-time assembly process:
-        </p>
-
-        <div className="assembly-diagram">
-          <h4 className="assembly-title">NFT Name Assembly</h4>
-          <div className="fragment-flow">
-            <div className="fragment-box">
-              <div className="fragment-header">generator.name</div>
-              <div className="fragment-content">
-                <code>"Colorful Circles"</code>
-                <div className="fragment-note">From generator storage</div>
-              </div>
-            </div>
-            
-            <div className="assembly-arrow">+</div>
-            
-            <div className="fragment-box">
-              <div className="fragment-header">"#" character</div>
-              <div className="fragment-content">
-                <code>0x2023</code>
-                <div className="fragment-note">Hex encoding of " #" separator</div>
-              </div>
-            </div>
-            
-            <div className="assembly-arrow">+</div>
-            
-            <div className="fragment-box">
-              <div className="fragment-header">Iteration Number</div>
-              <div className="fragment-content">
-                <code>generator.n_tokens + 1</code>
-                <div className="fragment-note">Sequential numbering (1, 2, 3...)</div>
-              </div>
-            </div>
-            
-            <div className="assembly-result">
-              <div className="result-arrow">↓</div>
-              <div className="result-box">
-                <div className="result-header">Final NFT Name</div>
-                <div className="result-content">
-                  "Colorful Circles #1", "Colorful Circles #2", etc.
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="assembly-diagram">
-          <h4 className="assembly-title">SVG Fragment Assembly Process</h4>
-          <div className="fragment-flow">
-            <div className="fragment-box">
-              <div className="fragment-header">
-                Fragment 0 
-              </div>
-              <div className="fragment-content">
-                <code>{`data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg">
-<script><![CDATA[const SEED=`}</code>
-                <div className="fragment-note">Note: Content after data:image/svg+xml;utf8, is URL-encoded on-chain but shown decoded here for readability</div>
-              </div>
-            </div>
-            
-            <div className="assembly-arrow">+</div>
-            
-            <div className="fragment-box entropy">
-              <div className="fragment-header">Random Entropy (BigInt)</div>
-              <div className="fragment-content">
-                <code>123456789012345678901234567890123456789012345678901234567890n</code>
-                <div className="fragment-note">Generated from blockchain randomness (BigInt with 'n' suffix)</div>
-              </div>
-            </div>
-            
-            <div className="assembly-arrow">+</div>
-            
-            <div className="fragment-box">
-              <div className="fragment-header">
-                Fragment 1 
-              </div>
-              <div className="fragment-content">
-                <code>{`;function splitmix64(f){let n=f;return function(){let f=n=n+0x9e3779b97f4a7c15n&0xffffffffffffffffn;return f=((f=(f^f>>30n)*0xbf58476d1ce4e5b9n&0xffffffffffffffffn)^f>>27n)*0x94d049bb133111ebn&0xffffffffffffffffn,Number(4294967295n&(f^=f>>31n))>>>0}}function sfc32(f,n,$,t){return function(){$|=0;let e=((f|=0)+(n|=0)|0)+(t|=0)|0;return t=t+1|0,f=n^n>>>9,n=$+($<<3)|0,$=($=$<<21|$>>>11)+e|0,(e>>>0)/4294967296}}const sm=splitmix64(SEED),a=sm(),b=sm(),c=sm(),d=sm(),bl={rnd:sfc32(a,b,c,d),SEED:SEED,svg:document.documentElement,v:'0.0.1'};((bl)=>{`}</code>
-                <div className="fragment-note">Random number generator setup and bl object creation</div>
-              </div>
-            </div>
-            
-            <div className="assembly-arrow">+</div>
-            
-            <div className="fragment-box user-code">
-              <div className="fragment-header">Your Generator Code</div>
-              <div className="fragment-content">
-                <pre className="fragment-code-example"><code>{`// Your creative code here
-const { rnd, svg } = bl;
-
-svg.setAttribute('viewBox', '0 0 400 400');
-const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-circle.setAttribute('cx', 200);
-circle.setAttribute('cy', 200);
-circle.setAttribute('r', 50 + rnd() * 100);
-circle.setAttribute('fill', \`hsl(\${rnd() * 360}, 70%, 50%)\`);
-svg.appendChild(circle);`}</code></pre>
-                <div className="fragment-note">Retrieved from generator.code field</div>
-              </div>
-            </div>
-            
-            <div className="assembly-arrow">+</div>
-            
-            <div className="fragment-box">
-              <div className="fragment-header">
-                Fragment 2
-              </div>
-              <div className="fragment-content">
-                <code>{`})(bl);]]></script>
-</svg>`}</code>
-                <div className="fragment-note">Closes the IIFE and completes the SVG structure</div>
-              </div>
-            </div>
-            
-            <div className="assembly-result">
-              <div className="result-arrow">↓</div>
-              <div className="result-box">
-                <div className="result-header">Complete On-Chain SVG</div>
-                <div className="result-content">
-                  A fully executable SVG with embedded JavaScript that generates unique art
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <h2>Generator Storage Structure</h2>
-        <p>
-          When you create a generator, all data is stored permanently on-chain in a structured format.
-          Here are the fields stored for each generator:
-        </p>
-
-        <div className="help-table-container">
-          <table className="help-table">
-            <thead>
-              <tr>
-                <th>Field</th>
-                <th>Type</th>
-                <th>Max Size</th>
-                <th>Description</th>
-                <th>Mutable</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><code>name</code></td>
-                <td>bytes</td>
-                <td>100 bytes</td>
-                <td>Display name for your generator</td>
-                <td>✅</td>
-              </tr>
-              <tr>
-                <td><code>description</code></td>
-                <td>bytes</td>
-                <td>8,000 bytes</td>
-                <td>Extracted from first /* */ comment in code</td>
-                <td>✅</td>
-              </tr>
-              <tr>
-                <td><code>code</code></td>
-                <td>bytes</td>
-                <td>30,000 bytes</td>
-                <td>Your JavaScript generator code</td>
-                <td>✅</td>
-              </tr>
-              <tr>
-                <td><code>author</code></td>
-                <td>address</td>
-                <td>36 bytes</td>
-                <td>Your Tezos address</td>
-                <td>❌</td>
-              </tr>
-              <tr>
-                <td><code>author_bytes</code></td>
-                <td>bytes</td>
-                <td>36 bytes</td>
-                <td>Hex-encoded address for NFT metadata</td>
-                <td>✅</td>
-              </tr>
-              <tr>
-                <td><code>created</code></td>
-                <td>timestamp</td>
-                <td>8 bytes</td>
-                <td>Creation timestamp</td>
-                <td>❌</td>
-              </tr>
-              <tr>
-                <td><code>last_update</code></td>
-                <td>timestamp</td>
-                <td>8 bytes</td>
-                <td>Last modification timestamp</td>
-                <td>Auto</td>
-              </tr>
-              <tr>
-                <td><code>n_tokens</code></td>
-                <td>nat</td>
-                <td>~4 bytes</td>
-                <td>Number of tokens minted</td>
-                <td>Auto</td>
-              </tr>
-              <tr>
-                <td><code>reserved_editions</code></td>
-                <td>nat</td>
-                <td>~4 bytes</td>
-                <td>Number of editions reserved for airdrops</td>
-                <td>✅</td>
-              </tr>
-              <tr>
-                <td><code>flag</code></td>
-                <td>nat</td>
-                <td>~4 bytes</td>
-                <td>Moderation flag (0 = normal, other values for UI filtering)</td>
-                <td>Mods only</td>
-              </tr>
-              <tr>
-                <td><code>version</code></td>
-                <td>nat</td>
-                <td>~4 bytes</td>
-                <td>Generator version (increments on updates)</td>
-                <td>Auto</td>
-              </tr>
-              <tr>
-                <td><code>sale</code></td>
-                <td>option</td>
-                <td>~32 bytes</td>
-                <td>Sale configuration (price, editions, etc.)</td>
-                <td>✅</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
         <h2>Storage Costs and Mint Pricing</h2>
         <p>
-          Understanding the cost structure of bootloader helps you optimize your generators and set appropriate mint prices.
+          Understanding the cost structure of bootloader: helps you optimize your generators and set appropriate mint prices.
         </p>
         <div className="pricing-section">
           <div className="pricing-item">
@@ -562,13 +387,34 @@ svg.appendChild(circle);`}</code></pre>
 
         <h2>Community & Support</h2>
         <p>
-          bootloader is an open-source project. You can find the code, report issues, and contribute 
+          bootloader: is an open-source project. You can find the code, report issues, and contribute 
           on <a href="https://github.com/objkt-com/bootloader-monorepo" target="_blank" rel="noopener noreferrer">GitHub</a>.
           Join our community to share your creations and learn from other generative artists.
         </p>
 
         <div className="help-footer">
           <p><em>Ready to create? <Link to="/create">Start building your first generator →</Link></em></p>
+        </div>
+
+        {/* objkt labs branding */}
+        <div className="objkt-labs-branding">
+          <img 
+            src="/objkt_labs_logo.png" 
+            alt="objkt labs" 
+            className="objkt-labs-logo"
+          />
+          <div>
+            <div className="objkt-labs-title">Part of objkt labs</div>
+            <div className="objkt-labs-description">
+              objkt labs encompasses residencies, educational initiatives, and experimental content for the Tezos ecosystem.
+              This entire project is an open source mono-repo.
+            </div>
+            <div className="objkt-labs-link">
+              <a href="https://x.com/objktlabs" target="_blank" rel="noopener noreferrer">
+                Follow @objktlabs on X →
+              </a>
+            </div>
+          </div>
         </div>
       </div>
     </div>

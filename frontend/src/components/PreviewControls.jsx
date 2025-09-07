@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Dices, RefreshCw } from 'lucide-react';
 
 export default function PreviewControls({ 
   seed, 
@@ -78,14 +79,14 @@ export default function PreviewControls({
             onClick={handleSeedClick}
             title="Generate new random seed"
           >
-            🎲
+            <Dices size={16} />
           </button>
         )}
       </div>
       
       {showRefresh && onRefresh && (
         <button onClick={handleRefresh} className="refresh-btn" title="Reload with same seed">
-          Reload
+          <RefreshCw size={16} />
         </button>
       )}
     </div>
