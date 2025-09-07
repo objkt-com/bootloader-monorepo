@@ -35,7 +35,7 @@ export const useMetaTags = (metaData) => {
     updateMetaTag("og:image", metaData.image, true);
     updateMetaTag("og:url", metaData.url, true);
     updateMetaTag("og:type", metaData.type || "website", true);
-    updateMetaTag("og:site_name", "bootloader", true);
+    updateMetaTag("og:site_name", "bootloader:", true);
 
     // Twitter Card tags
     updateMetaTag(
@@ -63,9 +63,9 @@ export const useMetaTags = (metaData) => {
 // Helper function to generate meta data for different page types
 export const generateMetaTags = {
   home: () => ({
-    title: "bootloader - On-chain Long-form Generative Art",
+    title: "bootloader: - open experimental on-chain long-form generative art",
     description:
-      "Create, mint, and collect on-chain long-form generative art on Tezos. Build algorithmic art generators with JavaScript and SVG that live forever on the blockchain.",
+      "Create and mint on-chain long-form generative art on Tezos. Build algorithmic art generators with JavaScript and SVG that live forever on the blockchain.",
     keywords:
       "generative art, NFT, Tezos, on-chain, algorithmic art, SVG, JavaScript, blockchain art, digital art, crypto art",
     image: `${window.location.origin}/objkt_labs_logo.png`,
@@ -74,7 +74,7 @@ export const generateMetaTags = {
   }),
 
   create: () => ({
-    title: "Create Generator - bootloader",
+    title: "Create Generator - bootloader:",
     description:
       "Create your own on-chain generative art generator using JavaScript and SVG. Build algorithmic art that lives forever on the Tezos blockchain.",
     keywords:
@@ -94,7 +94,7 @@ export const generateMetaTags = {
       `On-chain generative art generator "${generatorName}" by ${authorName}. Create unique algorithmic art pieces on the Tezos blockchain.`;
 
     return {
-      title: `${generatorName} - bootloader`,
+      title: `${generatorName} - bootloader:`,
       description:
         description.length > 160
           ? description.substring(0, 157) + "..."
@@ -117,7 +117,7 @@ export const generateMetaTags = {
     const description = `${displayName}'s profile on bootloader. ${generatorCount} generators created, ${ownedCount} tokens owned. Explore on-chain generative art on Tezos.`;
 
     return {
-      title: `${displayName} - bootloader`,
+      title: `${displayName} - bootloader:`,
       description,
       keywords: `${displayName}, generative art, NFT, Tezos, profile, on-chain art, algorithmic art`,
       image: `${window.location.origin}/objkt_labs_logo.png`,
