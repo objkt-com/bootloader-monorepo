@@ -23,22 +23,20 @@ import {
 } from 'lucide-react';
 
 export default function Help() {
-  const [exampleCode, setExampleCode] = useState(`/*
-* Five Random Circles
-* bootloader: v0.0.1
-*/
+  const [exampleCode, setExampleCode] = useState(`/**
+ * bootloader: v0.0.1
+ */
 
 bl.svg.setAttribute('viewBox', '0 0 400 400');
-bl.svg.style.cssText = "background:white";
 
-// Create 5 random circles
+// create 5 random circles
 for (let i = 0; i < 5; i++) {
   const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
   
-  circle.setAttribute('cx', 50 + bl.rnd() * 300);
-  circle.setAttribute('cy', 50 + bl.rnd() * 300);
+  circle.setAttribute('cx', 60 + bl.rnd() * 280);
+  circle.setAttribute('cy', 60 + bl.rnd() * 280);
   circle.setAttribute('r', 20 + bl.rnd() * 40);
-  circle.setAttribute('fill', \`hsl(\${bl.rnd() * 360}, 70%, 60%)\`);
+  circle.setAttribute('fill', \`hsl(${bl.rnd() * 360}, 70%, 60%)\`);
   circle.setAttribute('opacity', 0.8);
   
   bl.svg.appendChild(circle);
