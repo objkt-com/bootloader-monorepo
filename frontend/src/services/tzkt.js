@@ -408,7 +408,7 @@ class TzKTService {
       // Now get the token metadata and generator info for these tokens
       const tokenMetadataBigMap = await this.getBigMapByPath("token_metadata");
       const generatorMappingBigMap = await this.getBigMapByPath(
-        "generator_mapping"
+        "token_extra"
       );
       const generatorsBigMap = await this.getBigMapByPath("generators");
 
@@ -439,7 +439,7 @@ class TzKTService {
           );
 
           if (tokenMetadata && generatorMapping) {
-            const generatorId = parseInt(generatorMapping.value);
+            const generatorId = parseInt(generatorMapping.value.generator_id);
 
             // Get generator info
             const generatorData = await this.getBigMapKey(
