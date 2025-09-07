@@ -221,6 +221,10 @@ input:focus, textarea:focus {
   transition: all 0.1s ease;
 }
 
+.nav a {
+  text-decoration: none;
+}
+
 .nav a:hover, .nav a.active {
   border-color: var(--color-black);
   text-decoration: none;
@@ -1545,6 +1549,45 @@ input:focus, textarea:focus {
   margin-bottom: var(--spacing-xs);
 }
 
+/* Help page specific link styling */
+.help-content a {
+  text-decoration: underline;
+  color: var(--color-black);
+  transition: opacity 0.1s ease;
+}
+
+.help-content a:hover {
+  text-decoration: underline;
+  opacity: 0.8;
+}
+
+/* Specific styling for different sections */
+.bootloader-fragments a,
+.explore-fragments a,
+.contract-links a,
+.technical-overview a,
+.objkt-labs-link a {
+  text-decoration: underline;
+  color: var(--color-black);
+}
+
+.bootloader-fragments a:hover,
+.explore-fragments a:hover,
+.contract-links a:hover,
+.technical-overview a:hover {
+  opacity: 0.8;
+}
+
+/* Keep the objkt labs link blue */
+.objkt-labs-link a {
+  color: #1da1f2;
+}
+
+.objkt-labs-link a:hover {
+  color: #1da1f2;
+  opacity: 0.8;
+}
+
 /* Assembly Diagram */
 .assembly-diagram {
   margin: var(--spacing-xl) 0;
@@ -1935,7 +1978,7 @@ input:focus, textarea:focus {
 .objkt-labs-branding {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-md);
   margin-bottom: var(--spacing-xl);
   padding: var(--spacing-md);
   background-color: var(--color-gray-light);
