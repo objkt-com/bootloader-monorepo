@@ -667,7 +667,7 @@ export default function GeneratorDetail() {
           onClick={() => setShowMetadata(!showMetadata)}
           className="metadata-toggle-btn"
         >
-          {showMetadata ? 'Hide' : 'Show'} Metadata
+          {showMetadata ? '[-] hide' : '[+] show'} metadata
         </button>
         
         {/* Generator metadata - collapsible */}
