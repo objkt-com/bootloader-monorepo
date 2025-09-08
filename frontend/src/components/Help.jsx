@@ -80,7 +80,7 @@ for (let i = 0; i < 5; i++) {
 
         <p>Edit the code below to see how changes affect the generated artwork:</p>
         
-        <div className="editor-container" style={{height: '350px'}}>
+        <div className="editor-container help-editor-container" style={{height: '350px'}}>
           <CodeEditor
             value={exampleCode}
             onChange={setExampleCode}

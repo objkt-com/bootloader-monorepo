@@ -892,6 +892,58 @@ input:focus, textarea:focus {
   text-decoration: underline;
 }
 
+/* Metadata toggle button */
+.metadata-toggle-btn {
+  background: transparent;
+  border: none;
+  color: var(--color-gray-dark);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: var(--spacing-xs) 0;
+  cursor: pointer;
+  transition: color 0.1s ease;
+  margin-top: var(--spacing-xs);
+  text-decoration: underline;
+}
+
+.metadata-toggle-btn:hover {
+  color: var(--color-black);
+  background: transparent;
+}
+
+/* Expanded metadata section */
+.generator-metadata-expanded {
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--color-gray-light);
+  border: var(--border-width) solid var(--color-gray-medium);
+  border-radius: var(--border-radius);
+}
+
+.generator-metadata-expanded .metadata-item {
+  display: flex;
+  justify-content: flex-start;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: var(--spacing-xs);
+  font-size: 12px;
+}
+
+.generator-metadata-expanded .metadata-item:last-child {
+  margin-bottom: 0;
+}
+
+.generator-metadata-expanded .metadata-label {
+  color: var(--color-gray-dark);
+  font-weight: 400;
+}
+
+.generator-metadata-expanded .metadata-value {
+  color: var(--color-black);
+  font-weight: 500;
+  font-family: var(--font-mono);
+}
+
 /* Countdown display */
 .countdown-display {
   background: #0066cc;
@@ -950,6 +1002,38 @@ input:focus, textarea:focus {
 .sale-countdown {
   color: #0066cc;
   font-weight: 500;
+}
+
+/* Generator metadata section */
+.generator-metadata {
+  border: var(--border-width) solid var(--color-black);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-md);
+  margin: var(--spacing-lg) 0;
+  background: var(--color-gray-light);
+}
+
+.metadata-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-xs);
+  font-size: 12px;
+}
+
+.metadata-item:last-child {
+  margin-bottom: 0;
+}
+
+.metadata-label {
+  color: var(--color-gray-dark);
+  font-weight: 400;
+}
+
+.metadata-value {
+  color: var(--color-black);
+  font-weight: 500;
+  font-family: var(--font-mono);
 }
 
 /* Mint Success Popup */
@@ -1554,6 +1638,8 @@ input:focus, textarea:focus {
   text-decoration: underline;
   color: var(--color-black);
   transition: opacity 0.1s ease;
+  word-break: break-all;
+  overflow-wrap: break-word;
 }
 
 .help-content a:hover {
@@ -2289,6 +2375,44 @@ small .inline-icon {
 
   .example-code pre {
     font-size: 11px;
+  }
+
+  /* Help page specific mobile styles - override general mobile rules */
+  .help-editor-container {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: var(--spacing-lg) !important;
+    height: auto !important;
+    min-height: 600px !important;
+  }
+
+  /* Make sure CodeEditor is visible and has proper height on mobile */
+  .help-editor-container > div:first-child {
+    display: block !important;
+    height: 300px !important;
+    min-height: 300px !important;
+    border: var(--border-width) solid var(--color-black) !important;
+    border-radius: var(--border-radius) !important;
+    overflow: hidden !important;
+  }
+
+  /* Ensure preview panel has proper height and spacing */
+  .help-editor-container .preview-panel {
+    display: flex !important;
+    flex-direction: column !important;
+    height: 300px !important;
+    min-height: 300px !important;
+    margin-top: var(--spacing-lg) !important;
+  }
+
+  /* Override the mobile code toggle behavior for Help page specifically */
+  .help-container .mobile-code-toggle {
+    display: none !important;
+  }
+
+  /* Add proper spacing after the help editor container */
+  .help-editor-container + h3 {
+    margin-top: var(--spacing-xl) !important;
   }
 
   /* Mobile-friendly actions layout */

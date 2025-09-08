@@ -43,6 +43,7 @@ export default function GeneratorDetail() {
   const [mintedTokenData, setMintedTokenData] = useState(null);
   const [showFullscreenPreview, setShowFullscreenPreview] = useState(false);
   const [showCodeOnMobile, setShowCodeOnMobile] = useState(false);
+  const [showMetadata, setShowMetadata] = useState(false);
 
   // Handle escape key to close fullscreen
   useEffect(() => {
@@ -660,6 +661,48 @@ export default function GeneratorDetail() {
             {getAuthorDisplayName()}
           </a>
         </p>
+        
+        {/* Metadata toggle button */}
+        <button 
+          onClick={() => setShowMetadata(!showMetadata)}
+          className="metadata-toggle-btn"
+        >
+          {showMetadata ? 'Hide' : 'Show'} Metadata
+        </button>
+        
+        {/* Generator metadata - collapsible */}
+        {showMetadata && (
+          <div className="generator-metadata-expanded">
+            <div className="metadata-item">
+              <span className="metadata-label">Created:</span>
+              <span className="metadata-value">
+                {generator.created ? new Date(generator.created).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                }) : 'Unknown'}
+              </span>
+            </div>
+            <div className="metadata-item">
+              <span className="metadata-label">Last Updated:</span>
+              <span className="metadata-value">
+                {generator.lastUpdate ? new Date(generator.lastUpdate).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                }) : 'Unknown'}
+              </span>
+            </div>
+            <div className="metadata-item">
+              <span className="metadata-label">Version:</span>
+              <span className="metadata-value">v0.0.1</span>
+            </div>
+          </div>
+        )}
       </div>
       
       {isEditing && (
