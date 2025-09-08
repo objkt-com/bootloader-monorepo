@@ -5,7 +5,9 @@
   "main": "src/index.js",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "build": "echo 'No build step required for this worker'",
+    "build:ghostnet": "echo 'No build step required for this worker'"
   },
   "dependencies": {
     "@cloudflare/puppeteer": "^0.0.5"
