@@ -1,6 +1,6 @@
 export default {
   async fetch(request, env, ctx) {
-    const wokerCacheBuster = "v6";
+    const workerCacheBuster = "v6"; // (typo fixed)
     const url = new URL(request.url);
     const pathParts = url.pathname.split("/").filter(Boolean);
 
@@ -21,8 +21,8 @@ export default {
     }
 
     // Extract query parameters
-    const width = Number(url.searchParams.get("width")) || 500;
-    const height = Number(url.searchParams.get("height")) || 500;
+    const width = Number(url.searchParams.get("width")) || 400;
+    const height = Number(url.searchParams.get("height")) || 400;
     const version = url.searchParams.get("v") || "v3";
     const network = url.searchParams.get("n") || "m";
 
@@ -42,38 +42,36 @@ export default {
     const baseUrl =
       network === "g" ? baseUrlGhostnet : network === "s" ? baseUrlShadownet : baseUrlMainnet;
 
-    // Construct the target URL
-    const targetUrl = `${baseUrl}/${type}/${id}?cb=${version}-${wokerCacheBuster}`;
+    // Construct the target URL the browser renderer should visit
+    const targetUrl = new URL(`/${type}/${id}`, baseUrl);
+    targetUrl.searchParams.set("cb", `${version}-${workerCacheBuster}`);
 
-    // Optional: add edge caching (keyed by URL+size) so repeated hits don’t re-render
-    const cacheKey = new Request(`${request.method}:${targetUrl}:${width}x${height}`, {
-      method: "GET",
-    });
+    // --- Edge cache (keyed by target URL + size). IMPORTANT: use a real absolute URL.
+    const cacheKeyUrl = new URL(targetUrl.toString());
+    cacheKeyUrl.searchParams.set("size", `${width}x${height}`); // only affects cache key
+    const cacheKey = new Request(cacheKeyUrl.toString(), { method: "GET" });
+
     const cache = caches.default;
     const cached = await cache.match(cacheKey);
     if (cached) {
       return cached;
     }
 
-    // Call Cloudflare Browser Rendering REST API
+    // Cloudflare Browser Rendering API endpoint
     const endpoint = `https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/browser-rendering/screenshot`;
 
-    // We’ll request a JPEG at your exact viewport size, with DPR=1
+    // Request a JPEG at your exact viewport size, with DPR=1
     const body = {
-      url: targetUrl,
+      url: targetUrl.toString(),
       viewport: { width, height },
       gotoOptions: {
         waitUntil: "networkidle0",
         timeout: 25000,
       },
       screenshotOptions: {
-        type: "jpeg",
-        quality: 85,
+        type: "png",
         captureBeyondViewport: false,
-        // fullPage: false // default; include if you want strictly the viewport
       },
-      // You can also use `selector` if you ever want element-cropping
-      // selector: "#some-element"
     };
 
     try {
@@ -86,36 +84,35 @@ export default {
         body: JSON.stringify(body),
       });
 
+      // If the API returned JSON, it's probably an error payload — surface it.
       const ct = apiRes.headers.get("content-type") || "";
-
-      // If the API returned JSON, it’s likely an error payload
-      if (ct.includes("application/json")) {
-        const json = await apiRes.json().catch(() => ({}));
-        const msg =
-          json?.errors?.[0]?.message ||
-          json?.messages?.[0] ||
-          json?.error ||
-          apiRes.statusText ||
-          "Screenshot API error";
-        const code = json?.errors?.[0]?.code;
-        // Mirror the old “not ready yet” tone for transient problems
+      if (!apiRes.ok || ct.includes("application/json")) {
+        let msg = apiRes.statusText || "Screenshot API error";
+        try {
+          const json = await apiRes.json();
+          msg =
+            json?.errors?.[0]?.message ||
+            json?.messages?.[0] ||
+            json?.error ||
+            msg;
+          const code = json?.errors?.[0]?.code;
+          msg = `${msg}${code ? ` (code ${code})` : ""}`;
+        } catch { /* ignore parse errors */ }
         const status = apiRes.status === 429 ? 425 : apiRes.status || 500;
-        return new Response(`Thumbnail not ready yet: ${msg}${code ? ` (code ${code})` : ""}`, {
-          status,
-        });
+        return new Response(`Thumbnail not ready yet: ${msg}`, { status });
       }
 
-      // Otherwise, stream the image through
+      // Stream the image through
       const imageResp = new Response(apiRes.body, {
         status: 200,
         headers: {
-          "Content-Type": "image/jpeg",
+          "Content-Type": "image/png",
           "Cache-Control": "public, max-age=300",
           "Access-Control-Allow-Origin": "*",
         },
       });
 
-      // Store in edge cache
+      // Store in edge cache (don't await)
       ctx.waitUntil(cache.put(cacheKey, imageResp.clone()));
 
       return imageResp;
