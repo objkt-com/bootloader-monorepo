@@ -11,3 +11,7 @@ binding = "MYBROWSER"
 
 [vars]
 ENVIRONMENT = "production"
+
+[[routes]]
+pattern = "media.bootloader.art"
+custom_domain = true

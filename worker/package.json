@@ -11,7 +11,7 @@
     "@cloudflare/puppeteer": "^0.0.5"
   },
   "devDependencies": {
-    "wrangler": "^3.0.0"
+    "wrangler": "^4.34.0"
   },
   "keywords": [
     "cloudflare",

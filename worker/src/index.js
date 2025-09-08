@@ -1,12 +1,10 @@
-import puppeteer from "@cloudflare/puppeteer";
-
 export default {
-  async fetch(request, env) {
-    const workerCacheBuster = "v6";
+  async fetch(request, env, ctx) {
+    const wokerCacheBuster = "v6";
     const url = new URL(request.url);
     const pathParts = url.pathname.split("/").filter(Boolean);
 
-    // Validate path
+    // Validate the path structure
     if (
       pathParts.length < 2 ||
       (pathParts[0] !== "thumbnail" && pathParts[0] !== "generator-thumbnail")
@@ -17,14 +15,14 @@ export default {
     const type = pathParts[0];
     const id = pathParts[1];
 
-    // Validate ID
+    // Validate the ID
     if (!id || isNaN(Number(id))) {
       return new Response("Invalid ID. Must be a number.", { status: 400 });
     }
 
-    // Query params
-    const width = Math.max(1, Math.min(1000, Number(url.searchParams.get("width")) || 500));
-    const height = Math.max(1, Math.min(1000, Number(url.searchParams.get("height")) || 500));
+    // Extract query parameters
+    const width = Number(url.searchParams.get("width")) || 500;
+    const height = Number(url.searchParams.get("height")) || 500;
     const version = url.searchParams.get("v") || "v3";
     const network = url.searchParams.get("n") || "m";
 
@@ -32,59 +30,99 @@ export default {
       return new Response("wrong network", { status: 400 });
     }
 
-    // Base URLs
+    // Validate dimensions
+    if (width > 1000 || height > 1000) {
+      return new Response("Width and height must not exceed 1000px.", { status: 400 });
+    }
+
+    // Base URL for your hosted content
     const baseUrlMainnet = "https://bootloader.art";
     const baseUrlGhostnet = "https://ghostnet.bootloader.art";
     const baseUrlShadownet = "https://shadownet.bootloader.art";
-    const baseUrl = network === "g" ? baseUrlGhostnet : network === "s" ? baseUrlShadownet : baseUrlMainnet;
+    const baseUrl =
+      network === "g" ? baseUrlGhostnet : network === "s" ? baseUrlShadownet : baseUrlMainnet;
 
-    // Target to render
-    const targetUrl = `${baseUrl}/${type}/${id}?cb=${version}-${workerCacheBuster}`;
+    // Construct the target URL
+    const targetUrl = `${baseUrl}/${type}/${id}?cb=${version}-${wokerCacheBuster}`;
 
-    let browser;
-    try {
-      browser = await puppeteer.launch(env.MYBROWSER);
+    // Optional: add edge caching (keyed by URL+size) so repeated hits don’t re-render
+    const cacheKey = new Request(`${request.method}:${targetUrl}:${width}x${height}`, {
+      method: "GET",
+    });
+    const cache = caches.default;
+    const cached = await cache.match(cacheKey);
+    if (cached) {
+      return cached;
+    }
 
-      const page = await browser.newPage();
+    // Call Cloudflare Browser Rendering REST API
+    const endpoint = `https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/browser-rendering/screenshot`;
 
-      // Ensure exact requested dimensions (no DPR scaling)
-      await page.setViewport({
-        width,
-        height,
-        deviceScaleFactor: 1,
-        isMobile: false,
-        hasTouch: false,
-      });
-
-      // Load & wait for network to settle; tweak if your app needs more time
-      await page.goto(targetUrl, {
-        waitUntil: ["networkidle0", "domcontentloaded"],
-        timeout: 25_000,
-      });
-
-      // Optional small settle for late paints; adjust/remove as needed
-      await page.waitForTimeout(250);
-
-      // Capture exactly the viewport (no fullPage)
-      const jpeg = await page.screenshot({
+    // We’ll request a JPEG at your exact viewport size, with DPR=1
+    const body = {
+      url: targetUrl,
+      viewport: { width, height },
+      gotoOptions: {
+        waitUntil: "networkidle0",
+        timeout: 25000,
+      },
+      screenshotOptions: {
         type: "jpeg",
-        quality: 100, // decent balance size/quality
+        quality: 85,
         captureBeyondViewport: false,
+        // fullPage: false // default; include if you want strictly the viewport
+      },
+      // You can also use `selector` if you ever want element-cropping
+      // selector: "#some-element"
+    };
+
+    try {
+      const apiRes = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${env.CF_API_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
       });
 
-      return new Response(jpeg, {
+      const ct = apiRes.headers.get("content-type") || "";
+
+      // If the API returned JSON, it’s likely an error payload
+      if (ct.includes("application/json")) {
+        const json = await apiRes.json().catch(() => ({}));
+        const msg =
+          json?.errors?.[0]?.message ||
+          json?.messages?.[0] ||
+          json?.error ||
+          apiRes.statusText ||
+          "Screenshot API error";
+        const code = json?.errors?.[0]?.code;
+        // Mirror the old “not ready yet” tone for transient problems
+        const status = apiRes.status === 429 ? 425 : apiRes.status || 500;
+        return new Response(`Thumbnail not ready yet: ${msg}${code ? ` (code ${code})` : ""}`, {
+          status,
+        });
+      }
+
+      // Otherwise, stream the image through
+      const imageResp = new Response(apiRes.body, {
+        status: 200,
         headers: {
           "Content-Type": "image/jpeg",
-          "Cache-Control": "public, max-age=300", // 5 minutes
+          "Cache-Control": "public, max-age=300",
           "Access-Control-Allow-Origin": "*",
         },
       });
+
+      // Store in edge cache
+      ctx.waitUntil(cache.put(cacheKey, imageResp.clone()));
+
+      return imageResp;
     } catch (err) {
-      // 425 = Too Early / not ready yet (consistent with your old behavior)
-      const message = err?.message || "unknown error";
-      return new Response(`Thumbnail not ready yet: ${message}`, { status: 425 });
-    } finally {
-      try { if (browser) await browser.close(); } catch {}
+      return new Response(`Thumbnail not ready yet: ${err?.message || "unknown error"}`, {
+        status: 425,
+      });
     }
   },
 };
