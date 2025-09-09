@@ -33,6 +33,7 @@ class TzKTService {
     return bigmaps.length > 0 ? bigmaps[0] : null;
   }
 
+
   // Get all keys from a bigmap
   async getBigMapKeys(bigmapId, options = {}) {
     let url = `${this.baseUrl}/v1/bigmaps/${bigmapId}/keys?active=true`;
@@ -57,7 +58,6 @@ class TzKTService {
       url += `&${queryString}`;
     }
 
-    console.log("TzKT API URL:", url); // Debug logging
     return await this.fetchJson(url);
   }
 
@@ -102,6 +102,8 @@ class TzKTService {
           lastUpdate: new Date(generator.last_update),
           nTokens: parseInt(generator.n_tokens || 0),
           sale: generator.sale || null,
+          version: parseInt(generator.version || 1),
+          bootloaderId: parseInt(generator.type_id || 0),
         };
       });
 
@@ -140,6 +142,8 @@ class TzKTService {
         code: this.bytesToStringAndDecodeUrl(generator.code),
         created: new Date(generator.created),
         lastUpdate: new Date(generator.last_update),
+        version: parseInt(generator.version || 1),
+        bootloaderId: parseInt(generator.type_id || 0),
       };
     } catch (error) {
       console.error(`Failed to get generator ${generatorId} from TzKT:`, error);
@@ -313,14 +317,12 @@ class TzKTService {
       const tokenExtraKeys = await this.getBigMapKeys(generatorMappingBigMap.ptr, {
         limit: 1000, // Get a large batch to filter
       });
-      console.log(tokenExtraKeys)
 
       // Filter for tokens that belong to this generator and sort by tokenId descending
       const generatorTokens = tokenExtraKeys
         .filter((keyData) => parseInt(keyData.value.generator_id) === generatorId)
         .sort((a, b) => parseInt(b.key) - parseInt(a.key)) // Ensure newest tokens first
         .slice(0, limit); // Take only the requested number
-      console.log(generatorTokens)
       if (generatorTokens.length === 0) {
         return [];
       }
@@ -480,6 +482,38 @@ class TzKTService {
     } catch (error) {
       console.error(`Failed to get owned tokens for ${ownerAddress}:`, error);
       throw error;
+    }
+  }
+
+  // Get bootloader information by ID
+  async getBootloader(bootloaderId) {
+    try {
+      // Use the existing getBigMapByPath function to get the bootloaders bigmap
+      const bootloadersBigMap = await this.getBigMapByPath("bootloaders");
+      if (!bootloadersBigMap) {
+        console.warn("Bootloaders bigmap not found");
+        return null;
+      }
+
+      const keyData = await this.getBigMapKey(
+        bootloadersBigMap.ptr,
+        bootloaderId.toString()
+      );
+      if (!keyData) {
+        console.warn(`Bootloader ${bootloaderId} not found in bigmap`);
+        return null;
+      }
+
+      const bootloader = keyData.value;
+      return {
+        id: parseInt(keyData.key),
+        version: this.bytesToString(bootloader.version),
+        fragments: bootloader.fragments || [],
+        fun: bootloader.fun || null,
+      };
+    } catch (error) {
+      console.error(`Failed to get bootloader ${bootloaderId} from TzKT:`, error);
+      return null;
     }
   }
 

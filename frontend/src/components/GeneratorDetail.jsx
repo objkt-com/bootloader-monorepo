@@ -44,6 +44,7 @@ export default function GeneratorDetail() {
   const [showFullscreenPreview, setShowFullscreenPreview] = useState(false);
   const [showCodeOnMobile, setShowCodeOnMobile] = useState(false);
   const [showMetadata, setShowMetadata] = useState(false);
+  const [bootloaderInfo, setBootloaderInfo] = useState(null);
 
   // Handle escape key to close fullscreen
   useEffect(() => {
@@ -239,6 +240,16 @@ export default function GeneratorDetail() {
     }
   };
 
+  const loadBootloaderInfo = async (bootloaderId) => {
+    try {
+      const bootloader = await tzktService.getBootloader(bootloaderId);
+      setBootloaderInfo(bootloader);
+    } catch (err) {
+      console.error('Failed to load bootloader info:', err);
+      setBootloaderInfo(null);
+    }
+  };
+
   const loadGenerator = async () => {
     try {
       setLoading(true);
@@ -256,6 +267,11 @@ export default function GeneratorDetail() {
           foundGenerator.code
         );
         setEditCode(codeWithDescription);
+        
+        // Load bootloader information if bootloaderId is available
+        if (foundGenerator.bootloaderId !== undefined && foundGenerator.bootloaderId !== null) {
+          await loadBootloaderInfo(foundGenerator.bootloaderId);
+        }
       } else {
         setError('Generator not found');
       }
@@ -698,8 +714,16 @@ export default function GeneratorDetail() {
               </span>
             </div>
             <div className="metadata-item">
-              <span className="metadata-label">Version:</span>
-              <span className="metadata-value">v0.0.1</span>
+              <span className="metadata-label">Generator Version:</span>
+              <span className="metadata-value">
+                {generator.version ? `${generator.version}` : '-'}
+              </span>
+            </div>
+            <div className="metadata-item">
+              <span className="metadata-label">Bootloader:</span>
+              <span className="metadata-value bootloader-version">
+                {bootloaderInfo?.version || '-'}
+              </span>
             </div>
           </div>
         )}
