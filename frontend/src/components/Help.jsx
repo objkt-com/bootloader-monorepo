@@ -108,6 +108,17 @@ for (let i = 0; i < 5; i++) {
             </div>
           </div>
         </div>
+        <p>
+          
+        </p>
+        <p> 
+          The term <em>bootloader</em> comes from computing, where it describes the small program that starts up a 
+          computer by loading the system into memory. In the same way, <code>bootloader:</code> acts as the minimal 
+          code that "boots" your artwork — a self-contained SVG fragment that, when combined with blockchain entropy, 
+          initializes the generative system and produces the final piece. Each token’s <code>artifactUri</code> is 
+          effectively its own tiny bootable environment: it carries both the instructions (your code) and the randomness 
+          (the seed) needed to regenerate the artwork <em>forever</em>. 
+        </p>
 
         <h3>Why SVG?</h3>
         <p>
@@ -137,11 +148,11 @@ for (let i = 0; i < 5; i++) {
           invites viewers to mess with the code.
         </p>
 
-        <h2>The SVG <code>bootloader</code></h2>
+        <h2>The SVG <em>bootloader</em></h2>
 
         <p>
-          Your generator code runs inside an SVG <code>bootloader</code> that assembles your artwork at mint time. 
-          The <code>bootloader</code> provides a minimal but powerful runtime environment through the <code>bl</code> object:
+          Your generator code runs inside an SVG <em>bootloader</em> that assembles your artwork at mint time. 
+          The <em>bootloader</em> provides a minimal but powerful runtime environment through the <code>bl</code> object:
         </p>
 
         <div className="bootloader-fragments">
@@ -165,13 +176,14 @@ for (let i = 0; i < 5; i++) {
   };
   
   ((bl) => {
-    // YOUR GENERATOR CODE INSERTED HERE
+    // YOUR INJECTED GENERATOR CODE STARTS HERE
     bl.svg.setAttribute('viewBox', '0 0 400 400');
     const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     circle.setAttribute('cx', 200 + bl.rnd() * 100);
     circle.setAttribute('cy', 200 + bl.rnd() * 100);
     circle.setAttribute('r', 50);
     bl.svg.appendChild(circle);
+    // YOUR INJECTED GENERATOR CODE ENDS HERE
   })(bl);
 ]]></script>
 </svg>`}</code></pre>
