@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { tezosService } from '../services/tezos.js';
 import { tzktService } from '../services/tzkt.js';
+import { objktService } from '../services/objkt.js';
 import { getNetworkConfig, getContractAddress } from '../config.js';
 import { getGeneratorThumbnailUrl, getNetwork, getTokenThumbnailUrl } from '../utils/thumbnail.js';
 import { getUserDisplayInfo, formatAddress } from '../utils/userDisplay.js';
@@ -69,7 +70,18 @@ export default function Profile() {
   const loadOwnedTokens = async () => {
     try {
       setTokensLoading(true);
-      const tokens = await tzktService.getOwnedTokens(address, 50);
+      
+      const contractAddress = getContractAddress();
+      
+      if (!contractAddress) {
+        console.warn('No contract address configured for current network');
+        setOwnedTokens([]);
+        return;
+      }
+
+      // Use objkt API with network-specific endpoints
+      const tokens = await objktService.getOwnedTokens(address, 50);
+      console.log('Successfully loaded tokens from objkt API:', tokens.length);
       setOwnedTokens(tokens);
     } catch (err) {
       console.error('Failed to load owned tokens:', err);
