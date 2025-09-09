@@ -491,10 +491,14 @@ export default function GeneratorDetail() {
   };
 
   const handleFork = () => {
-    // Navigate to create page with the generator's code pre-filled
+    // Navigate to create page with the generator's full code (including description comment) pre-filled
+    const fullCodeWithDescription = formatCodeWithDescription(
+      generator.description || '', 
+      generator.code
+    );
     navigate('/create', { 
       state: { 
-        forkCode: generator.code,
+        forkCode: fullCodeWithDescription,
         forkName: `Fork of ${generator.name || `Generator #${generator.id}`}`
       } 
     });
