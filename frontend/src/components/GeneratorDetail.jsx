@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Maximize2, X } from 'lucide-react';
 import { tezosService } from '../services/tezos.js';
 import { tzktService } from '../services/tzkt.js';
-import { getNetworkConfig, getContractAddress } from '../config.js';
+import { getNetworkConfig, getContractAddress, CONFIG } from '../config.js';
 import CodeEditor from './CodeEditor.jsx';
 import SVGPreview from './SVGPreview.jsx';
 import PreviewControls from './PreviewControls.jsx';
@@ -27,7 +27,7 @@ export default function GeneratorDetail() {
   const [isSaving, setIsSaving] = useState(false);
   const [isMinting, setIsMinting] = useState(false);
   const [success, setSuccess] = useState(null);
-  const [previewSeed, setPreviewSeed] = useState(Math.floor(Math.random() * 1000000));
+  const [previewSeed, setPreviewSeed] = useState(CONFIG.defaultPreviewSeed);
   const [latestTokens, setLatestTokens] = useState([]);
   const [tokensLoading, setTokensLoading] = useState(false);
   const [showSaleForm, setShowSaleForm] = useState(false);

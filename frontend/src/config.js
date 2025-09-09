@@ -28,6 +28,9 @@ export const CONFIG = {
     projectName: "bootloader",
     tagline: "open experimental on-chain long-form generative art",
   },
+
+  // Default preview seed for consistent generator previews
+  defaultPreviewSeed: 888888,
 };
 
 export const getNetworkConfig = () => {

@@ -42,7 +42,7 @@ for (let i = 0; i < 5; i++) {
   bl.svg.appendChild(circle);
 }`);
   
-  const [previewSeed, setPreviewSeed] = useState(12345);
+  const [previewSeed, setPreviewSeed] = useState(CONFIG.defaultPreviewSeed);
 
   const refreshPreview = () => {
     const currentSeed = previewSeed;
@@ -250,7 +250,7 @@ for (let i = 0; i < 5; i++) {
           </div>
           <div className="practice-item">
             <h4><TestTube size={18} className="inline-icon" /> Test Thoroughly</h4>
-            <p>Try many different seeds to ensure your generator produces good variations</p>
+            <p>Try many different seeds to ensure your generator produces good variations. The platform uses a consistent preview seed ({CONFIG.defaultPreviewSeed}) across all generator thumbnails.</p>
           </div>
           <div className="practice-item">
             <h4><Paintbrush size={18} className="inline-icon" /> Consider Scalability</h4>

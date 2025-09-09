@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { tzktService } from '../services/tzkt.js';
 import { tezosService } from '../services/tezos.js';
+import { CONFIG } from '../config.js';
 
 function GeneratorThumbnailRenderer() {
   const { generatorId } = useParams();
@@ -97,9 +98,8 @@ function GeneratorThumbnailRenderer() {
     );
   }
 
-  // Use a default seed for generator thumbnails
-  const defaultSeed = 555555;
-  const generatedSvg = tezosService.generateSVG(generatorData.code, defaultSeed, 0);
+  // Use the configurable default seed for generator thumbnails
+  const generatedSvg = tezosService.generateSVG(generatorData.code, CONFIG.defaultPreviewSeed, 0);
 
   return (
     <div style={{ 
