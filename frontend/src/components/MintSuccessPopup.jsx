@@ -102,7 +102,7 @@ export default function MintSuccessPopup({
                   rel="noopener noreferrer"
                   className="btn objkt-button"
                 >
-                  View on objkt.com
+                  View on objkt
                 </a>
               )}
             </div>
