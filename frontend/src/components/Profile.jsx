@@ -16,6 +16,7 @@ export default function Profile() {
   const [generators, setGenerators] = useState([]);
   const [ownedTokens, setOwnedTokens] = useState([]);
   const [userDisplayInfo, setUserDisplayInfo] = useState({ displayName: '', profile: null });
+  const [artistNames, setArtistNames] = useState(new Map());
   const [loading, setLoading] = useState(true);
   const [tokensLoading, setTokensLoading] = useState(false);
   const [profileLoading, setProfileLoading] = useState(true);
@@ -67,6 +68,37 @@ export default function Profile() {
     }
   };
 
+  // Function to resolve artist names for creators
+  const resolveArtistNames = async (tokens) => {
+    const newArtistNames = new Map(artistNames);
+    const addressesToResolve = new Set();
+
+    // Collect all unique creator addresses that we haven't resolved yet
+    tokens.forEach(token => {
+      if (token.creators && token.creators.length > 0) {
+        token.creators.forEach(creator => {
+          if (!newArtistNames.has(creator.creator_address)) {
+            addressesToResolve.add(creator.creator_address);
+          }
+        });
+      }
+    });
+
+    // Resolve display names for new addresses
+    const resolvePromises = Array.from(addressesToResolve).map(async (creatorAddress) => {
+      try {
+        const displayInfo = await getUserDisplayInfo(creatorAddress);
+        newArtistNames.set(creatorAddress, displayInfo.displayName);
+      } catch (err) {
+        console.error(`Failed to resolve artist name for ${creatorAddress}:`, err);
+        newArtistNames.set(creatorAddress, formatAddress(creatorAddress));
+      }
+    });
+
+    await Promise.all(resolvePromises);
+    setArtistNames(newArtistNames);
+  };
+
   const loadOwnedTokens = async () => {
     try {
       setTokensLoading(true);
@@ -83,6 +115,9 @@ export default function Profile() {
       const tokens = await objktService.getOwnedTokens(address, 50);
       console.log('Successfully loaded tokens from objkt API:', tokens.length);
       setOwnedTokens(tokens);
+
+      // Resolve artist names for the tokens
+      await resolveArtistNames(tokens);
     } catch (err) {
       console.error('Failed to load owned tokens:', err);
       setOwnedTokens([]);
@@ -235,6 +270,25 @@ export default function Profile() {
     return getContractAddress();
   };
 
+  // Helper function to get artist display text for a token
+  const getArtistDisplayText = (token) => {
+    if (!token.creators || token.creators.length === 0) {
+      return 'Unknown Artist';
+    }
+
+    if (token.creators.length === 1) {
+      const creatorAddress = token.creators[0].creator_address;
+      const artistName = artistNames.get(creatorAddress);
+      return artistName || formatAddress(creatorAddress);
+    }
+
+    // Multiple creators - show first artist + count
+    const firstCreatorAddress = token.creators[0].creator_address;
+    const firstArtistName = artistNames.get(firstCreatorAddress) || formatAddress(firstCreatorAddress);
+    const remainingCount = token.creators.length - 1;
+    return `${firstArtistName} +${remainingCount}`;
+  };
+
   return (
     <div className="profile-container">
       <div className="profile-header">
@@ -357,8 +411,8 @@ export default function Profile() {
                     <div className="token-card-name">
                       {token.name}
                     </div>
-                    <div className="token-card-generator">
-                      from {token.generatorName}
+                    <div className="token-card-artist">
+                      by {getArtistDisplayText(token)}
                     </div>
                   </div>
                 </a>

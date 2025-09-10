@@ -72,6 +72,10 @@ class ObjktService {
             timestamp
             fa_contract
             metadata
+            creators {
+              creator_address
+              verified
+            }
           }
         }
       }
@@ -138,6 +142,7 @@ class ObjktService {
           seed,
           generatorId,
           generatorName,
+          creators: token.creators || [],
           quantity: parseFloat(holder.quantity),
           owner: ownerAddress,
         };
