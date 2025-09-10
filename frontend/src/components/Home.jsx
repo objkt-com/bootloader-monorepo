@@ -217,7 +217,7 @@ export default function Home() {
     return (
       <div className="container">
         <div className="error">{error}</div>
-        <button onClick={loadGenerators}>Retry</button>
+        <button onClick={loadGenerators}>retry</button>
       </div>
     );
   }

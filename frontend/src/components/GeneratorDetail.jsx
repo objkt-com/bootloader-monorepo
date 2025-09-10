@@ -690,7 +690,7 @@ export default function GeneratorDetail() {
     return (
       <div className="container">
         <div className="error">{error}</div>
-        <button onClick={() => navigate('/')}>Back to Home</button>
+        <button onClick={() => navigate('/')}>back to home</button>
       </div>
     );
   }
@@ -699,7 +699,7 @@ export default function GeneratorDetail() {
     return (
       <div className="container">
         <div>Generator not found</div>
-        <button onClick={() => navigate('/')}>Back to Home</button>
+        <button onClick={() => navigate('/')}>back to home</button>
       </div>
     );
   }
@@ -880,7 +880,7 @@ export default function GeneratorDetail() {
         <div className="actions-left">
           {isAuthor && !isEditing && (
             <>
-              <button onClick={handleEdit}>Edit</button>
+              <button onClick={handleEdit}>edit</button>
               {(generator.nTokens || 0) === 0 && (
                 <button 
                   onClick={handleDelete} 
@@ -901,7 +901,7 @@ export default function GeneratorDetail() {
 
           {isEditing && (
             <>
-              <button onClick={handleCancelEdit} disabled={isSaving}>Cancel</button>
+              <button onClick={handleCancelEdit} disabled={isSaving}>cancel</button>
               <button onClick={handleSave} disabled={isSaving}>
                 {isSaving ? 'Saving...' : 'Save Changes'}
               </button>

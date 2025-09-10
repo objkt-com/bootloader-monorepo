@@ -659,6 +659,63 @@ beacon-toast {
   font-size: 12px;
 }
 
+/* Preview checkbox styling */
+.preview-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.preview-checkbox input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  width: 16px;
+  height: 16px;
+  border: var(--border-width) solid var(--color-black);
+  border-radius: var(--border-radius);
+  background: var(--color-gray-light);
+  cursor: pointer;
+  position: relative;
+  transition: all 0.1s ease;
+  margin: 0;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.preview-checkbox input[type="checkbox"]:hover {
+  background: var(--color-black);
+}
+
+.preview-checkbox input[type="checkbox"]:checked {
+  background: var(--color-black);
+}
+
+.preview-checkbox input[type="checkbox"]:checked::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--color-white);
+  font-size: 10px;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.preview-checkbox input[type="checkbox"]:focus {
+  outline: none;
+  border-color: var(--color-black);
+}
+
+.preview-checkbox .seed-label {
+  color: var(--color-gray-dark);
+  cursor: pointer;
+  user-select: none;
+}
+
 .seed-label {
   color: var(--color-gray-dark);
 }

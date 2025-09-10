@@ -254,7 +254,7 @@ export default function Profile() {
     return (
       <div className="profile-container">
         <div className="error">{error}</div>
-        <button onClick={loadUserData}>Retry</button>
+        <button onClick={loadUserData}>retry</button>
       </div>
     );
   }

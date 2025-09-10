@@ -13,6 +13,34 @@ export default function PreviewControls({
   const [seedEditValue, setSeedEditValue] = useState(seed.toString());
   const [isEditingIteration, setIsEditingIteration] = useState(false);
   const [iterationEditValue, setIterationEditValue] = useState(iterationNumber.toString());
+  const [previousSeed, setPreviousSeed] = useState(seed);
+  const [previousIterationNumber, setPreviousIterationNumber] = useState(iterationNumber);
+
+  // Calculate if we're in preview mode (both seed and iteration are 0)
+  const isPreview = seed === 0 && iterationNumber === 0;
+
+  // Handle preview checkbox change
+  const handlePreviewChange = (e) => {
+    const checked = e.target.checked;
+    
+    if (checked) {
+      // Store current values before setting to 0
+      if (seed !== 0) setPreviousSeed(seed);
+      if (iterationNumber !== 0) setPreviousIterationNumber(iterationNumber);
+      
+      // Set both to 0
+      onSeedChange(0);
+      if (onIterationNumberChange) {
+        onIterationNumberChange(0);
+      }
+    } else {
+      // Restore previous values
+      onSeedChange(previousSeed);
+      if (onIterationNumberChange) {
+        onIterationNumberChange(previousIterationNumber);
+      }
+    }
+  };
 
   const handleSeedClick = () => {
     if (isEditingSeed) return; // Don't generate new seed if editing
@@ -33,6 +61,12 @@ export default function PreviewControls({
   const handleSeedInputBlur = () => {
     const parsedSeed = parseInt(seedEditValue);
     const newSeed = isNaN(parsedSeed) ? seed : parsedSeed;
+    
+    // Store previous value if changing from non-zero
+    if (seed !== 0 && newSeed !== seed) {
+      setPreviousSeed(seed);
+    }
+    
     onSeedChange(newSeed);
     setIsEditingSeed(false);
   };
@@ -66,6 +100,12 @@ export default function PreviewControls({
   const handleIterationInputBlur = () => {
     const parsedIteration = parseInt(iterationEditValue);
     const newIteration = isNaN(parsedIteration) ? iterationNumber : parsedIteration;
+    
+    // Store previous value if changing from non-zero
+    if (iterationNumber !== 0 && newIteration !== iterationNumber) {
+      setPreviousIterationNumber(iterationNumber);
+    }
+    
     if (onIterationNumberChange) {
       onIterationNumberChange(newIteration);
     }
@@ -90,6 +130,20 @@ export default function PreviewControls({
 
   return (
     <div className="preview-controls">
+      {onIterationNumberChange && (
+        <div className="seed-control">
+          <label className="preview-checkbox">
+            <span className="seed-label">preview mode</span>
+            <input
+              type="checkbox"
+              checked={isPreview}
+              onChange={handlePreviewChange}
+              title="Preview mode (sets both seed and iteration to 0)"
+            />
+          </label>
+        </div>
+      )}
+
       {onIterationNumberChange && (
         <div className="seed-control">
           <span className="seed-label">iteration: </span>
