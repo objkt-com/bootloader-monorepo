@@ -88,8 +88,8 @@ def bootloader():
                     max_per_wallet=sp.option[sp.nat],
                 )]
             )])
-            # '20' * 77 + '30' where 20 = ' ' and 30 = '0'
-            self.private.EMPTY_SEED = sp.bytes('0x202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202030')
+            # 0x30 = "0".encode().hex()
+            self.private.EMPTY_SEED = sp.bytes('0x30')
         
         @sp.entrypoint
         def add_moderator(self, address:  sp.address):
@@ -354,7 +354,7 @@ def bootloader():
                 token_info=self.data.bootloaders[generator.type_id].fun(sp.record(
                         fragments=self.data.bootloaders[generator.type_id].fragments,
                             token_id=params.token_id,
-                            seed=params.entropy,
+                            seed=byte_utils.to_nat(params.entropy),
                             iteration_number=token_extra.iteration_number,
                             generator_name=generator.name,
                             generator_author_bytes=generator.author_bytes,

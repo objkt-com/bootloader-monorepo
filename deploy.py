@@ -91,7 +91,7 @@ def main():
     if args.clear_cache:
         randomiser_deployer.clear_cache()
         
-        randomiser_address = randomiser_deployer.deploy()
+    randomiser_address = randomiser_deployer.deploy()
     
     metadata = get_tezos_storage(
         name="bootloader:",
