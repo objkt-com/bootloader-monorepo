@@ -329,111 +329,25 @@ class TezosService {
 
       await operation.confirmation();
 
-      // Extract the actual minted token information from the operation result
-      let mintedTokenId = nextTokenId; // fallback to predicted ID
+      // Get the minted token information from contract storage
+      let mintedTokenId = nextTokenId;
       let artifactUri = null;
+      let tokenName = null;
 
       try {
-        // Get the operation results to find the actual token that was minted
-        const operationResult = await operation.operationResults();
+        // Read the contract storage to get the token metadata
+        const storageAfter = await this.getContractStorage();
+        const tokenMetadata = await storageAfter.token_metadata.get(
+          mintedTokenId.toString()
+        );
 
-        if (operationResult && operationResult.length > 0) {
-          // Look for lazy_storage_diff that contains bigmap updates
-          for (let i = 0; i < operationResult.length; i++) {
-            const result = operationResult[i];
-
-            // Check for lazy_storage_diff in the correct location: metadata.operation_result.lazy_storage_diff
-            const lazyStorageDiff =
-              result.metadata?.operation_result?.lazy_storage_diff ||
-              result.lazy_storage_diff;
-
-            if (lazyStorageDiff && Array.isArray(lazyStorageDiff)) {
-              for (const lazyDiff of lazyStorageDiff) {
-                // Look for big_map updates
-                if (
-                  lazyDiff.kind === "big_map" &&
-                  lazyDiff.diff &&
-                  lazyDiff.diff.updates
-                ) {
-                  for (const update of lazyDiff.diff.updates) {
-                    // Look for token_metadata updates (value contains token_info)
-                    if (
-                      update.value &&
-                      update.value.args &&
-                      update.value.args.length >= 2
-                    ) {
-                      const tokenInfo = update.value.args[1];
-
-                      // Check if this looks like token_info (array of Elt entries)
-                      if (
-                        Array.isArray(tokenInfo) &&
-                        tokenInfo.length > 0 &&
-                        tokenInfo[0].prim === "Elt"
-                      ) {
-                        // Extract the actual token ID that was minted
-                        mintedTokenId = parseInt(update.key.int);
-
-                        // Find the artifactUri and name in the token_info entries
-                        let tokenName = null;
-                        for (const entry of tokenInfo) {
-                          if (entry.args && entry.args.length >= 2) {
-                            if (entry.args[0].string === "artifactUri") {
-                              artifactUri = this.bytesToString(
-                                entry.args[1].bytes
-                              );
-                            } else if (entry.args[0].string === "name") {
-                              tokenName = this.bytesToString(
-                                entry.args[1].bytes
-                              );
-                            }
-                          }
-                        }
-
-                        if (artifactUri && tokenName) {
-                          // Store the extracted token name for later use
-                          this.extractedTokenName = tokenName;
-                          break; // Found what we need, exit the loops
-                        }
-                      }
-                    }
-                  }
-
-                  if (artifactUri) {
-                    break; // Found what we need, exit the loops
-                  }
-                }
-              }
-
-              if (artifactUri) {
-                break; // Found what we need, exit the loops
-              }
-            }
-          }
-        }
-
-        // Fallback: Get the contract storage after the mint to fetch the token metadata
-        if (!artifactUri) {
-          const storageAfter = await this.getContractStorage();
-          const tokenMetadata = await storageAfter.token_metadata.get(
-            mintedTokenId.toString()
-          );
-
-          if (
-            tokenMetadata &&
-            tokenMetadata.token_info &&
-            tokenMetadata.token_info.artifactUri
-          ) {
-            // Decode the artifactUri from bytes
-            artifactUri = this.bytesToString(
-              tokenMetadata.token_info.artifactUri
-            );
-          }
+        if (tokenMetadata && tokenMetadata.token_info) {
+          // Extract artifactUri and name from token_info
+          artifactUri = this.bytesToString(tokenMetadata.token_info.get('artifactUri'));
+          tokenName = this.bytesToString(tokenMetadata.token_info.get('name'));
         }
       } catch (error) {
-        console.warn(
-          "Failed to fetch token metadata from operation result:",
-          error
-        );
+        console.warn("Failed to fetch token metadata from storage:", error);
       }
 
       return {
@@ -442,7 +356,7 @@ class TezosService {
         tokenId: mintedTokenId,
         entropy: entropyHex,
         artifactUri: artifactUri,
-        tokenName: this.extractedTokenName, // On-chain token name if extracted
+        tokenName: tokenName, // On-chain token name if extracted
       };
     } catch (error) {
       console.error("Failed to mint token:", error);
@@ -478,6 +392,9 @@ class TezosService {
       // Create the complete JavaScript code including the random number generator
       const encodedCode = encodeURIComponent(code);
 
+      // Ensure seed is treated as a BigInt string if it's a large number
+      let seedStr = seed;
+
       const frag_1 =
         "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cscript%3E%3C!%5BCDATA%5Bconst%20SEED%3D";
       const frag_2 =
@@ -486,7 +403,7 @@ class TezosService {
         "%2CBTLDR%3D%7Brnd%3Asfc32(a%2Cb%2Cc%2Cd)%2Cseed%3ASEED%2CiterationNumber%3An%2CisPreview%3An%3D%3D%3D0%26%26SEED%3D%3D%3D0n%2Csvg%3Adocument.documentElement%2Cv%3A%27svg-js%3A0.0.1%27%7D%3B((BTLDR)%3D%3E%7B";
       const frag_4 = "%7D)(BTLDR)%3B%5D%5D%3E%3C%2Fscript%3E%3C%2Fsvg%3E";
 
-      const svgContent = frag_1 + seed + frag_2 + iterationNumber + frag_3 + encodedCode + frag_4;
+      const svgContent = frag_1 + seedStr + frag_2 + iterationNumber + frag_3 + encodedCode + frag_4;
       return svgContent;
     } catch (error) {
       console.error("Failed to generate SVG:", error);

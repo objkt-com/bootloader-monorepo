@@ -792,7 +792,7 @@ export default function GeneratorDetail() {
           onClick={() => setShowCodeOnMobile(!showCodeOnMobile)}
           className="toggle-code-btn"
         >
-          {showCodeOnMobile ? 'Hide Code' : 'Show Code'}
+          {showCodeOnMobile ? 'hide code' : 'show code'}
         </button>
       </div>
 
@@ -887,13 +887,13 @@ export default function GeneratorDetail() {
                   disabled={isDeleting}
                   className="delete-button"
                 >
-                  {isDeleting ? 'Deleting...' : 'Delete'}
+                  {isDeleting ? 'deleting...' : 'delete'}
                 </button>
               )}
               {/* Only show Update Sale button if not sold out */}
               {(!generator.sale || (generator.nTokens || 0) < (generator.sale.editions || 0)) && (
                 <button onClick={handleShowSaleForm}>
-                  {generator.sale ? 'Update Sale' : 'Set Sale'}
+                  {generator.sale ? 'update sale' : 'set sale'}
                 </button>
               )}
             </>
@@ -903,7 +903,7 @@ export default function GeneratorDetail() {
             <>
               <button onClick={handleCancelEdit} disabled={isSaving}>cancel</button>
               <button onClick={handleSave} disabled={isSaving}>
-                {isSaving ? 'Saving...' : 'Save Changes'}
+                {isSaving ? 'saving...' : 'save changes'}
               </button>
               {/* Storage Cost Display for Generator Updates - shown when editing */}
               <div className="action-with-cost">
@@ -1023,10 +1023,10 @@ export default function GeneratorDetail() {
 
           <div className="actions">
             <button onClick={handleCancelSaleForm} disabled={isSavingSale}>
-              Cancel
+              cancel
             </button>
             <button onClick={handleSaveSale} disabled={isSavingSale}>
-              {isSavingSale ? 'Saving...' : 'Save Sale Configuration'}
+              {isSavingSale ? 'saving...' : 'save sale configuration'}
             </button>
           </div>
         </div>

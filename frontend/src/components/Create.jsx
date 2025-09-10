@@ -317,7 +317,7 @@ for (let i = 0; i < 5; i++) {
             return cost.tez > 8;
           })()}
         >
-          {isCreating ? 'Creating...' : 'Create Generator'}
+          {isCreating ? 'creating...' : 'create generator'}
         </button>
           {/* Storage Cost Display */}
           {code.trim() && (

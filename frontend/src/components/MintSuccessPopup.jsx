@@ -93,7 +93,7 @@ export default function MintSuccessPopup({
             
             <div className="mint-success-actions">
               <button onClick={handleShareOnX} className="share-button">
-                Share on 𝕏
+                share on 𝕏
               </button>
               {objktUrl && (
                 <a 
@@ -102,7 +102,7 @@ export default function MintSuccessPopup({
                   rel="noopener noreferrer"
                   className="btn objkt-button"
                 >
-                  View on objkt
+                  view on objkt
                 </a>
               )}
             </div>

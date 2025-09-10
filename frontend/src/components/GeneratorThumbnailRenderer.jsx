@@ -98,8 +98,8 @@ function GeneratorThumbnailRenderer() {
     );
   }
 
-  // Use the configurable default seed for generator thumbnails
-  const generatedSvg = tezosService.generateSVG(generatorData.code, CONFIG.defaultPreviewSeed, 0, 0);
+  // Use seed 0 and iteration number 0 for generator thumbnails
+  const generatedSvg = tezosService.generateSVG(generatorData.code, 0, 0, 0);
 
   return (
     <div style={{ 
