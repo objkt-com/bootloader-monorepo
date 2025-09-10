@@ -19,7 +19,7 @@ export const CONFIG = {
 
   // Contract addresses (generator contract is also the FA2 contract)
   contracts: {
-    ghostnet: "KT1VA6mk7Bo4sKm2kYAZogLiqzrapX4FaeTH",
+    ghostnet: "KT1AFzHDcxGApiMQSTzUtBHayMqeKRcqpHCE",
     mainnet: null, // To be deployed
   },
 
