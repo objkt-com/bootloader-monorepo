@@ -1,13 +1,13 @@
 export const NETWORKS = {
   mainnet: {
     name: "Mainnet",
-    rpcUrl: "https://tcinfra.net/rpc/tezos/mainnet",
+    rpcUrl: "https://rpc.objkt.com",
     tzktApi: "https://api.tzkt.io",
     objktApi: "https://data.objkt.com/v3/graphql",
   },
   ghostnet: {
     name: "Ghostnet",
-    rpcUrl: "https://tcinfra.net/rpc/tezos/ghostnet",
+    rpcUrl: "https://rpc-ghostnet.objkt.com",
     tzktApi: "https://api.ghostnet.tzkt.io",
     objktApi: "https://data.ghostnet.objkt.com/v3/graphql",
   },
