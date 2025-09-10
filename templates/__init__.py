@@ -24,7 +24,8 @@ def get_fragments_from_template(directory):
     
     # Split the template into fragments
     frag_0, rest = template_content.split("SEED_PLACEHOLDER")
-    frag_1, frag_2 = rest.split("CODE_PLACEHOLDER")
+    frag_1, rest = rest.split("ITERATION_NUMBER_PLACEHOLDER")
+    frag_2, frag_3 = rest.split("CODE_PLACEHOLDER")
     
     # Process frag_0: URL encode only the part after the data URI
     if frag_0.startswith('data:'):
@@ -46,5 +47,6 @@ def get_fragments_from_template(directory):
     # URL encode frag_1 and frag_2 completely
     frag_1 = quote(frag_1, safe='')
     frag_2 = quote(frag_2, safe='')
+    frag_3 = quote(frag_3, safe='')
     
-    return [frag_0, frag_1, frag_2]
+    return [frag_0, frag_1, frag_2, frag_3]

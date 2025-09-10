@@ -16,6 +16,7 @@ export default function Create() {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [previewSeed, setPreviewSeed] = useState(Math.floor(Math.random() * 1000000));
+  const [previewIterationNumber, setPreviewIterationNumber] = useState(0);
   const [showFullscreenPreview, setShowFullscreenPreview] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -273,6 +274,8 @@ for (let i = 0; i < 5; i++) {
               <PreviewControls
                 seed={previewSeed}
                 onSeedChange={setPreviewSeed}
+                iterationNumber={previewIterationNumber}
+                onIterationNumberChange={setPreviewIterationNumber}
                 onRefresh={refreshPreview}
                 showRefresh={true}
               />
@@ -288,6 +291,7 @@ for (let i = 0; i < 5; i++) {
           <SVGPreview 
             code={code}
             seed={previewSeed}
+            iterationNumber={previewIterationNumber}
             width={400}
             height={400}
             noPadding={true}
@@ -357,6 +361,8 @@ for (let i = 0; i < 5; i++) {
                 <PreviewControls
                   seed={previewSeed}
                   onSeedChange={setPreviewSeed}
+                  iterationNumber={previewIterationNumber}
+                  onIterationNumberChange={setPreviewIterationNumber}
                   onRefresh={refreshPreview}
                   showRefresh={true}
                 />
@@ -373,6 +379,7 @@ for (let i = 0; i < 5; i++) {
               <SVGPreview 
                 code={code}
                 seed={previewSeed}
+                iterationNumber={previewIterationNumber}
                 width={Math.min(window.innerWidth - 100, window.innerHeight - 150)}
                 height={Math.min(window.innerWidth - 100, window.innerHeight - 150)}
                 noPadding={true}

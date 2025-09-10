@@ -387,8 +387,10 @@ def bootloader():
         svg_string =    list_utils.element_at((p.fragments, 0)) + \
                         p.seed + \
                         list_utils.element_at((p.fragments, 1)) + \
+                        bytes_utils.from_nat(p.iteration_number) + \
+                        list_utils.element_at((p.fragments, 2)) + \
                         p.generator_code + \
-                        list_utils.element_at((p.fragments, 2))
+                        list_utils.element_at((p.fragments, 3))
 
         iteration_bytes = bytes_utils.from_nat(p.iteration_number)
         token_id_bytes = bytes_utils.from_nat(p.token_id)
@@ -425,8 +427,10 @@ def bootloader():
         svg_string =    list_utils.element_at((p.fragments, 0)) + \
                         p.seed + \
                         list_utils.element_at((p.fragments, 1)) + \
+                        bytes_utils.from_nat(p.iteration_number) + \
+                        list_utils.element_at((p.fragments, 2)) + \
                         p.generator_code + \
-                        list_utils.element_at((p.fragments, 2))
+                        list_utils.element_at((p.fragments, 3))
 
         iteration_bytes = bytes_utils.from_nat(p.iteration_number)
         token_id_bytes = bytes_utils.from_nat(p.token_id)

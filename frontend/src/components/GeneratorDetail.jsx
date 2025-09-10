@@ -397,7 +397,7 @@ export default function GeneratorDetail() {
           const entropyBytes = entropyHex.slice(2); // Remove '0x' prefix
           const entropyBigInt = BigInt('0x' + entropyBytes);
           const seed = Number(entropyBigInt % BigInt(2**32)); // Use 32-bit seed
-          svgDataUri = tezosService.generateSVG(generator.code, Math.abs(seed), mintedTokenId);
+          svgDataUri = tezosService.generateSVG(generator.code, Math.abs(seed), 0, mintedTokenId);
         }
         
         // Use the on-chain token name if available, otherwise construct it

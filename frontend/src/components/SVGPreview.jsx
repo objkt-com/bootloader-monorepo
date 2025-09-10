@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { tezosService } from '../services/tezos.js';
 
-export default function SVGPreview({ code, seed = 12345, width = 400, height = 300, showHeader = false, onRefresh = null, noPadding = false, useObjktCDN = false, contractAddress = null, tokenId = null }) {
+export default function SVGPreview({ code, seed = 12345, iterationNumber = 0, width = 400, height = 300, showHeader = false, onRefresh = null, noPadding = false, useObjktCDN = false, contractAddress = null, tokenId = null }) {
   const [svgUrl, setSvgUrl] = useState(null);
   const [error, setError] = useState(null);
   const [isReloading, setIsReloading] = useState(false);
@@ -41,7 +41,7 @@ export default function SVGPreview({ code, seed = 12345, width = 400, height = 3
         clearTimeout(debounceRef.current);
       }
     };
-  }, [code, seed, useObjktCDN, contractAddress, tokenId]);
+  }, [code, seed, iterationNumber, useObjktCDN, contractAddress, tokenId]);
 
   const generatePreview = () => {
     try {
@@ -52,7 +52,7 @@ export default function SVGPreview({ code, seed = 12345, width = 400, height = 3
         return;
       }
 
-      const svgDataUrl = tezosService.generateSVG(code, seed);
+      const svgDataUrl = tezosService.generateSVG(code, seed, iterationNumber);
       setSvgUrl(svgDataUrl);
       setError(null);
       
