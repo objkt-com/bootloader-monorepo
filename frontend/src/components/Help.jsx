@@ -27,19 +27,19 @@ export default function Help() {
  * bootloader: v0.0.1
  */
 
-bl.svg.setAttribute('viewBox', '0 0 400 400');
+BTLDR.svg.setAttribute('viewBox', '0 0 400 400');
 
 // Create 5 random circles
 for (let i = 0; i < 5; i++) {
   const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
   
-  circle.setAttribute('cx', 60 + bl.rnd() * 280);
-  circle.setAttribute('cy', 60 + bl.rnd() * 280);
-  circle.setAttribute('r', 20 + bl.rnd() * 40);
-  circle.setAttribute('fill', \`hsl(\${bl.rnd() * 360}, 70%, 60%)\`);
+  circle.setAttribute('cx', 60 + BTLDR.rnd() * 280);
+  circle.setAttribute('cy', 60 + BTLDR.rnd() * 280);
+  circle.setAttribute('r', 20 + BTLDR.rnd() * 40);
+  circle.setAttribute('fill', \`hsl(\${BTLDR.rnd() * 360}, 70%, 60%)\`);
   circle.setAttribute('opacity', 0.8);
   
-  bl.svg.appendChild(circle);
+  BTLDR.svg.appendChild(circle);
 }`);
   
   const [previewSeed, setPreviewSeed] = useState(CONFIG.defaultPreviewSeed);
@@ -152,7 +152,7 @@ for (let i = 0; i < 5; i++) {
 
         <p>
           Your generator code runs inside an SVG <em>bootloader</em> that assembles your artwork at mint time. 
-          The <em>bootloader</em> provides a minimal but powerful runtime environment through the <code>bl</code> object:
+          The <em>bootloader</em> provides a minimal but powerful runtime environment through the <code>BTLDR</code> object:
         </p>
 
         <div className="bootloader-fragments">
@@ -168,23 +168,25 @@ for (let i = 0; i < 5; i++) {
   const SEED = 123456789012345678901234567890n; // ← Blockchain entropy
   // ... random number generator setup (sfc32, splitmix64) ...
   
-  const bl = {
+  const BTLDR = {
     rnd: sfc32(a,b,c,d),           // Deterministic random (0-1)
-    SEED: SEED,                    // Raw BigInt from blockchain
+    seed: SEED,                    // Raw BigInt from blockchain
+    iterationNumber: n,            // Iteration number
+    isPreview: n===0&&SEED===0n,   // Preview mode flag
     svg: document.documentElement, // Root SVG element
-    v: '0.0.1'                    // bootloader: version
+    v: 'svg-js:0.0.1'             // bootloader: version
   };
   
-  ((bl) => {
+  ((BTLDR) => {
     // YOUR INJECTED GENERATOR CODE STARTS HERE
-    bl.svg.setAttribute('viewBox', '0 0 400 400');
+    BTLDR.svg.setAttribute('viewBox', '0 0 400 400');
     const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    circle.setAttribute('cx', 200 + bl.rnd() * 100);
-    circle.setAttribute('cy', 200 + bl.rnd() * 100);
+    circle.setAttribute('cx', 200 + BTLDR.rnd() * 100);
+    circle.setAttribute('cy', 200 + BTLDR.rnd() * 100);
     circle.setAttribute('r', 50);
-    bl.svg.appendChild(circle);
+    BTLDR.svg.appendChild(circle);
     // YOUR INJECTED GENERATOR CODE ENDS HERE
-  })(bl);
+  })(BTLDR);
 ]]></script>
 </svg>`}</code></pre>
             <div className="assembly-note">
@@ -250,7 +252,7 @@ for (let i = 0; i < 5; i++) {
         <div className="best-practices">
           <div className="practice-item">
             <h4><Target size={18} className="inline-icon" /> Use Deterministic Randomness</h4>
-            <p>Always use <code>bl.rnd()</code> instead of <code>Math.random()</code> to ensure reproducible results</p>
+            <p>Always use <code>BTLDR.rnd()</code> instead of <code>Math.random()</code> to ensure reproducible results</p>
           </div>
           <div className="practice-item">
             <h4><Lock size={18} className="inline-icon" /> Clean Code Scoping</h4>
@@ -336,7 +338,7 @@ Each circle has a unique color based on the deterministic random seed.
 */
 
 // Your generator code follows...
-const {svg, rnd} = bl;`}</code></pre>
+const {svg, rnd} = BTLDR;`}</code></pre>
           <p>
             The text inside the first <code>/* */</code> comment block becomes your generator's description.
             Any comments outside of the description section will be written on-chain into the code section.
