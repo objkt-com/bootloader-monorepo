@@ -25,7 +25,7 @@ export const CONFIG = {
 
   // App branding
   branding: {
-    projectName: "bootloader",
+    projectName: "bootloader:",
     tagline: "open experimental on-chain long-form generative art",
   },
 
