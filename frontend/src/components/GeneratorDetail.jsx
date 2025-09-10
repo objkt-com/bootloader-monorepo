@@ -45,6 +45,7 @@ export default function GeneratorDetail() {
   const [showCodeOnMobile, setShowCodeOnMobile] = useState(false);
   const [showMetadata, setShowMetadata] = useState(false);
   const [bootloaderInfo, setBootloaderInfo] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Handle escape key to close fullscreen
   useEffect(() => {
@@ -613,6 +614,45 @@ export default function GeneratorDetail() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!tezosService.isConnected) {
+      setError('Please connect your wallet first');
+      return;
+    }
+
+    // Confirm deletion
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete "${generator.name || `Generator #${generator.id}`}"? This action cannot be undone.`
+    );
+    
+    if (!confirmDelete) {
+      return;
+    }
+
+    setIsDeleting(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const result = await tezosService.deleteGenerator(parseInt(id));
+      
+      if (result.success) {
+        setSuccess('Generator deleted successfully!');
+        // Navigate back to home after a short delay
+        setTimeout(() => {
+          navigate('/');
+        }, 2000);
+      } else {
+        setError(`Failed to delete generator: ${result.error}`);
+      }
+    } catch (err) {
+      console.error('Delete generator error:', err);
+      setError(`Failed to delete generator: ${err.message}`);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const refreshPreview = () => {
     // Force a re-render with the same seed by updating a dummy state or triggering SVGPreview refresh
     // We can do this by temporarily changing the seed and then setting it back
@@ -840,10 +880,22 @@ export default function GeneratorDetail() {
         <div className="actions-left">
           {isAuthor && !isEditing && (
             <>
-              <button onClick={handleEdit}>Edit Generator</button>
-              <button onClick={handleShowSaleForm}>
-                {generator.sale ? 'Update Sale' : 'Set Sale'}
-              </button>
+              <button onClick={handleEdit}>Edit</button>
+              {(generator.nTokens || 0) === 0 && (
+                <button 
+                  onClick={handleDelete} 
+                  disabled={isDeleting}
+                  className="delete-button"
+                >
+                  {isDeleting ? 'Deleting...' : 'Delete'}
+                </button>
+              )}
+              {/* Only show Update Sale button if not sold out */}
+              {(!generator.sale || (generator.nTokens || 0) < (generator.sale.editions || 0)) && (
+                <button onClick={handleShowSaleForm}>
+                  {generator.sale ? 'Update Sale' : 'Set Sale'}
+                </button>
+              )}
             </>
           )}
 

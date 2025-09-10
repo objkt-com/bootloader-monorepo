@@ -271,6 +271,25 @@ class TezosService {
     }
   }
 
+  async deleteGenerator(generatorId) {
+    try {
+      if (!this.contract) {
+        await this.loadContract();
+      }
+
+      // Use methodsObject with the generator_id as a direct parameter
+      const operation = await this.contract.methodsObject
+        .delete_generator(generatorId)
+        .send();
+
+      await operation.confirmation();
+      return { success: true, hash: operation.hash };
+    } catch (error) {
+      console.error("Failed to delete generator:", error);
+      return { success: false, error: error.message };
+    }
+  }
+
   async mintToken(generatorId) {
     try {
       if (!this.contract) {

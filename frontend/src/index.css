@@ -841,6 +841,32 @@ beacon-toast {
   color: var(--color-gray-dark);
 }
 
+.delete-button {
+  background: var(--color-white);
+  color: #ff0000;
+  border: var(--border-width) solid #ff0000;
+  font-weight: 500;
+}
+
+.delete-button:hover {
+  background: #ff0000;
+  color: var(--color-white);
+  border-color: #ff0000;
+}
+
+.delete-button:disabled {
+  background: var(--color-gray-medium);
+  color: var(--color-gray-dark);
+  border-color: var(--color-gray-medium);
+  opacity: 0.5;
+}
+
+.delete-button:disabled:hover {
+  background: var(--color-gray-medium);
+  color: var(--color-gray-dark);
+  border-color: var(--color-gray-medium);
+}
+
 /* States */
 .loading {
   text-align: center;
