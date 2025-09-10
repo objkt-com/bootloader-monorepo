@@ -354,7 +354,7 @@ def bootloader():
                 token_info=self.data.bootloaders[generator.type_id].fun(sp.record(
                         fragments=self.data.bootloaders[generator.type_id].fragments,
                             token_id=params.token_id,
-                            seed=byte_utils.to_nat(params.entropy),
+                            seed=bytes_utils.from_nat(bytes_utils.to_nat(params.entropy)),
                             iteration_number=token_extra.iteration_number,
                             generator_name=generator.name,
                             generator_author_bytes=generator.author_bytes,
