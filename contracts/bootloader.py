@@ -43,11 +43,10 @@ def bootloader():
 
             self.data.next_token_id = 0
             self.data.next_generator_id = 0
-            self.data.frags = sp.cast(sp.big_map({}), sp.big_map[sp.nat, sp.bytes])
             self.data.token_extra = sp.cast(sp.big_map({}), sp.big_map[sp.nat, sp.record(
                 generator_id=sp.nat, 
                 generator_version=sp.nat,
-                seed=sp.bytes,
+                seed=sp.option[sp.bytes],
                 iteration_number=sp.nat,
             )])
             self.data.treasury = admin_address
@@ -89,6 +88,8 @@ def bootloader():
                     max_per_wallet=sp.option[sp.nat],
                 )]
             )])
+            # '20' * 77 + '30' where 20 = ' ' and 30 = '0'
+            self.private.EMPTY_SEED = sp.bytes('0x202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202020202030')
         
         @sp.entrypoint
         def add_moderator(self, address:  sp.address):
@@ -236,12 +237,13 @@ def bootloader():
             token_extra = self.data.token_extra[token_id]
             generator = self.data.generators[token_extra.generator_id]
             assert generator.version > token_extra.generator_version, "NO_UPDATE_POSSIBLE"
+            assert token_extra.seed.is_some(), "SEED_NOT_SET"
             self.data.token_metadata[token_id] = sp.record(
                 token_id=token_id, 
                 token_info=self.data.bootloaders[generator.type_id].fun(sp.record(
                     fragments=self.data.bootloaders[generator.type_id].fragments,
                     token_id=token_id,
-                    seed=token_extra.seed,
+                    seed=token_extra.seed.unwrap_some(),
                     iteration_number=token_extra.iteration_number,
                     generator_name=generator.name,
                     generator_author_bytes=generator.author_bytes,
@@ -261,12 +263,7 @@ def bootloader():
                     assert generator.n_tokens < sale.editions, "NO_RESERVED_LEFT"
 
             self.data.generators[generator_id].reserved_editions = sp.as_nat(generator.reserved_editions - 1)
-            # get_entropy
-            c = sp.create_contract_operation(EmptyContract, None, sp.mutez(0), ())
-            e = sp.view("rb", self.data.rng_contract, sp.sha256(entropy + sp.pack(c.address)+sp.pack(generator.n_tokens)), sp.bytes).unwrap_some()
-            sp.send(self.data.rng_contract, sp.mutez(0))
 
-            seed = bytes_utils.from_nat(bytes_utils.to_nat(e))
             token_id = self.data.next_token_id
 
             self.data.token_metadata[token_id] = sp.record(
@@ -274,7 +271,7 @@ def bootloader():
                 token_info=self.data.bootloaders[generator.type_id].fun(sp.record(
                 fragments=self.data.bootloaders[generator.type_id].fragments,
                     token_id=token_id,
-                    seed=seed,
+                    seed=self.private.EMPTY_SEED,
                     iteration_number=generator.n_tokens+1,
                     generator_name=generator.name,
                     generator_author_bytes=generator.author_bytes,
@@ -285,8 +282,9 @@ def bootloader():
 
             self.data.ledger[token_id] = recipient
             self.data.generators[generator_id].n_tokens += 1
-            self.data.token_extra[token_id] = sp.record(generator_id=generator_id, seed=seed, generator_version=generator.version, iteration_number=generator.n_tokens+1)
+            self.data.token_extra[token_id] = sp.record(generator_id=generator_id, seed=None, generator_version=generator.version, iteration_number=generator.n_tokens+1)
             self.data.next_token_id += 1
+            self._request_entropy(sp.record(token_id=token_id, entropy=entropy))
 
         @sp.entrypoint
         def mint(self, generator_id: sp.nat, entropy: sp.bytes): 
@@ -320,19 +318,13 @@ def bootloader():
                         if rest > sp.mutez(0):
                             sp.send(generator.author, rest)
 
-                    # get_entropy
-                    c = sp.create_contract_operation(EmptyContract, None, sp.mutez(0), ())
-                    e = sp.view("rb", self.data.rng_contract, sp.sha256(entropy + sp.pack(c.address)+sp.pack(generator.n_tokens)), sp.bytes).unwrap_some()
-                    sp.send(self.data.rng_contract, sp.mutez(0))
-
-                    seed = bytes_utils.from_nat(bytes_utils.to_nat(e))
                     token_id = self.data.next_token_id
                     self.data.token_metadata[token_id] = sp.record(
                         token_id=token_id, 
                         token_info=self.data.bootloaders[generator.type_id].fun(sp.record(
                         fragments=self.data.bootloaders[generator.type_id].fragments,
                             token_id=token_id,
-                            seed=seed,
+                            seed=self.private.EMPTY_SEED,
                             iteration_number=generator.n_tokens+1,
                             generator_name=generator.name,
                             generator_author_bytes=generator.author_bytes,
@@ -342,11 +334,41 @@ def bootloader():
 
                     self.data.ledger[token_id] = sp.sender
                     self.data.generators[generator_id].n_tokens += 1
-                    self.data.token_extra[token_id] = sp.record(generator_id=generator_id, seed=seed, generator_version=generator.version, iteration_number=generator.n_tokens+1)
+                    self.data.token_extra[token_id] = sp.record(generator_id=generator_id, seed=None, generator_version=generator.version, iteration_number=generator.n_tokens+1)
                     self.data.next_token_id += 1
+                    self._request_entropy(sp.record(token_id=token_id,entropy=entropy))
                 case None:
                     raise "NO_SALE_CONFIGURED"
-        
+
+        @sp.entrypoint
+        def set_entropy(self, params: sp.record(token_id=sp.nat, entropy=sp.bytes)):
+            assert sp.sender == self.data.rng_contract, "INVALID_RNG_CONTRACT"
+            assert len(params.entropy) == 32, "INVALID_SEED_LENGTH"
+            token_extra = self.data.token_extra[params.token_id]
+            assert token_extra.seed.is_none(), "SEED_SET"
+            generator = self.data.generators[token_extra.generator_id]
+
+            existing_token_id = self.data.token_metadata[params.token_id]
+            self.data.token_metadata[params.token_id] = sp.record(
+                token_id=params.token_id,
+                token_info=self.data.bootloaders[generator.type_id].fun(sp.record(
+                        fragments=self.data.bootloaders[generator.type_id].fragments,
+                            token_id=params.token_id,
+                            seed=params.entropy,
+                            iteration_number=token_extra.iteration_number,
+                            generator_name=generator.name,
+                            generator_author_bytes=generator.author_bytes,
+                            generator_version=generator.version,
+                            generator_code=generator.code
+                    ))
+            )
+            self.data.token_extra[params.token_id].seed = sp.Some(params.entropy)
+
+        @sp.private(with_storage="read-only", with_operations=True)
+        def _request_entropy(self, params):
+            contract = sp.contract(sp.record(token_id=sp.nat, entropy=sp.bytes), self.data.rng_contract, entrypoint="request_entropy").unwrap_some()
+            sp.transfer(params, sp.mutez(0), contract)
+
     class LambdaHelper(sp.Contract):
         def __init__(self, code):
             self.data = sp.cast(code, t_lambda)
@@ -424,6 +446,6 @@ def bootloader():
             "thumbnailUri": thumbnail_uri_bytes,
             "royalties": sp.bytes("0x7B22646563696D616C73223A322C22736861726573223A7B22") + p.generator_author_bytes + sp.bytes("0x223A357D7D"),
             "creators": sp.bytes("0x5B22") + p.generator_author_bytes + sp.bytes('0x225D'),
-            "symbol": sp.bytes("0x53564A4B54"),
+            "symbol": sp.bytes("0x424f4f544c"),
             "decimals": sp.bytes("0x30"),
         }
