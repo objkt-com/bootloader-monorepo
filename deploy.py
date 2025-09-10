@@ -76,29 +76,20 @@ def main():
     # Load template fragments
     fragments = get_fragments_from_template('templates/v0.0.1')
     
-    # Deploy or get randomiser contract
-    randomiser_address = None
-    if args.network == 'ghostnet':
-        # Try existing randomiser on ghostnet first
-        randomiser_address = 'KT1Vn34jRFpo3q5fAsYA5wT3X4zc7WhpuQas'
-        try:
-            pt.contract(randomiser_address)
-            print(f"Using existing randomiser: {randomiser_address}")
-        except Exception as e:
-            print("Existing randomiser not found, deploying new one")
-            randomiser_address = None
+    # Try existing randomiser on ghostnet first
+    print("Deploying randomiser contract")
+    randomiser_deployer = ContractDeployment.from_name('randomiser')
+    randomiser_deployer.update_storage({
+        "testnet_mode": network == Network.ghostnet
+    })
+    randomiser_deployer.set_pytezos_client(pt)
+    randomiser_deployer.set_network(network)
     
-    if not randomiser_address:
-        print("Deploying randomiser contract")
-        randomiser_deployer = ContractDeployment.from_name('randomiser')
-        randomiser_deployer.set_pytezos_client(pt)
-        randomiser_deployer.set_network(network)
-        
-        if args.use_cache:
-            randomiser_deployer.use_cache()
-        
-        if args.clear_cache:
-            randomiser_deployer.clear_cache()
+    if args.use_cache:
+        randomiser_deployer.use_cache()
+    
+    if args.clear_cache:
+        randomiser_deployer.clear_cache()
         
         randomiser_address = randomiser_deployer.deploy()
     
@@ -141,7 +132,7 @@ def main():
     
     # Add bootloader to contract
     operation_hash = nft.add_bootloader(
-        version='0.0.1'.encode(), 
+        version='svg-js:0.0.1'.encode(), 
         fragments=[f.encode() for f in fragments], 
         fun=bootloader,
         storage_limits={

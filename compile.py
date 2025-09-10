@@ -28,4 +28,4 @@ def test():
 def test_randomiser():
     # Test scenario
     scenario = sp.test_scenario("randomiser", randomiser)
-    scenario += randomiser.RandomiserMock()
+    scenario += randomiser.CentralisedRandomiser()
