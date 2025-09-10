@@ -193,6 +193,16 @@ input:focus, textarea:focus {
   z-index: 100;
 }
 
+beacon-toast {
+  display: block;
+  position: fixed;
+  top: calc(
+    var(--header-top) + 50px
+  );
+  right: 0;
+  z-index: 10000;
+}
+
 .header-content {
   max-width: var(--max-width);
   margin: 0 auto;
