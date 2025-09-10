@@ -7,7 +7,7 @@ export const NETWORKS = {
   },
   ghostnet: {
     name: "Ghostnet",
-    rpcUrl: "https://rpc-ghostnet.objkt.com",
+    rpcUrl: "https://rpc.ghostnet.teztnets.com",
     tzktApi: "https://api.ghostnet.tzkt.io",
     objktApi: "https://data.ghostnet.objkt.com/v3/graphql",
   },
