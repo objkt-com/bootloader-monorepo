@@ -1,0 +1,25 @@
+{
+  "name": "thumbnail-renderer-worker",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker for generating thumbnails using Puppeteer",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@cloudflare/puppeteer": "^0.0.5"
+  },
+  "devDependencies": {
+    "wrangler": "^4.34.0"
+  },
+  "keywords": [
+    "cloudflare",
+    "worker",
+    "puppeteer",
+    "thumbnail",
+    "screenshot"
+  ],
+  "author": "",
+  "license": "MIT"
+}
