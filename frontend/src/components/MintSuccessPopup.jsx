@@ -26,9 +26,23 @@ export default function MintSuccessPopup({
   if (!isOpen) return null;
 
   const handleShareOnX = () => {
-    // Use Twitter handle if available, otherwise use display name (alias/tzdomain/short address), fallback to 'the artist'
-    const authorIdentifier = authorTwitter 
-      ? `@${authorTwitter}` 
+    const getXHandle = (twitter) => {
+      if (!twitter) return null;
+
+      // If it's a URL (contains x.com or twitter.com), extract the handle
+      const urlMatch = twitter.match(/(?:https?:\/\/)?(?:www\.)?(?:twitter\.com|x\.com)\/([^\/\?]+)/);
+      if (urlMatch) {
+        return urlMatch[1]; // Return just the handle part
+      }
+
+      // If it's already just a handle (with or without @), clean it up
+      return twitter.replace(/^@/, '');
+    };
+
+    // Use x handle if available, otherwise use display name (alias/tzdomain/short address), fallback to 'the artist'
+    const xHandle = getXHandle(authorTwitter);
+    const authorIdentifier = xHandle
+      ? `@${xHandle}`
       : (authorDisplayName || 'the artist');
     
     const tweetText = `I just minted "${tokenName}" by ${authorIdentifier}. A long-form generative on-chain SVG via @bootloader_art ${generatorUrl || ''}`.trim();
