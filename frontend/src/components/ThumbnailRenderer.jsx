@@ -135,7 +135,8 @@ function ThumbnailRenderer() {
           border: 'none',
           margin: 0,
           padding: 0,
-          display: 'block'
+          display: 'block',
+          overflow: 'hidden'
         }}
         title={`Token ${tokenId} - ${tokenData.name}`}
         sandbox="allow-scripts"
