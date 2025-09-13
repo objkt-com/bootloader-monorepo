@@ -38,7 +38,7 @@ class ObjktService {
   }
 
   // Get tokens owned by a specific address from the FA2 contract
-  async getOwnedTokens(ownerAddress, limit = 50) {
+  async getOwnedTokens(ownerAddress, limit = 50, offset = 0) {
     const contractAddress = getContractAddress();
     
     if (!contractAddress) {
@@ -46,7 +46,7 @@ class ObjktService {
     }
 
     const query = `
-      query GetOwnedTokens($ownerAddress: String!, $contractAddress: String!, $limit: Int!) {
+      query GetOwnedTokens($ownerAddress: String!, $contractAddress: String!, $limit: Int!, $offset: Int!) {
         token_holder(
           where: {
             holder_address: { _eq: $ownerAddress }
@@ -57,6 +57,7 @@ class ObjktService {
           }
           order_by: { token: { pk: desc } }
           limit: $limit
+          offset: $offset
         ) {
           quantity
           token {
@@ -85,6 +86,7 @@ class ObjktService {
       ownerAddress,
       contractAddress,
       limit,
+      offset,
     };
 
     try {
@@ -155,40 +157,59 @@ class ObjktService {
     }
   }
 
-  // Get total count of tokens owned by an address (for the tab counter)
+  // Fast count query - only fetches pk field with higher limit for quick pagination
   async getOwnedTokensCount(ownerAddress) {
     const contractAddress = getContractAddress();
-    
+
     if (!contractAddress) {
+      console.log('No contract address, returning 0');
       return 0;
     }
 
-    const query = `
-      query GetOwnedTokensCount($ownerAddress: String!, $contractAddress: String!) {
-        token_holder_aggregate(
-          where: {
-            holder_address: { _eq: $ownerAddress }
-            quantity: { _gt: "0" }
-            token: {
-              fa_contract: { _eq: $contractAddress }
-            }
-          }
-        ) {
-          aggregate {
-            count
-          }
-        }
-      }
-    `;
-
-    const variables = {
-      ownerAddress,
-      contractAddress,
-    };
+    let totalCount = 0;
+    let offset = 0;
+    const limit = 100; // Higher limit for faster counting
+    let hasMore = true;
 
     try {
-      const data = await this.graphqlQuery(query, variables);
-      return data.token_holder_aggregate.aggregate.count || 0;
+      while (hasMore) {
+        const query = `
+          query GetOwnedTokensPkOnly($ownerAddress: String!, $contractAddress: String!, $limit: Int!, $offset: Int!) {
+            token_holder(
+              where: {
+                holder_address: { _eq: $ownerAddress }
+                quantity: { _gt: "0" }
+                token: {
+                  fa_contract: { _eq: $contractAddress }
+                }
+              }
+              order_by: { token: { pk: desc } }
+              limit: $limit
+              offset: $offset
+            ) {
+              token {
+                pk
+              }
+            }
+          }
+        `;
+
+        const variables = {
+          ownerAddress,
+          contractAddress,
+          limit,
+          offset,
+        };
+
+        const data = await this.graphqlQuery(query, variables);
+        const batch = data.token_holder || [];
+
+        totalCount += batch.length;
+        hasMore = batch.length === limit;
+        offset += limit;
+      }
+
+      return totalCount;
     } catch (error) {
       console.error(`Failed to get owned tokens count for ${ownerAddress}:`, error);
       return 0;

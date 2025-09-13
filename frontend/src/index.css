@@ -1691,6 +1691,51 @@ beacon-toast {
   margin-top: 0;
 }
 
+/* Pagination controls */
+.pagination-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-xl);
+  padding: var(--spacing-lg);
+  border-top: var(--border-width) solid var(--color-gray-medium);
+}
+
+.pagination-status {
+  font-size: 14px;
+  color: var(--color-gray-dark);
+  text-align: center;
+}
+
+.load-more-button {
+  background: var(--color-white);
+  border: var(--border-width) solid var(--color-black);
+  color: var(--color-black);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  cursor: pointer;
+  transition: all 0.1s ease;
+  border-radius: var(--border-radius);
+  font-weight: 500;
+}
+
+.load-more-button:hover {
+  background: var(--color-black);
+  color: var(--color-white);
+}
+
+.load-more-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.load-more-button:disabled:hover {
+  background: var(--color-white);
+  color: var(--color-black);
+}
+
 /* Help page */
 .help-container {
   max-width: 900px;

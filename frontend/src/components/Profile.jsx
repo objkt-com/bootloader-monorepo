@@ -15,6 +15,9 @@ export default function Profile() {
   const [activeTab, setActiveTab] = useState('generators');
   const [generators, setGenerators] = useState([]);
   const [ownedTokens, setOwnedTokens] = useState([]);
+  const [ownedTokensTotal, setOwnedTokensTotal] = useState(0);
+  const [ownedTokensPage, setOwnedTokensPage] = useState(0);
+  const [hasMoreTokens, setHasMoreTokens] = useState(true);
   const [userDisplayInfo, setUserDisplayInfo] = useState({ displayName: '', profile: null });
   const [artistNames, setArtistNames] = useState(new Map());
   const [loading, setLoading] = useState(true);
@@ -22,21 +25,25 @@ export default function Profile() {
   const [profileLoading, setProfileLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const TOKENS_PER_PAGE = 50;
+
   useEffect(() => {
     loadUserData();
     loadUserProfile();
-    loadOwnedTokens(); // Load owned tokens immediately for the count
+    loadOwnedTokensCount(); // Load count asynchronously with fast pk query
+    // Always load tokens on address change, regardless of active tab
+    loadOwnedTokens(true); // Reset pagination when address changes
   }, [address]);
 
   // Generate meta tags when user data is available
-  const metaTags = userDisplayInfo && generators.length >= 0 && ownedTokens.length >= 0 ? 
-    generateMetaTags.profile(address, userDisplayInfo, generators.length, ownedTokens.length) : 
+  const metaTags = userDisplayInfo && generators.length >= 0 && ownedTokensTotal >= 0 ? 
+    generateMetaTags.profile(address, userDisplayInfo, generators.length, ownedTokensTotal) : 
     null;
   useMetaTags(metaTags);
 
   useEffect(() => {
     if (activeTab === 'owned') {
-      loadOwnedTokens();
+      loadOwnedTokens(true); // Reset pagination when switching to owned tab
     }
   }, [activeTab, address]);
 
@@ -99,7 +106,27 @@ export default function Profile() {
     setArtistNames(newArtistNames);
   };
 
-  const loadOwnedTokens = async () => {
+  // Load total count of owned tokens using fast pk-only query
+  const loadOwnedTokensCount = async () => {
+    try {
+      const contractAddress = getContractAddress();
+
+      if (!contractAddress) {
+        console.warn('No contract address configured for current network');
+        setOwnedTokensTotal(0);
+        return;
+      }
+
+      const count = await objktService.getOwnedTokensCount(address);
+      setOwnedTokensTotal(count);
+    } catch (err) {
+      console.error('Failed to load owned tokens count:', err);
+      setOwnedTokensTotal(0);
+    }
+  };
+
+
+  const loadOwnedTokens = async (reset = false, pageOverride = null) => {
     try {
       setTokensLoading(true);
       
@@ -108,22 +135,49 @@ export default function Profile() {
       if (!contractAddress) {
         console.warn('No contract address configured for current network');
         setOwnedTokens([]);
+        setHasMoreTokens(false);
+        setOwnedTokensTotal(0);
         return;
       }
 
-      // Use objkt API with network-specific endpoints
-      const tokens = await objktService.getOwnedTokens(address, 50);
-      console.log('Successfully loaded tokens from objkt API:', tokens.length);
-      setOwnedTokens(tokens);
+      const currentPage = reset ? 0 : (pageOverride !== null ? pageOverride : ownedTokensPage);
+      const offset = currentPage * TOKENS_PER_PAGE;
+
+      const tokens = await objktService.getOwnedTokens(address, TOKENS_PER_PAGE, offset);
+
+      if (reset) {
+        setOwnedTokens(tokens);
+        setOwnedTokensPage(0);
+      } else {
+        setOwnedTokens(prev => [...prev, ...tokens]);
+        if (pageOverride !== null) {
+          setOwnedTokensPage(pageOverride);
+        }
+      }
+
+      // Check if there are more tokens to load
+      const hasMore = tokens.length === TOKENS_PER_PAGE;
+      setHasMoreTokens(hasMore);
 
       // Resolve artist names for the tokens
       await resolveArtistNames(tokens);
     } catch (err) {
       console.error('Failed to load owned tokens:', err);
-      setOwnedTokens([]);
+      if (reset) {
+        setOwnedTokens([]);
+        setOwnedTokensTotal(0);
+      }
+      setHasMoreTokens(false);
     } finally {
       setTokensLoading(false);
     }
+  };
+
+  const loadMoreTokens = async () => {
+    if (!hasMoreTokens || tokensLoading) return;
+
+    const nextPage = ownedTokensPage + 1;
+    await loadOwnedTokens(false, nextPage);
   };
 
   const handleGeneratorClick = (generator) => {
@@ -335,7 +389,7 @@ export default function Profile() {
           className={`tab ${activeTab === 'owned' ? 'active' : ''}`}
           onClick={() => setActiveTab('owned')}
         >
-          Owned ({ownedTokens.length})
+          Owned ({ownedTokensTotal})
         </button>
       </div>
 
@@ -381,43 +435,65 @@ export default function Profile() {
 
       {activeTab === 'owned' && (
         <div className="profile-owned">
-          {tokensLoading ? (
-            <div className="loading">Loading owned tokens...</div>
-          ) : ownedTokens.length === 0 ? (
+          {ownedTokens.length === 0 && !tokensLoading ? (
             <div className="empty-state">
               <p>This user doesn't own any tokens yet.</p>
             </div>
           ) : (
-            <div className="tokens-grid">
-              {ownedTokens.map((token) => (
-                <a
-                  key={token.tokenId}
-                  href={`https://${getObjktDomain()}/tokens/${getTokenContractAddress()}/${token.tokenId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="token-card"
-                >
-                  <div className="token-preview-container">
-                    <SmartThumbnail
-                      src={token.thumbnailUri || `https://media.bootloader.art/thumbnail/${token.tokenId}?n=${getNetwork()}`}
-                      width="200"
-                      height="200"
-                      alt={token.name}
-                      maxRetries={8}
-                      retryDelay={3000}
-                    />
-                  </div>
-                  <div className="token-card-info">
-                    <div className="token-card-name">
-                      {token.name}
+            <>
+              <div className="tokens-grid">
+                {ownedTokens.map((token) => (
+                  <a
+                    key={token.tokenId}
+                    href={`https://${getObjktDomain()}/tokens/${getTokenContractAddress()}/${token.tokenId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="token-card"
+                  >
+                    <div className="token-preview-container">
+                      <SmartThumbnail
+                        src={token.thumbnailUri || `https://media.bootloader.art/thumbnail/${token.tokenId}?n=${getNetwork()}`}
+                        width="200"
+                        height="200"
+                        alt={token.name}
+                        maxRetries={8}
+                        retryDelay={3000}
+                      />
                     </div>
-                    <div className="token-card-artist">
-                      by {getArtistDisplayText(token)}
+                    <div className="token-card-info">
+                      <div className="token-card-name">
+                        {token.name}
+                      </div>
+                      <div className="token-card-artist">
+                        by {getArtistDisplayText(token)}
+                      </div>
                     </div>
+                  </a>
+                ))}
+              </div>
+
+              {/* Pagination controls */}
+              {ownedTokensTotal > 0 && (
+                <div className="pagination-info">
+                  <div className="pagination-status">
+                    Showing {ownedTokens.length} of {ownedTokensTotal} tokens
                   </div>
-                </a>
-              ))}
-            </div>
+                  {hasMoreTokens && (
+                    <button
+                      className="load-more-button"
+                      onClick={loadMoreTokens}
+                      disabled={tokensLoading}
+                    >
+                      {tokensLoading ? 'Loading...' : 'Load More'}
+                    </button>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+
+          {tokensLoading && ownedTokens.length === 0 && (
+            <div className="loading">Loading owned tokens...</div>
           )}
         </div>
       )}
