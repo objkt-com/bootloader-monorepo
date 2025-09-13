@@ -66,7 +66,7 @@ export default {
       viewport: { width, height },
       gotoOptions: {
         waitUntil: "networkidle0",
-        timeout: 25000,
+        timeout: 45000,
       },
       screenshotOptions: {
         type: "png",
