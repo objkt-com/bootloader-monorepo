@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Maximize2, X } from 'lucide-react';
+import { Maximize2, X, ExternalLink } from 'lucide-react';
 import { tezosService } from '../services/tezos.js';
 import { tzktService } from '../services/tzkt.js';
+import { objktService } from '../services/objkt.js';
 import { getNetworkConfig, getContractAddress, CONFIG } from '../config.js';
 import CodeEditor from './CodeEditor.jsx';
 import SVGPreview from './SVGPreview.jsx';
@@ -47,6 +48,8 @@ export default function GeneratorDetail() {
   const [showMetadata, setShowMetadata] = useState(false);
   const [bootloaderInfo, setBootloaderInfo] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [gallerySlug, setGallerySlug] = useState(null);
+  const [slugLoading, setSlugLoading] = useState(false);
 
   // Handle escape key to close fullscreen
   useEffect(() => {
@@ -104,8 +107,24 @@ export default function GeneratorDetail() {
     if (generator) {
       loadLatestTokens();
       loadAuthorProfile();
+      loadGallerySlug();
     }
   }, [generator]);
+
+  const loadGallerySlug = async () => {
+    if (!generator?.id) return;
+
+    try {
+      setSlugLoading(true);
+      const slug = await getGallerySlug(generator.id);
+      setGallerySlug(slug);
+    } catch (err) {
+      console.error('Failed to load gallery slug:', err);
+      setGallerySlug(null);
+    } finally {
+      setSlugLoading(false);
+    }
+  };
 
   // Generate meta tags when generator and author info are available
   const metaTags = generator && authorDisplayInfo ? 
@@ -597,6 +616,37 @@ export default function GeneratorDetail() {
     return getContractAddress();
   };
 
+  // Function to get gallery slug for "View All" button
+  const getGallerySlug = async (generatorId) => {
+    try {
+      const query = `
+        query MyQuery($generatorId: String!) {
+          gallery(where: {registry: {name: {_eq: "bootloader"}}, gallery_id: {_eq: $generatorId}}) {
+            slug
+          }
+        }
+      `;
+
+      const variables = {
+        generatorId: generatorId.toString()
+      };
+
+      const data = await objktService.graphqlQuery(query, variables);
+      return data.gallery.length > 0 ? data.gallery[0].slug : null;
+    } catch (err) {
+      console.error('Failed to get gallery slug:', err);
+      return null;
+    }
+  };
+
+  // Function to handle "View All" button click
+  const handleViewAll = () => {
+    if (gallerySlug) {
+      const url = `https://objkt.com/collections/bootloader/projects/${gallerySlug}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
   if (loading) {
     return (
       <div className="container">
@@ -948,7 +998,18 @@ export default function GeneratorDetail() {
       )}
 
       <div className="latest-mints">
-        <h3>Latest Mints</h3>
+        <div className="latest-mints-header">
+          <h3>Latest Mints</h3>
+          {gallerySlug && (
+            <button
+              onClick={handleViewAll}
+              className="view-all-btn"
+            >
+              View All
+              <ExternalLink size={14} style={{ marginLeft: '6px' }} />
+            </button>
+          )}
+        </div>
         {tokensLoading ? (
           <div className="loading">Loading latest tokens...</div>
         ) : latestTokens.length === 0 ? (

@@ -1486,10 +1486,36 @@ beacon-toast {
   padding-top: var(--spacing-xl);
 }
 
-.latest-mints h3 {
+.latest-mints-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: var(--spacing-lg);
+}
+
+.latest-mints h3 {
+  margin: 0;
   font-size: 18px;
   font-weight: 500;
+}
+
+.view-all-btn {
+  background: var(--color-white);
+  border: var(--border-width) solid var(--color-black);
+  color: var(--color-black);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  cursor: pointer;
+  transition: all 0.1s ease;
+  border-radius: var(--border-radius);
+  text-decoration: none;
+}
+
+.view-all-btn:hover {
+  background: var(--color-black);
+  color: var(--color-white);
+  text-decoration: none;
 }
 
 .tokens-grid {
