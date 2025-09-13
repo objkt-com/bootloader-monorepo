@@ -301,28 +301,20 @@ class TzKTService {
     }
   }
 
-  // Get latest mints for a specific generator
+  // Get latest mints for a specific generator using direct TzKT bigmap filtering
   async getGeneratorMints(generatorId, limit = 10) {
     try {
-      // First get the generator_mapping bigmap to find tokens for this generator
-      const generatorMappingBigMap = await this.getBigMapByPath(
-        "token_extra"
-      );
-      if (!generatorMappingBigMap) {
-        console.warn("Generator mapping bigmap not found");
+      // First get the token_extra bigmap ID
+      const tokenExtraBigMap = await this.getBigMapByPath("token_extra");
+      if (!tokenExtraBigMap) {
+        console.warn("Token extra bigmap not found");
         return [];
       }
 
-      // Get all generator mapping keys and filter for this generator
-      const tokenExtraKeys = await this.getBigMapKeys(generatorMappingBigMap.ptr, {
-        limit: 1000, // Get a large batch to filter
-      });
+      // Use the direct TzKT API endpoint with generator_id filter
+      const url = `${this.baseUrl}/v1/bigmaps/${tokenExtraBigMap.ptr}/keys?value.generator_id=${generatorId}&active=true&limit=${limit}&sort.desc=id`;
+      const generatorTokens = await this.fetchJson(url);
 
-      // Filter for tokens that belong to this generator and sort by tokenId descending
-      const generatorTokens = tokenExtraKeys
-        .filter((keyData) => parseInt(keyData.value.generator_id) === generatorId)
-        .sort((a, b) => parseInt(b.key) - parseInt(a.key)) // Ensure newest tokens first
-        .slice(0, limit); // Take only the requested number
       if (generatorTokens.length === 0) {
         return [];
       }
@@ -372,9 +364,7 @@ class TzKTService {
         }
       }
 
-      // Ensure tokens are sorted by tokenId descending (newest first) as final fallback
-      tokens.sort((a, b) => b.tokenId - a.tokenId);
-
+      // Tokens should already be sorted by tokenId descending due to sort=key.desc
       return tokens;
     } catch (error) {
       console.error(`Failed to get mints for generator ${generatorId}:`, error);
