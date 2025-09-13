@@ -6,6 +6,79 @@ import { tzktService } from "../services/tzkt.js";
 const CACHE_BUSTER = "v11";
 
 /**
+ * JavaScript equivalent of the smart contract's bytes_utils.to_nat function
+ * Converts hex string bytes to a natural number by treating them as binary data
+ * @param {string} hexString - Hex string (with or without 0x prefix)
+ * @returns {bigint} The natural number representation
+ */
+function hexToNat(hexString) {
+  // Remove 0x prefix if present
+  const cleanHex = hexString.startsWith('0x') ? hexString.slice(2) : hexString;
+
+  // Convert hex string to bytes and then to natural number
+  let result = 0n;
+
+  // Process bytes from left to right (big-endian byte order)
+  for (let i = 0; i < cleanHex.length; i += 2) {
+    const byteHex = cleanHex.slice(i, i + 2);
+    const byteValue = parseInt(byteHex, 16);
+
+    // Process each bit of the byte from LSB to MSB (like the smart contract)
+    // Bit masks: 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80
+    for (let bitMask = 1; bitMask <= 128; bitMask <<= 1) {
+      result = result << 1n;
+      if ((byteValue & bitMask) === bitMask) {
+        result = result + 1n;
+      }
+    }
+  }
+
+  return result;
+}
+
+/**
+ * JavaScript equivalent of the smart contract's bytes_utils.from_nat function
+ * Converts a natural number to ASCII-encoded decimal bytes (as hex string)
+ * @param {bigint} n - The natural number
+ * @returns {string} Hex string representing ASCII-encoded decimal
+ */
+function natToHex(n) {
+  if (n === 0n) {
+    return '30'; // ASCII '0'
+  }
+
+  const digits = [];
+  let value = n;
+
+  // Convert to decimal digits
+  while (value > 0n) {
+    const remainder = value % 10n;
+    digits.push(Number(remainder));
+    value = value / 10n;
+  }
+
+  // Convert digits to ASCII hex (reverse order since we collected least-significant first)
+  let result = '';
+  for (let i = digits.length - 1; i >= 0; i--) {
+    const asciiCode = 48 + digits[i]; // ASCII '0' is 48
+    result += asciiCode.toString(16).padStart(2, '0');
+  }
+
+  return result;
+}
+
+/**
+ * JavaScript equivalent of bytes_utils.from_nat(bytes_utils.to_nat(seed))
+ * This matches the smart contract's seed processing logic
+ * @param {string} hexString - Hex string (with or without 0x prefix)
+ * @returns {string} Processed hex string
+ */
+export function processSeedLikeContract(hexString) {
+  const nat = hexToNat(hexString);
+  return natToHex(nat);
+}
+
+/**
  * Get a thumbnail URL for a token from chain data
  * @param {number} tokenId - The token ID
  * @param {Object} tokenData - Optional token data if already available

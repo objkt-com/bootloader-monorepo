@@ -1,6 +1,36 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { tzktService } from '../services/tzkt.js';
+import { processSeedLikeContract } from '../utils/thumbnail.js';
+
+function fixSeedEncoding(hexString) {
+    // Hex prefixes to identify the seed location
+    const prefix = '646174613a696d6167652f7376672b786d6c3b757466382c253343737667253230786d6c6e73253344253232687474702533412532462532467777772e77332e6f7267253246323030302532467376672532322533452533437363726970742533452533432532312535424344415441253542636f6e737425323053454544253344';
+    const suffix = '6e25334266756e6374696f6e25323073706c69746d69783634253238662532392537426c65742532306e2533446';
+
+    // Find the seed between prefix and suffix
+    const prefixIndex = hexString.indexOf(prefix);
+    const suffixIndex = hexString.indexOf(suffix);
+
+    if (prefixIndex === -1 || suffixIndex === -1 || suffixIndex <= prefixIndex) {
+        // No seed pattern found or invalid structure, return original
+        return hexString;
+    }
+
+    // Extract the seed hex bytes between prefix and suffix
+    const seedStart = prefixIndex + prefix.length;
+    const seedHex = hexString.slice(seedStart, suffixIndex);
+
+    // Process the seed using the same logic as the smart contract
+    // bytes_utils.from_nat(bytes_utils.to_nat(seed))
+    const processedSeed = processSeedLikeContract(seedHex);
+
+    // Reconstruct the hex string with the processed seed
+    const beforeSeed = hexString.slice(0, seedStart);
+    const afterSeed = hexString.slice(suffixIndex);
+
+    return beforeSeed + processedSeed + afterSeed;
+}
 
 function ThumbnailRenderer() {
   const { tokenId } = useParams();
@@ -31,7 +61,8 @@ function ThumbnailRenderer() {
 
         // Extract token info - we only need the artifactUri
         const tokenInfo = tokenMetadata.value.token_info;
-        const artifactUri = tzktService.bytesToString(tokenInfo.artifactUri);
+        const correctedArtifactUriBytes = fixSeedEncoding(tokenInfo.artifactUri);
+        const artifactUri = tzktService.bytesToString(correctedArtifactUriBytes);
         const tokenName = tzktService.bytesToString(tokenInfo.name);
 
         const token = {
