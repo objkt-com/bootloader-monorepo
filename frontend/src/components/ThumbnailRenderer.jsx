@@ -21,6 +21,11 @@ function fixSeedEncoding(hexString) {
     const seedStart = prefixIndex + prefix.length;
     const seedHex = hexString.slice(seedStart, suffixIndex);
 
+    if (seedHex.length != 64){
+      // 64 bytes seeds need to be processed
+      return hexString
+    }
+
     // Process the seed using the same logic as the smart contract
     // bytes_utils.from_nat(bytes_utils.to_nat(seed))
     const processedSeed = processSeedLikeContract(seedHex);
