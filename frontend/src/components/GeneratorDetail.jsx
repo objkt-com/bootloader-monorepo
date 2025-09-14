@@ -438,14 +438,6 @@ export default function GeneratorDetail() {
     return false;
   };
 
-  const handleFork = () => {
-    navigate('/create', {
-      state: { 
-        forkCode: generator.code,
-        forkName: `Fork of ${generator.name || `Generator #${generator.id}`}`
-      } 
-    });
-  };
 
   const handleShowSaleForm = () => {
     // Pre-fill form with existing sale data if available
@@ -772,15 +764,6 @@ export default function GeneratorDetail() {
           height="100%"
           readOnly={!isEditing}
           className={showCodeOnMobile ? 'show-on-mobile' : ''}
-          forkButton={!isEditing ? (
-            <button 
-              className="fork-btn"
-              onClick={handleFork}
-              title="Fork this generator"
-            >
-              ⑂
-            </button>
-          ) : null}
         />
         
         <div className="preview-panel">

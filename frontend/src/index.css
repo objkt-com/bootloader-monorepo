@@ -815,10 +815,6 @@ beacon-toast {
   color: var(--color-white);
 }
 
-.fork-btn {
-  font-size: 12px;
-  padding: 4px var(--spacing-sm);
-}
 
 .preview-content {
   flex: 1;
