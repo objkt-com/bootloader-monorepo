@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Maximize2, X, ExternalLink } from 'lucide-react';
 import { tezosService } from '../services/tezos.js';
 import { tzktService } from '../services/tzkt.js';
@@ -679,16 +679,12 @@ export default function GeneratorDetail() {
         <h1>{generator.name || `Generator #${generator.id}`}</h1>
         <p className="generator-author">
           by{' '}
-          <a 
-            href={`/profile/${generator.author}`}
-            onClick={(e) => {
-              e.preventDefault();
-              navigate(`/profile/${generator.author}`);
-            }}
+          <Link 
+            to={`/profile/${generator.author}`}
             className="author-link"
           >
             {getAuthorDisplayName()}
-          </a>
+          </Link>
         </p>
         
         {/* Metadata toggle button */}
@@ -1015,16 +1011,14 @@ export default function GeneratorDetail() {
           <div className="tokens-grid">
             {latestTokens.map((token) => {
               return (
-                <a
+                <Link
                   key={token.tokenId}
-                  href={`https://${getObjktDomain()}/tokens/${getTokenContractAddress()}/${token.tokenId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  to={`/token/${token.tokenId}`}
                   className="token-card"
                 >
                   <div className="token-preview-container">
                     <SmartThumbnail
-                      src={token.thumbnailUri || `https://media.bootloader.art/thumbnail/${token.tokenId}?n=${getNetwork()}`}
+                      src={token.thumbnailUri || `https://media.bootloader.art/thumbnail/${token.tokenId}?n=${CONFIG.network}`}
                       width="200"
                       height="200"
                       alt={`${generator.name || `Generator #${generator.id}`} #${token.tokenId}`}
@@ -1040,7 +1034,7 @@ export default function GeneratorDetail() {
                       owned by {token.owner.slice(0, 6)}...{token.owner.slice(-4)}
                     </div>
                   </div>
-                </a>
+                </Link>
               );
             })}
           </div>

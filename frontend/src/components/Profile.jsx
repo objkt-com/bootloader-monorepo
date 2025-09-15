@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { tezosService } from '../services/tezos.js';
 import { tzktService } from '../services/tzkt.js';
 import { objktService } from '../services/objkt.js';
@@ -11,7 +11,6 @@ import { useMetaTags, generateMetaTags } from '../hooks/useMetaTags.js';
 
 export default function Profile() {
   const { address } = useParams();
-  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('generators');
   const [generators, setGenerators] = useState([]);
   const [ownedTokens, setOwnedTokens] = useState([]);
@@ -180,9 +179,6 @@ export default function Profile() {
     await loadOwnedTokens(false, nextPage);
   };
 
-  const handleGeneratorClick = (generator) => {
-    navigate(`/generator/${generator.id}`);
-  };
 
   // Function to determine generator status based on real contract data
   const getGeneratorStatus = (generator) => {
@@ -402,10 +398,10 @@ export default function Profile() {
           ) : (
             <div className="generators-grid">
               {generators.map((generator) => (
-                <div 
+                <Link 
                   key={generator.id} 
+                  to={`/generator/${generator.id}`}
                   className="generator-card"
-                  onClick={() => handleGeneratorClick(generator)}
                 >
                   <div className="generator-preview-container">
                     <SmartThumbnail
@@ -426,7 +422,7 @@ export default function Profile() {
                     </div>
                     {renderGeneratorStatus(generator)}
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           )}
@@ -443,11 +439,9 @@ export default function Profile() {
             <>
               <div className="tokens-grid">
                 {ownedTokens.map((token) => (
-                  <a
+                  <Link
                     key={token.tokenId}
-                    href={`https://${getObjktDomain()}/tokens/${getTokenContractAddress()}/${token.tokenId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    to={`/token/${token.tokenId}`}
                     className="token-card"
                   >
                     <div className="token-preview-container">
@@ -468,7 +462,7 @@ export default function Profile() {
                         by {getArtistDisplayText(token)}
                       </div>
                     </div>
-                  </a>
+                  </Link>
                 ))}
               </div>
 

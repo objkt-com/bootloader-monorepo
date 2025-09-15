@@ -129,4 +129,32 @@ export const generateMetaTags = {
         : undefined,
     };
   },
+
+  token: (token, artistDisplayInfo) => {
+    const tokenName = token.name || `Token #${token.tokenId}`;
+    const artistName =
+      artistDisplayInfo?.displayName ||
+      (token.creators && token.creators.length > 0
+        ? `${token.creators[0].creator_address.slice(0, 6)}...${token.creators[0].creator_address.slice(-4)}`
+        : 'Unknown Artist');
+    const description =
+      token.description ||
+      `"${tokenName}" by ${artistName}. On-chain generative art token via bootloader.`;
+
+    return {
+      title: `${tokenName} - bootloader:`,
+      description:
+        description.length > 160
+          ? description.substring(0, 157) + "..."
+          : description,
+      keywords: `${tokenName}, generative art, NFT, Tezos, ${artistName}, on-chain art, algorithmic art, token`,
+      image: token.thumbnailUri || token.displayUri || `${window.location.origin}/social.png`,
+      url: window.location.href,
+      type: "article",
+      author: artistName,
+      twitterCreator: artistDisplayInfo?.profile?.twitter
+        ? `@${artistDisplayInfo.profile.twitter.replace(/^@/, "")}`
+        : undefined,
+    };
+  },
 };

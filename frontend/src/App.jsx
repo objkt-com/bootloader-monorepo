@@ -7,6 +7,7 @@ import WalletConnection from './components/WalletConnection.jsx';
 import Home from './components/Home.jsx';
 import Create from './components/Create.jsx';
 import GeneratorDetail from './components/GeneratorDetail.jsx';
+import TokenDetail from './components/TokenDetail.jsx';
 import Profile from './components/Profile.jsx';
 import Help from './components/Help.jsx';
 import ThumbnailRenderer from './components/ThumbnailRenderer.jsx';
@@ -193,6 +194,7 @@ function App() {
                     <Route path="/" element={<Home />} />
                     <Route path="/create" element={<Create />} />
                     <Route path="/generator/:id" element={<GeneratorDetail />} />
+                    <Route path="/token/:tokenId" element={<TokenDetail />} />
                     <Route path="/profile/:address" element={<Profile />} />
                     <Route path="/help" element={<Help />} />
                   </Routes>

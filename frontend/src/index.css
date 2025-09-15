@@ -386,10 +386,14 @@ beacon-toast {
   border-radius: var(--border-radius);
   overflow: hidden;
   background: var(--color-white);
+  text-decoration: none;
+  color: var(--color-black);
 }
 
 .generator-card:hover {
   transform: translateY(-2px);
+  text-decoration: none;
+  color: var(--color-black);
 }
 
 .generator-preview-container {

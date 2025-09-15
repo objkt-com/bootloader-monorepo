@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { tezosService } from '../services/tezos.js';
 import { getGeneratorThumbnailUrl } from '../utils/thumbnail.js';
 import { getUserDisplayInfo } from '../utils/userDisplay.js';
@@ -12,7 +12,6 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [, forceUpdate] = useState(0);
-  const navigate = useNavigate();
 
   useEffect(() => {
     loadGenerators();
@@ -78,9 +77,6 @@ export default function Home() {
     return `${author.slice(0, 6)}...${author.slice(-4)}`;
   };
 
-  const handleGeneratorClick = (generator) => {
-    navigate(`/generator/${generator.id}`);
-  };
 
   // Function to determine generator status based on real contract data
   const getGeneratorStatus = (generator) => {
@@ -231,10 +227,10 @@ export default function Home() {
       ) : (
         <div className="generators-grid">
           {generators.map((generator) => (
-            <div 
+            <Link 
               key={generator.id} 
+              to={`/generator/${generator.id}`}
               className="generator-card"
-              onClick={() => handleGeneratorClick(generator)}
             >
               <div className="generator-preview-container">
                 <SmartThumbnail
@@ -255,7 +251,7 @@ export default function Home() {
                 </div>
                 {renderGeneratorStatus(generator)}
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}

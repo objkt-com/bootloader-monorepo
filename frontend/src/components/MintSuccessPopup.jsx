@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 
 export default function MintSuccessPopup({ 
   isOpen, 
@@ -56,6 +57,7 @@ export default function MintSuccessPopup({
     }
   };
 
+
   return (
     <>
       {/* Full-screen confetti overlay */}
@@ -111,15 +113,14 @@ export default function MintSuccessPopup({
               <button onClick={handleShareOnX} className="share-button">
                 share on 𝕏
               </button>
-              {objktUrl && (
-                <a 
-                  href={objktUrl} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
+              {tokenId && (
+                <Link 
+                  to={`/token/${tokenId}`}
+                  onClick={onClose}
                   className="btn objkt-button"
                 >
-                  view on objkt
-                </a>
+                  View Artwork
+                </Link>
               )}
             </div>
           </div>
