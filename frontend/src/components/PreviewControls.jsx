@@ -7,7 +7,9 @@ export default function PreviewControls({
   iterationNumber = 0,
   onIterationNumberChange = null,
   onRefresh = null,
-  showRefresh = false 
+  showRefresh = false,
+  showPreviewMode = false,
+  maxIterationNumber = null
 }) {
   const [isEditingSeed, setIsEditingSeed] = useState(false);
   const [seedEditValue, setSeedEditValue] = useState(seed.toString());
@@ -80,13 +82,6 @@ export default function PreviewControls({
     }
   };
 
-  // Iteration number handlers
-  const handleIterationClick = () => {
-    if (isEditingIteration || !onIterationNumberChange) return;
-    const newIteration = Math.floor(Math.random() * 1000);
-    onIterationNumberChange(newIteration);
-  };
-
   const handleIterationEditClick = (e) => {
     e.stopPropagation();
     setIsEditingIteration(true);
@@ -99,7 +94,11 @@ export default function PreviewControls({
 
   const handleIterationInputBlur = () => {
     const parsedIteration = parseInt(iterationEditValue);
-    const newIteration = isNaN(parsedIteration) ? iterationNumber : parsedIteration;
+    let newIteration = isNaN(parsedIteration) ? iterationNumber : parsedIteration;
+    
+    if (maxIterationNumber !== null && newIteration > maxIterationNumber) {
+      newIteration = maxIterationNumber;
+    }
     
     // Store previous value if changing from non-zero
     if (iterationNumber !== 0 && newIteration !== iterationNumber) {
@@ -130,7 +129,7 @@ export default function PreviewControls({
 
   return (
     <div className="preview-controls">
-      {onIterationNumberChange && (
+      {showPreviewMode && onIterationNumberChange && (
         <div className="seed-control">
           <label className="preview-checkbox">
             <span className="seed-label">preview mode</span>
@@ -157,7 +156,7 @@ export default function PreviewControls({
               className="seed-input"
               autoFocus
               min="0"
-              max="999999999"
+              max={maxIterationNumber || "999999999"}
             />
           ) : (
             <span 

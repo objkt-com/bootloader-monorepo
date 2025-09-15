@@ -17,7 +17,7 @@ export default function Create() {
   const [success, setSuccess] = useState(null);
   const [previewSeed, setPreviewSeed] = useState(Math.floor(Math.random() * 1000000));
   const [renderCounter, setRenderCounter] = useState(0);
-  const [previewIterationNumber, setPreviewIterationNumber] = useState(0);
+  const [previewIterationNumber, setPreviewIterationNumber] = useState(1);
   const [showFullscreenPreview, setShowFullscreenPreview] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -212,6 +212,7 @@ for (let i = 0; i < 5; i++) {
                 onIterationNumberChange={setPreviewIterationNumber}
                 onRefresh={refreshPreview}
                 showRefresh={true}
+                showPreviewMode={true}
               />
               <button 
                 className="fullscreen-btn"
@@ -296,6 +297,7 @@ for (let i = 0; i < 5; i++) {
                   onIterationNumberChange={setPreviewIterationNumber}
                   onRefresh={refreshPreview}
                   showRefresh={true}
+                  showPreviewMode={true}
                 />
                 <button 
                   className="close-fullscreen-btn"

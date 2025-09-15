@@ -29,6 +29,11 @@ export default function GeneratorDetail() {
   const [isMinting, setIsMinting] = useState(false);
   const [success, setSuccess] = useState(null);
   const [previewSeed, setPreviewSeed] = useState(() => Math.floor(Math.random() * 1000000));
+  const [previewIterationNumber, setPreviewIterationNumber] = useState(() => {
+    const nextIteration = (generator?.nTokens || 0) + 1;
+    const maxEditions = generator?.sale?.editions;
+    return maxEditions ? Math.min(nextIteration, maxEditions) : nextIteration;
+  });
   const [renderCounter, setRenderCounter] = useState(0);
   const [latestTokens, setLatestTokens] = useState([]);
   const [tokensLoading, setTokensLoading] = useState(false);
@@ -108,6 +113,9 @@ export default function GeneratorDetail() {
       loadLatestTokens();
       loadAuthorProfile();
       loadGallerySlug();
+      const nextIteration = (generator.nTokens || 0) + 1;
+      const maxEditions = generator.sale?.editions;
+      setPreviewIterationNumber(maxEditions ? Math.min(nextIteration, maxEditions) : nextIteration);
     }
   }, [generator]);
 
@@ -774,8 +782,11 @@ export default function GeneratorDetail() {
               <PreviewControls
                 seed={previewSeed}
                 onSeedChange={setPreviewSeed}
+                iterationNumber={previewIterationNumber}
+                onIterationNumberChange={setPreviewIterationNumber}
                 onRefresh={refreshPreview}
                 showRefresh={true}
+                maxIterationNumber={generator?.sale?.editions || null}
               />
               <button 
                 className="fullscreen-btn"
@@ -789,6 +800,7 @@ export default function GeneratorDetail() {
           <SVGPreview 
             code={isEditing ? editCode : generator.code}
             seed={previewSeed}
+            iterationNumber={previewIterationNumber}
             renderCounter={renderCounter}
             width={400}
             height={400}
@@ -1059,8 +1071,11 @@ export default function GeneratorDetail() {
                 <PreviewControls
                   seed={previewSeed}
                   onSeedChange={setPreviewSeed}
+                  iterationNumber={previewIterationNumber}
+                  onIterationNumberChange={setPreviewIterationNumber}
                   onRefresh={refreshPreview}
                   showRefresh={true}
+                  maxIterationNumber={generator?.sale?.editions || null}
                 />
                 <button 
                   className="close-fullscreen-btn"
@@ -1075,6 +1090,7 @@ export default function GeneratorDetail() {
               <SVGPreview 
                 code={isEditing ? editCode : generator.code}
                 seed={previewSeed}
+                iterationNumber={previewIterationNumber}
                 renderCounter={renderCounter}
                 width={Math.min(window.innerWidth - 100, window.innerHeight - 150)}
                 height={Math.min(window.innerWidth - 100, window.innerHeight - 150)}

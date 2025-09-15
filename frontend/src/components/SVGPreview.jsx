@@ -4,7 +4,7 @@ import { tezosService } from '../services/tezos.js';
 export default function SVGPreview({
   code,
   seed = 12345,
-  iterationNumber = 0,
+  iterationNumber = 1,
   width = 400,
   height = 300,
   showHeader = false,
