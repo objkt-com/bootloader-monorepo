@@ -366,6 +366,29 @@ for (let i = 0; i < 5; i++) {
           </div>
         </div>
 
+        <h2>Screenshots & Thumbnails</h2>
+        <p>
+          bootloader: automatically generates thumbnails for your generators and minted tokens using a screenshot service. 
+          Here's how the process works:
+        </p>
+        <div className="features-grid">
+          <div className="feature-card">
+            <h4><TestTube size={18} className="inline-icon" /> Screenshot Process</h4>
+            <p>
+              Screenshots are captured in a 400×400 pixel viewport after a 30-second delay. This timeout cannot be customized 
+              through the API. We plan to add a configurable screenshot API in the future to allow more control over the 
+              screenshot capturing process.
+            </p>
+          </div>
+        </div>
+        <p>
+          <small>
+            <Lightbulb size={16} className="inline-icon" /> <strong>Tip:</strong> Design your generators to produce 
+            meaningful visuals within 30 seconds for optimal thumbnail generation. Use <code>BTLDR.isPreview</code> 
+            to customise behaviour for project cover capture (what's seen on the homepage and the project on objkt).
+          </small>
+        </p>
+
         <h2>Community & Support</h2>
         <p>
           bootloader: is an open-source project. You can find the code, report issues, and contribute 
