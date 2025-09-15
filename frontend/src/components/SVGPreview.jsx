@@ -41,11 +41,9 @@ export default function SVGPreview({
       clearTimeout(debounceRef.current);
     }
 
-    // Set loading state immediately for visual feedback
-    setIsReloading(true);
-
     // Debounce the preview generation
     debounceRef.current = setTimeout(() => {
+      setIsReloading(true);
       generatePreview();
     }, 300); // 300ms debounce
 
