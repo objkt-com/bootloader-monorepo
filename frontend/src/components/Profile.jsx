@@ -409,7 +409,7 @@ export default function Profile() {
                 >
                   <div className="generator-preview-container">
                     <SmartThumbnail
-                      src={getGeneratorThumbnailUrl(generator.id)}
+                      src={getGeneratorThumbnailUrl(generator.id, generator.version)}
                       width="500"
                       height="500"
                       alt={generator.name || `Generator #${generator.id}`}

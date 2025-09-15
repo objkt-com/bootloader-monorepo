@@ -3,7 +3,7 @@ import { CONFIG } from "../config.js";
 import { tzktService } from "../services/tzkt.js";
 
 // Global cache buster - change this value to force refresh all thumbnails
-const CACHE_BUSTER = "v11";
+const CACHE_BUSTER = "v12";
 
 /**
  * JavaScript equivalent of the smart contract's bytes_utils.to_nat function
@@ -133,10 +133,11 @@ export async function getTokenThumbnailUrl(tokenId, tokenData = null) {
 /**
  * Generate a thumbnail URL for a generator
  * @param {number} generatorId - The generator ID
+ * @param {number} generatorVersion - The generator version (optional, defaults to 1)
  * @returns {string} The thumbnail URL
  */
-export function getGeneratorThumbnailUrl(generatorId) {
-  return `https://media.bootloader.art/generator-thumbnail/${generatorId}?v=${CACHE_BUSTER}&n=${getNetwork()}`;
+export function getGeneratorThumbnailUrl(generatorId, generatorVersion = 1) {
+  return `https://media.bootloader.art/generator-thumbnail/${generatorId}?v=${generatorVersion}-${CACHE_BUSTER}&n=${getNetwork()}`;
 }
 
 /**
@@ -152,10 +153,11 @@ export async function getTokenThumbnailPrefetchUrl(tokenId, tokenData = null) {
 /**
  * Generate a prefetch URL for a generator (same as regular URL)
  * @param {number} generatorId - The generator ID
+ * @param {number} generatorVersion - The generator version (optional, defaults to 1)
  * @returns {string} The thumbnail URL
  */
-export function getGeneratorThumbnailPrefetchUrl(generatorId) {
-  return getGeneratorThumbnailUrl(generatorId);
+export function getGeneratorThumbnailPrefetchUrl(generatorId, generatorVersion = 1) {
+  return getGeneratorThumbnailUrl(generatorId, generatorVersion);
 }
 
 /**
@@ -188,11 +190,12 @@ export async function prefetchTokenThumbnail(tokenId, tokenData = null) {
 /**
  * Call prefetch for a generator thumbnail (simplified since we're using direct URLs)
  * @param {number} generatorId - The generator ID
+ * @param {number} generatorVersion - The generator version (optional, defaults to 1)
  * @returns {Promise<boolean>} Success status
  */
-export async function prefetchGeneratorThumbnail(generatorId) {
+export async function prefetchGeneratorThumbnail(generatorId, generatorVersion = 1) {
   try {
-    const prefetchUrl = getGeneratorThumbnailPrefetchUrl(generatorId);
+    const prefetchUrl = getGeneratorThumbnailPrefetchUrl(generatorId, generatorVersion);
     const response = await fetch(prefetchUrl, { method: "HEAD" });
 
     if (response.ok) {
