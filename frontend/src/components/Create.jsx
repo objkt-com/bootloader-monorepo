@@ -212,6 +212,7 @@ for (let i = 0; i < 5; i++) {
                 onIterationNumberChange={setPreviewIterationNumber}
                 onRefresh={refreshPreview}
                 showRefresh={true}
+                showPreviewMode={true}
               />
               <button 
                 className="fullscreen-btn"
@@ -296,6 +297,7 @@ for (let i = 0; i < 5; i++) {
                   onIterationNumberChange={setPreviewIterationNumber}
                   onRefresh={refreshPreview}
                   showRefresh={true}
+                  showPreviewMode={true}
                 />
                 <button 
                   className="close-fullscreen-btn"
