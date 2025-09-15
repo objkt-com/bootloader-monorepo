@@ -58,9 +58,8 @@ export default {
     }
 
     // Cloudflare Browser Rendering API endpoint
-    const endpoint = `https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/browser-rendering/screenshot`;
+    const endpoint = `https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/browser-rendering/screenshot?cacheTTL=86400`;
 
-    // Request a JPEG at your exact viewport size, with DPR=1
     const body = {
       url: targetUrl.toString(),
       viewport: { width, height },
