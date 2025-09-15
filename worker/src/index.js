@@ -64,10 +64,7 @@ export default {
     const body = {
       url: targetUrl.toString(),
       viewport: { width, height },
-      gotoOptions: {
-        waitUntil: "networkidle0",
-        timeout: 45000,
-      },
+      waitForTimeout: 30000,
       screenshotOptions: {
         type: "png",
         captureBeyondViewport: false,
