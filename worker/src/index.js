@@ -1,6 +1,6 @@
 export default {
   async fetch(request, env, ctx) {
-    const workerCacheBuster = "v6"; // (typo fixed)
+    const workerCacheBuster = "v7"; // (typo fixed)
     const url = new URL(request.url);
     const pathParts = url.pathname.split("/").filter(Boolean);
 
