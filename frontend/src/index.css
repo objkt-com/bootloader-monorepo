@@ -219,6 +219,14 @@ beacon-toast {
   letter-spacing: -0.5px;
 }
 
+.logo-mobile {
+  display: none;
+}
+
+.logo-full {
+  display: inline;
+}
+
 .nav {
   display: flex;
   gap: var(--spacing-sm);
@@ -2428,6 +2436,14 @@ small .inline-icon {
   .logo {
     flex: 1;
     min-width: 0;
+  }
+
+  .logo-full {
+    display: none;
+  }
+
+  .logo-mobile {
+    display: inline;
   }
 
   .nav {

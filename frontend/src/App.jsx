@@ -107,7 +107,10 @@ function Navigation() {
       <header className="header">
         <div className="header-content">
           <div className="logo">
-            <Link to="/">bootloader:</Link>
+            <Link to="/">
+              <span className="logo-full">bootloader:</span>
+              <span className="logo-mobile">bl:</span>
+            </Link>
           </div>
           
           <nav className="nav">
