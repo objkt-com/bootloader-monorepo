@@ -41,6 +41,7 @@ export async function fetchUserProfile(address) {
           description
           twitter
           tzdomain
+          logo
         }
       }
     `;

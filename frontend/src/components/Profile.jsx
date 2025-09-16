@@ -347,6 +347,9 @@ export default function Profile() {
         </div>
         <div className="profile-address-full">
           {address}
+          {userDisplayInfo.profile?.tzdomain && (
+            <span> ({userDisplayInfo.profile.tzdomain})</span>
+          )}
         </div>
         <div className="profile-links">
           {userDisplayInfo.profile?.twitter && (
@@ -364,12 +367,16 @@ export default function Profile() {
             </a>
           )}
           <a 
-            href={`https://${getObjktDomain()}/users/${address}`}
+            href={userDisplayInfo.profile?.tzdomain 
+              ? `https://${getObjktDomain()}/@${userDisplayInfo.profile.tzdomain.replace('.tez', '')}`
+              : `https://${getObjktDomain()}/users/${address}`}
             target="_blank"
             rel="noopener noreferrer"
             className="profile-link"
           >
-            {getObjktDomain()}/users/{formatAddress(address)}
+            {userDisplayInfo.profile?.tzdomain 
+              ? `${getObjktDomain()}/@${userDisplayInfo.profile.tzdomain.replace('.tez', '')}`
+              : `${getObjktDomain()}/users/${formatAddress(address)}`}
           </a>
         </div>
       </div>

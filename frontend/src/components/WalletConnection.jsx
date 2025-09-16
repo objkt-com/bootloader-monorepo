@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { tezosService } from '../services/tezos.js';
+import UserProfileDropdown from './UserProfileDropdown.jsx';
 
 export default function WalletConnection() {
   const [isConnected, setIsConnected] = useState(false);
@@ -74,13 +74,10 @@ export default function WalletConnection() {
   if (isConnected) {
     return (
       <div className="wallet-info">
-        <Link to={`/profile/${userAddress}`} className="user-address-link">
-          {formatAddress(userAddress)}
-        </Link>
-        <button onClick={handleDisconnect} className="disconnect-btn">
-          <span className="disconnect-text">disconnect</span>
-          <span className="disconnect-icon">×</span>
-        </button>
+        <UserProfileDropdown 
+          userAddress={userAddress}
+          onDisconnect={handleDisconnect}
+        />
       </div>
     );
   }
