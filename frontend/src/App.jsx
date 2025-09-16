@@ -117,6 +117,12 @@ function Navigation() {
             >
               + create
             </Link>
+            <Link 
+              to="/help" 
+              className={location.pathname === '/help' ? 'active' : ''}
+            >
+              docs
+            </Link>
           </nav>
           
           <WalletConnection />
@@ -139,7 +145,6 @@ function Footer() {
     <footer className="footer">
       <div className="footer-content">
         <div className="footer-links">
-          <Link to="/help">Help</Link>
           <a href="https://github.com/objkt-com/bootloader-monorepo" target="_blank" rel="noopener noreferrer">
             GitHub
           </a>
