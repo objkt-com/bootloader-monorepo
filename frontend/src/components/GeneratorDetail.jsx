@@ -772,7 +772,7 @@ export default function GeneratorDetail() {
         
         <div className="preview-panel">
           <div className="preview-header">
-            <span>Live Preview</span>
+            <span>Exploration<sup>*</sup></span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <span className="loading-indicator">updating...</span>
               <PreviewControls
@@ -834,6 +834,13 @@ export default function GeneratorDetail() {
               }}
             ></div>
           </div>
+        </div>
+      )}
+
+      {/* Mint disclaimer - only show when there's a sale */}
+      {generator.sale && (
+        <div className="mint-disclaimer">
+          <span><sup>*</sup>The exploration illustrates the algorithm’s possibilities. Your mint will be generated with random values.</span>
         </div>
       )}
 
