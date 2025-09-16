@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Maximize2, X, ExternalLink, RefreshCw } from 'lucide-react';
-import { objktService } from '../services/objkt.js';
 import { tezosService } from '../services/tezos.js';
 import { tzktService } from '../services/tzkt.js';
 import { getNetworkConfig, getContractAddress } from '../config.js';
@@ -84,10 +83,55 @@ export default function TokenDetail() {
         return;
       }
 
-      // Get token details from objkt
-      const tokenData = await objktService.getTokenDetails(tokenId);
+      let tokenData = null;
+
+      // Get token metadata from tzkt only
+      try {
+        const tokenMetadataBigMap = await tzktService.getBigMapByPath("token_metadata");
+        const ledgerBigMap = await tzktService.getBigMapByPath("ledger");
+        
+        if (tokenMetadataBigMap && ledgerBigMap) {
+          const tokenMetadata = await tzktService.getBigMapKey(
+            tokenMetadataBigMap.ptr,
+            tokenId.toString()
+          );
+          const tokenOwner = await tzktService.getBigMapKey(
+            ledgerBigMap.ptr,
+            tokenId.toString()
+          );
+
+          if (tokenMetadata && tokenOwner) {
+            const tokenInfo = tokenMetadata.value.token_info;
+            
+            // Get token creation timestamp from key updates
+            const creationTimestamp = await tzktService.getBigMapKeyCreationTime(
+              tokenMetadataBigMap.ptr,
+              tokenId.toString()
+            );
+
+            tokenData = {
+              token_id: tokenId.toString(),
+              name: tzktService.bytesToString(tokenInfo.name),
+              artifact_uri: tzktService.bytesToString(tokenInfo.artifactUri),
+              display_uri: tokenInfo.displayUri ? tzktService.bytesToString(tokenInfo.displayUri) : null,
+              thumbnail_uri: tokenInfo.thumbnailUri ? tzktService.bytesToString(tokenInfo.thumbnailUri) : null,
+              mime: tokenInfo.mime ? tzktService.bytesToString(tokenInfo.mime) : null,
+              supply: "1", // Default for FA2
+              timestamp: creationTimestamp, // Get from key updates
+              creators: [], // Will be populated from generator info
+              holders: [{
+                holder_address: tokenOwner.value,
+                quantity: "1"
+              }],
+              metadata: null // Not available from tzkt
+            };
+          }
+        }
+      } catch (tzktError) {
+        console.error('Failed to get token from tzkt:', tzktError);
+      }
       
-      // Check if request was aborted after API call
+      // Check if request was aborted after tzkt call
       if (signal?.aborted) {
         return;
       }
@@ -127,6 +171,33 @@ export default function TokenDetail() {
         { holder_address: 'unknown', quantity: '0' }
       );
 
+      // Try to get generator info from TzKT (this will also populate creator info)
+      try {
+        const generatorInfo = await getGeneratorFromToken(transformedToken, signal);
+        
+        // Check if request was aborted after getting generator info
+        if (signal?.aborted) {
+          return;
+        }
+        
+        console.log('Generator info found:', generatorInfo);
+        setGenerator(generatorInfo);
+
+        // If we got generator info and don't have creator info, use generator author
+        if (generatorInfo && transformedToken.creators.length === 0) {
+          transformedToken.creators = [{
+            creator_address: generatorInfo.author,
+            verified: false
+          }];
+          setToken(transformedToken);
+        }
+      } catch (err) {
+        // Don't log errors if the request was aborted
+        if (!signal?.aborted) {
+          console.warn('Could not load generator info:', err);
+        }
+      }
+
       // Load artist display info
       if (transformedToken.creators.length > 0) {
         const artistAddress = transformedToken.creators[0].creator_address;
@@ -150,24 +221,6 @@ export default function TokenDetail() {
         }
         
         setOwnerDisplayInfo(ownerInfo);
-      }
-
-      // Try to get generator info from TzKT
-      try {
-        const generatorInfo = await getGeneratorFromToken(transformedToken, signal);
-        
-        // Check if request was aborted after getting generator info
-        if (signal?.aborted) {
-          return;
-        }
-        
-        console.log('Generator info found:', generatorInfo);
-        setGenerator(generatorInfo);
-      } catch (err) {
-        // Don't log errors if the request was aborted
-        if (!signal?.aborted) {
-          console.warn('Could not load generator info:', err);
-        }
       }
 
     } catch (err) {
@@ -456,23 +509,25 @@ export default function TokenDetail() {
             )}
             
             <div className="token-info-section">
-              {token.timestamp && (
-                <div className="token-info-item">
-                  <span className="token-info-label">Minted:</span>
-                  <span className="token-info-value">
-                    {formatMintDate(token.timestamp)}
-                  </span>
-                </div>
-              )}
+              <div className="token-info-item">
+                <span className="token-info-label">Minted:</span>
+                <span className="token-info-value">
+                  {token.timestamp ? formatMintDate(token.timestamp) : '-'}
+                </span>
+              </div>
 
               <div className="token-info-item">
                 <span className="token-info-label">Owned by:</span>
-                <Link 
-                  to={`/profile/${owner.address}`}
-                  className="token-info-link"
-                >
-                  {owner.displayName}
-                </Link>
+                {owner.address !== 'unknown' ? (
+                  <Link 
+                    to={`/profile/${owner.address}`}
+                    className="token-info-link"
+                  >
+                    {owner.displayName}
+                  </Link>
+                ) : (
+                  <span className="token-info-value">-</span>
+                )}
               </div>
             </div>
 
@@ -507,12 +562,6 @@ export default function TokenDetail() {
               </a>
             </div>
 
-            {token.description && (
-              <div className="token-description">
-                <h3>Description</h3>
-                <p>{token.description}</p>
-              </div>
-            )}
           </div>
         </div>
       </div>

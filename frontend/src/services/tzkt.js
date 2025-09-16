@@ -77,6 +77,21 @@ class TzKTService {
     }
   }
 
+  // Get the creation timestamp for a specific bigmap key
+  async getBigMapKeyCreationTime(bigmapId, key) {
+    const url = `${
+      this.baseUrl
+    }/v1/bigmaps/${bigmapId}/keys/${encodeURIComponent(key)}/updates?sort=id&limit=1`;
+    try {
+      const updates = await this.fetchJson(url);
+      // Return the timestamp of the first (oldest) update, which should be the creation
+      return updates.length > 0 ? updates[0].timestamp : null;
+    } catch (error) {
+      console.error(`Failed to get creation time for bigmap key ${key}:`, error);
+      return null;
+    }
+  }
+
   // Get all generators from the generators bigmap
   async getGenerators() {
     try {
@@ -535,6 +550,7 @@ class TzKTService {
       return null;
     }
   }
+
 
   // Utility function to convert string to bytes (for comparison/filtering)
   stringToBytes(str) {
