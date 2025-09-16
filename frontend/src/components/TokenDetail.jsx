@@ -23,6 +23,7 @@ export default function TokenDetail() {
   const [showFullscreen, setShowFullscreen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [userAddress, setUserAddress] = useState(null);
+  const [bootloaderInfo, setBootloaderInfo] = useState(null);
   const abortControllerRef = useRef(null);
 
   useEffect(() => {
@@ -183,6 +184,16 @@ export default function TokenDetail() {
     }
   };
 
+  const loadBootloaderInfo = async (bootloaderId) => {
+    try {
+      const bootloader = await tzktService.getBootloader(bootloaderId);
+      setBootloaderInfo(bootloader);
+    } catch (err) {
+      console.error('Failed to load bootloader info:', err);
+      setBootloaderInfo(null);
+    }
+  };
+
   // Helper function to extract generator info from token using TzKT
   const getGeneratorFromToken = async (token, signal) => {
     try {
@@ -212,6 +223,11 @@ export default function TokenDetail() {
       // Check if request was aborted after second API call
       if (signal?.aborted) {
         return null;
+      }
+      
+      // Load bootloader information if bootloaderId is available
+      if (generator && generator.bootloaderId !== undefined && generator.bootloaderId !== null) {
+        await loadBootloaderInfo(generator.bootloaderId);
       }
       
       return generator;
@@ -417,17 +433,26 @@ export default function TokenDetail() {
             )}
 
             {tokenExtra && generator && (
-              <div className="token-info-item">
-                <span className="token-info-label">Generator Version:</span>
-                <span className={`token-info-value ${generator.version > tokenExtra.generatorVersion ? 'version-outdated' : ''}`}>
-                  {tokenExtra.generatorVersion}
-                  {generator.version > tokenExtra.generatorVersion && (
-                    <span style={{ fontSize: '12px', marginLeft: '8px', color: '#ff6b35' }}>
-                      (v{generator.version} available)
-                    </span>
-                  )}
-                </span>
-              </div>
+              <>
+                <div className="token-info-item">
+                  <span className="token-info-label">Generator Version:</span>
+                  <span className={`token-info-value ${generator.version > tokenExtra.generatorVersion ? 'version-outdated' : ''}`}>
+                    {tokenExtra.generatorVersion}
+                    {generator.version > tokenExtra.generatorVersion && (
+                      <span style={{ fontSize: '12px', marginLeft: '8px', color: '#ff6b35' }}>
+                        (v{generator.version} available)
+                      </span>
+                    )}
+                  </span>
+                </div>
+                
+                <div className="token-info-item">
+                  <span className="token-info-label">Bootloader:</span>
+                  <span className="token-info-value">
+                    {bootloaderInfo?.version || '-'}
+                  </span>
+                </div>
+              </>
             )}
             
             <div className="token-info-section">
