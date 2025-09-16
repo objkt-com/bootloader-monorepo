@@ -507,6 +507,35 @@ class TzKTService {
     }
   }
 
+  // Get token extra data (includes generator_id and generator_version)
+  async getTokenExtra(tokenId) {
+    try {
+      const tokenExtraBigMap = await this.getBigMapByPath("token_extra");
+      if (!tokenExtraBigMap) {
+        console.warn("Token extra bigmap not found");
+        return null;
+      }
+
+      const keyData = await this.getBigMapKey(
+        tokenExtraBigMap.ptr,
+        tokenId.toString()
+      );
+      if (!keyData) {
+        return null;
+      }
+
+      return {
+        generatorId: parseInt(keyData.value.generator_id),
+        generatorVersion: parseInt(keyData.value.generator_version),
+        seed: keyData.value.seed,
+        iterationNumber: parseInt(keyData.value.iteration_number),
+      };
+    } catch (error) {
+      console.error(`Failed to get token extra for token ${tokenId}:`, error);
+      return null;
+    }
+  }
+
   // Utility function to convert string to bytes (for comparison/filtering)
   stringToBytes(str) {
     return "0x" + Buffer.from(str, "utf8").toString("hex");

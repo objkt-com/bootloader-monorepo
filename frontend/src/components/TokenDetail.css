@@ -171,30 +171,51 @@
 }
 
 .token-update-btn {
-  background: #0066cc;
-  color: var(--color-white);
-  border: var(--border-width) solid #0066cc;
+  background: #007bff !important;
+  color: white !important;
+  border: var(--border-width) solid #007bff !important;
   font-weight: 500;
+  transition: opacity 0.1s ease;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
-.token-update-btn:hover {
-  background: #0052a3;
-  border-color: #0052a3;
-  color: var(--color-white);
+.token-update-btn:hover:not(:disabled) {
+  background: #007bff !important;
+  color: white !important;
+  opacity: 0.8;
   text-decoration: none;
 }
 
 .token-update-btn:disabled {
-  background: var(--color-gray-medium);
-  color: var(--color-gray-dark);
-  border-color: var(--color-gray-medium);
-  opacity: 0.5;
+  background: var(--color-gray-light) !important;
+  color: var(--color-gray-dark) !important;
+  border-color: #007bff !important;
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
-.token-update-btn:disabled:hover {
-  background: var(--color-gray-medium);
-  color: var(--color-gray-dark);
-  border-color: var(--color-gray-medium);
+/* Dark mode support for update button - same styling as light mode */
+:root[data-theme="dark"] .token-update-btn {
+  background: #007bff !important;
+  color: white !important;
+  border-color: #007bff !important;
+}
+
+:root[data-theme="dark"] .token-update-btn:hover:not(:disabled) {
+  background: #007bff !important;
+  color: white !important;
+  opacity: 0.8;
+}
+
+:root[data-theme="dark"] .token-update-btn:disabled {
+  background: var(--color-gray-light) !important;
+  color: var(--color-gray-dark) !important;
+  border-color: #007bff !important;
+  opacity: 0.6;
 }
 
 .token-description {
@@ -317,6 +338,7 @@
   color: var(--color-black);
   font-weight: 500;
 }
+
 
 /* Mobile styles */
 @media (max-width: 768px) {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Maximize2, X, ExternalLink } from 'lucide-react';
+import { Maximize2, X, ExternalLink, RefreshCw } from 'lucide-react';
 import { objktService } from '../services/objkt.js';
 import { tezosService } from '../services/tezos.js';
 import { tzktService } from '../services/tzkt.js';
@@ -15,11 +15,14 @@ export default function TokenDetail() {
   const navigate = useNavigate();
   const [token, setToken] = useState(null);
   const [generator, setGenerator] = useState(null);
+  const [tokenExtra, setTokenExtra] = useState(null);
   const [artistDisplayInfo, setArtistDisplayInfo] = useState({ displayName: '', profile: null });
   const [ownerDisplayInfo, setOwnerDisplayInfo] = useState({ displayName: '', profile: null });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showFullscreen, setShowFullscreen] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [userAddress, setUserAddress] = useState(null);
   const abortControllerRef = useRef(null);
 
   useEffect(() => {
@@ -40,6 +43,21 @@ export default function TokenDetail() {
       }
     };
   }, [tokenId]);
+
+  // Get user address from tezos service
+  useEffect(() => {
+    const initializeTezos = async () => {
+      await tezosService.initialize();
+      setUserAddress(tezosService.userAddress);
+    };
+
+    initializeTezos();
+
+    // Set up callback for account changes
+    tezosService.setAccountChangeCallback((address) => {
+      setUserAddress(address);
+    });
+  }, []);
 
   // Handle escape key to close fullscreen
   useEffect(() => {
@@ -173,46 +191,30 @@ export default function TokenDetail() {
         return null;
       }
 
-      // Use TzKT to get the generator ID from the token_extra bigmap
-      const tokenExtraBigMap = await tzktService.getBigMapByPath("token_extra");
+      // Get the token extra data which contains the generator_id and generator_version
+      const tokenExtraData = await tzktService.getTokenExtra(token.tokenId);
       
       // Check if request was aborted after first API call
       if (signal?.aborted) {
         return null;
       }
       
-      if (!tokenExtraBigMap) {
+      if (!tokenExtraData) {
         return null;
       }
 
-      // Get the token extra data which contains the generator_id
-      const tokenExtraData = await tzktService.getBigMapKey(
-        tokenExtraBigMap.ptr,
-        token.tokenId.toString()
-      );
+      // Store token extra data
+      setTokenExtra(tokenExtraData);
 
+      // Get the generator details using TzKT
+      const generator = await tzktService.getGenerator(tokenExtraData.generatorId);
+      
       // Check if request was aborted after second API call
       if (signal?.aborted) {
         return null;
       }
-
-      if (!tokenExtraData || !tokenExtraData.value) {
-        return null;
-      }
-
-      const generatorId = parseInt(tokenExtraData.value.generator_id);
-
-      if (generatorId) {
-        // Get the generator details using TzKT
-        const generator = await tzktService.getGenerator(generatorId);
-        
-        // Check if request was aborted after third API call
-        if (signal?.aborted) {
-          return null;
-        }
-        
-        return generator;
-      }
+      
+      return generator;
     } catch (err) {
       // Don't log errors if the request was aborted
       if (!signal?.aborted) {
@@ -221,6 +223,49 @@ export default function TokenDetail() {
     }
 
     return null;
+  };
+
+  // Handle token version update
+  const handleUpdateVersion = async () => {
+    if (!token || !userAddress || isUpdating) {
+      return;
+    }
+
+    try {
+      setIsUpdating(true);
+      
+      const result = await tezosService.regenerateToken(token.tokenId);
+      
+      if (result.success) {
+        // Reload token data to get updated version
+        setTimeout(() => {
+          window.location.reload();
+        }, 3000); // Give some time for the blockchain to update
+        
+        alert('Token version updated successfully! The page will refresh in a moment.');
+      } else {
+        alert(`Failed to update token version: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Failed to update token version:', error);
+      alert(`Failed to update token version: ${error.message}`);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  // Check if user can update the token version
+  const canUpdateVersion = () => {
+    if (!token || !generator || !tokenExtra || !userAddress) {
+      return false;
+    }
+
+    const owner = getCurrentOwner();
+    const isOwner = userAddress.toLowerCase() === owner.address.toLowerCase();
+    const hasNewerVersion = generator.version > tokenExtra.generatorVersion;
+    const hasSeed = tokenExtra.seed !== null;
+
+    return isOwner && hasNewerVersion && hasSeed;
   };
 
   // Generate meta tags when token data is available
@@ -370,6 +415,20 @@ export default function TokenDetail() {
                 </Link>
               </div>
             )}
+
+            {tokenExtra && generator && (
+              <div className="token-info-item">
+                <span className="token-info-label">Generator Version:</span>
+                <span className={`token-info-value ${generator.version > tokenExtra.generatorVersion ? 'version-outdated' : ''}`}>
+                  {tokenExtra.generatorVersion}
+                  {generator.version > tokenExtra.generatorVersion && (
+                    <span style={{ fontSize: '12px', marginLeft: '8px', color: '#ff6b35' }}>
+                      (v{generator.version} available)
+                    </span>
+                  )}
+                </span>
+              </div>
+            )}
             
             <div className="token-info-section">
               {token.timestamp && (
@@ -393,6 +452,25 @@ export default function TokenDetail() {
             </div>
 
             <div className="token-actions">
+              {canUpdateVersion() && (
+                <button
+                  onClick={handleUpdateVersion}
+                  disabled={isUpdating}
+                  className="btn token-update-btn"
+                >
+                  {isUpdating ? (
+                    <>
+                      <RefreshCw size={14} />
+                      Updating...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw size={14} />
+                      Update Version
+                    </>
+                  )}
+                </button>
+              )}
               <a 
                 href={`https://${getObjktDomain()}/tokens/${getTokenContractAddress()}/${token.tokenId}`}
                 target="_blank"

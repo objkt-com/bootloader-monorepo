@@ -395,6 +395,25 @@ class TezosService {
     }
   }
 
+  async regenerateToken(tokenId) {
+    try {
+      if (!this.contract) {
+        await this.loadContract();
+      }
+
+      // Use methodsObject with the token_id as a direct parameter
+      const operation = await this.contract.methodsObject
+        .regenerate_token(tokenId)
+        .send();
+
+      await operation.confirmation();
+      return { success: true, hash: operation.hash };
+    } catch (error) {
+      console.error("Failed to regenerate token:", error);
+      return { success: false, error: error.message };
+    }
+  }
+
   generateSVG(code, seed = 555555, iterationNumber = 0, tokenId = 0) {
     try {
       // Create the complete JavaScript code including the random number generator
