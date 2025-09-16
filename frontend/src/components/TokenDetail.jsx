@@ -6,6 +6,7 @@ import { tzktService } from '../services/tzkt.js';
 import { getNetworkConfig, getContractAddress } from '../config.js';
 import { getUserDisplayInfo, formatAddress } from '../utils/userDisplay.js';
 import { useMetaTags, generateMetaTags } from '../hooks/useMetaTags.js';
+import { fixSeedEncoding } from './ThumbnailRenderer.jsx';
 import SmartThumbnail from './SmartThumbnail.jsx';
 import './TokenDetail.css';
 
@@ -109,10 +110,13 @@ export default function TokenDetail() {
               tokenId.toString()
             );
 
+            // Apply fixSeedEncoding to the artifactUri before converting to string
+            const correctedArtifactUriBytes = fixSeedEncoding(tokenInfo.artifactUri);
+            
             tokenData = {
               token_id: tokenId.toString(),
               name: tzktService.bytesToString(tokenInfo.name),
-              artifact_uri: tzktService.bytesToString(tokenInfo.artifactUri),
+              artifact_uri: tzktService.bytesToString(correctedArtifactUriBytes),
               display_uri: tokenInfo.displayUri ? tzktService.bytesToString(tokenInfo.displayUri) : null,
               thumbnail_uri: tokenInfo.thumbnailUri ? tzktService.bytesToString(tokenInfo.thumbnailUri) : null,
               mime: tokenInfo.mime ? tzktService.bytesToString(tokenInfo.mime) : null,
