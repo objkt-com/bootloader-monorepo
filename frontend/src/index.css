@@ -732,6 +732,14 @@ beacon-toast {
   color: var(--color-gray-dark);
 }
 
+.seed-label-short {
+  display: none;
+}
+
+.seed-label-full {
+  display: inline;
+}
+
 .seed-value {
   color: var(--color-black);
   cursor: pointer;
@@ -2857,6 +2865,22 @@ small .inline-icon {
 .toggle-code-btn:hover {
   background: var(--color-black);
   color: var(--color-white);
+}
+
+@media (max-width: 1024px) {
+  /* Preview controls - shorter labels only */
+  .seed-label-full {
+    display: none;
+  }
+
+  .seed-label-short {
+    display: inline;
+  }
+
+  /* Hide fullscreen button on mobile */
+  .fullscreen-btn {
+    display: none;
+  }
 }
 
 @media (max-width: 768px) {

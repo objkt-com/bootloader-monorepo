@@ -145,7 +145,10 @@ export default function PreviewControls({
 
       {onIterationNumberChange && (
         <div className="seed-control">
-          <span className="seed-label">iteration: </span>
+          <span className="seed-label">
+            <span className="seed-label-full">iteration: </span>
+            <span className="seed-label-short">i: </span>
+          </span>
           {isEditingIteration ? (
             <input
               type="number"
@@ -171,7 +174,10 @@ export default function PreviewControls({
       )}
 
       <div className="seed-control">
-        <span className="seed-label">seed: </span>
+        <span className="seed-label">
+          <span className="seed-label-full">seed: </span>
+          <span className="seed-label-short">s: </span>
+        </span>
         {isEditingSeed ? (
           <input
             type="number"
