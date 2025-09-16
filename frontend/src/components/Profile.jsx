@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { tezosService } from '../services/tezos.js';
 import { tzktService } from '../services/tzkt.js';
 import { objktService } from '../services/objkt.js';
@@ -10,7 +10,8 @@ import SmartThumbnail from './SmartThumbnail.jsx';
 import { useMetaTags, generateMetaTags } from '../hooks/useMetaTags.js';
 
 export default function Profile() {
-  const { address } = useParams();
+  const { address, tab } = useParams();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('generators');
   const [generators, setGenerators] = useState([]);
   const [ownedTokens, setOwnedTokens] = useState([]);
@@ -25,6 +26,19 @@ export default function Profile() {
   const [error, setError] = useState(null);
 
   const TOKENS_PER_PAGE = 50;
+
+  // Set active tab based on URL parameter
+  useEffect(() => {
+    const validTabs = ['generators', 'owned'];
+    const urlTab = tab || 'generators'; // Default to generators if no tab specified
+    
+    if (validTabs.includes(urlTab)) {
+      setActiveTab(urlTab);
+    } else {
+      // If invalid tab, redirect to generators tab
+      navigate(`/profile/${address}/generators`, { replace: true });
+    }
+  }, [tab, address, navigate]);
 
   useEffect(() => {
     loadUserData();
@@ -382,18 +396,18 @@ export default function Profile() {
       </div>
 
       <div className="profile-tabs">
-        <button 
+        <Link 
+          to={`/profile/${address}/generators`}
           className={`tab ${activeTab === 'generators' ? 'active' : ''}`}
-          onClick={() => setActiveTab('generators')}
         >
           Generators ({generators.length})
-        </button>
-        <button 
+        </Link>
+        <Link 
+          to={`/profile/${address}/owned`}
           className={`tab ${activeTab === 'owned' ? 'active' : ''}`}
-          onClick={() => setActiveTab('owned')}
         >
           Owned ({ownedTokensTotal})
-        </button>
+        </Link>
       </div>
 
       {activeTab === 'generators' && (

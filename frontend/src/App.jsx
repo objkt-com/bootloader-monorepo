@@ -204,6 +204,7 @@ function App() {
                     <Route path="/generator/:id" element={<GeneratorDetail />} />
                     <Route path="/token/:tokenId" element={<TokenDetail />} />
                     <Route path="/profile/:address" element={<Profile />} />
+                    <Route path="/profile/:address/:tab" element={<Profile />} />
                     <Route path="/help" element={<Help />} />
                   </Routes>
                 </main>

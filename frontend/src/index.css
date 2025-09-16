@@ -1695,6 +1695,10 @@ beacon-toast {
   color: var(--color-white);
 }
 
+.profile-tabs .tab:hover {
+  text-decoration: none;
+}
+
 .profile-owned {
   margin-top: 0;
 }
