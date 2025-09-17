@@ -285,7 +285,7 @@ class ObjktService {
         { event_type: { _eq: "mint" } },
         { 
           marketplace_event_type: { 
-            _in: ["dutch_auction_buy", "offer_accept", "offer_floor_accept", "english_auction_settle"] 
+            _in: ["dutch_auction_buy", "offer_accept", "offer_floor_accept", "english_auction_settle", "list_buy"] 
           } 
         }
       ]
