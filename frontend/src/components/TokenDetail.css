@@ -73,6 +73,13 @@
   z-index: 10;
   width: 36px;
   height: 36px;
+  opacity: 0;
+  visibility: hidden;
+}
+
+.token-artwork-wrapper:hover .token-fullscreen-btn {
+  opacity: 1;
+  visibility: visible;
 }
 
 /* Dark mode support for fullscreen button */
