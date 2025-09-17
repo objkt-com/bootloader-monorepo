@@ -1,17 +1,32 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { tezosService } from '../services/tezos.js';
 import { getGeneratorThumbnailUrl } from '../utils/thumbnail.js';
 import { getUserDisplayInfo } from '../utils/userDisplay.js';
 import SmartThumbnail from './SmartThumbnail.jsx';
+import SearchFilters from './SearchFilters.jsx';
 import { useMetaTags, generateMetaTags } from '../hooks/useMetaTags.js';
 
 export default function Home() {
-  const [generators, setGenerators] = useState([]);
-  const [authorDisplayInfo, setAuthorDisplayInfo] = useState({}); // Map of author address to display info
+  const [allGenerators, setAllGenerators] = useState([]);
+  const [filteredGenerators, setFilteredGenerators] = useState([]);
+  const [displayedGenerators, setDisplayedGenerators] = useState([]);
+  const [authorDisplayInfo, setAuthorDisplayInfo] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [, forceUpdate] = useState(0);
+  
+  // Search and filter state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filters, setFilters] = useState({
+    status: 'all',
+    sort: 'newest'
+  });
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(20);
+  const [hasMore, setHasMore] = useState(false);
 
   useEffect(() => {
     loadGenerators();
@@ -24,18 +39,28 @@ export default function Home() {
   // Timer to update countdowns every second
   useEffect(() => {
     const interval = setInterval(() => {
-      forceUpdate(prev => prev + 1); // Force re-render to update countdowns
-    }, 1000); // Update every second
+      forceUpdate(prev => prev + 1);
+    }, 1000);
 
     return () => clearInterval(interval);
   }, []);
+
+  // Apply filters and search whenever they change
+  useEffect(() => {
+    applyFiltersAndSearch();
+  }, [allGenerators, searchTerm, filters]);
+
+  // Update displayed generators when filtered generators or pagination changes
+  useEffect(() => {
+    updateDisplayedGenerators();
+  }, [filteredGenerators, currentPage, itemsPerPage]);
 
   const loadGenerators = async () => {
     try {
       setLoading(true);
       setError(null);
       const generatorsList = await tezosService.getGenerators();
-      setGenerators(generatorsList);
+      setAllGenerators(generatorsList);
       
       // Load author display info for all unique authors
       const uniqueAuthors = [...new Set(generatorsList.map(g => g.author))];
@@ -77,6 +102,81 @@ export default function Home() {
     return `${author.slice(0, 6)}...${author.slice(-4)}`;
   };
 
+  // Filter and search logic
+  const applyFiltersAndSearch = useCallback(() => {
+    let filtered = [...allGenerators];
+
+    // Apply search filter
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      filtered = filtered.filter(generator => {
+        const name = (generator.name || '').toLowerCase();
+        const authorName = getAuthorDisplayName(generator.author).toLowerCase();
+        return name.includes(searchLower) || authorName.includes(searchLower);
+      });
+    }
+
+    // Apply status filter
+    if (filters.status !== 'all') {
+      filtered = filtered.filter(generator => {
+        const status = getGeneratorStatus(generator);
+        switch (filters.status) {
+          case 'active':
+            return status.type === 'active';
+          case 'scheduled':
+            return status.type === 'scheduled';
+          case 'sold-out':
+            return status.type === 'finished';
+          default:
+            return true;
+        }
+      });
+    }
+
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      switch (filters.sort) {
+        case 'oldest':
+          return a.id - b.id;
+        case 'most-minted':
+          return (b.nTokens || 0) - (a.nTokens || 0);
+        case 'newest':
+        default:
+          return b.id - a.id;
+      }
+    });
+
+    setFilteredGenerators(filtered);
+    setCurrentPage(1); // Reset to first page when filters change
+  }, [allGenerators, searchTerm, filters, getAuthorDisplayName]);
+
+  // Pagination logic
+  const updateDisplayedGenerators = useCallback(() => {
+    const startIndex = 0;
+    const endIndex = currentPage * itemsPerPage;
+    const displayed = filteredGenerators.slice(startIndex, endIndex);
+    
+    setDisplayedGenerators(displayed);
+    setHasMore(endIndex < filteredGenerators.length);
+  }, [filteredGenerators, currentPage, itemsPerPage]);
+
+  // Handler functions for SearchFilters component
+  const handleSearchChange = useCallback((term) => {
+    setSearchTerm(term);
+  }, []);
+
+  const handleFiltersChange = useCallback((newFilters) => {
+    setFilters(prev => ({ ...prev, ...newFilters }));
+  }, []);
+
+  const handleSortChange = useCallback((sortValue) => {
+    setFilters(prev => ({ ...prev, sort: sortValue }));
+  }, []);
+
+  const handleLoadMore = () => {
+    setCurrentPage(prev => prev + 1);
+  };
 
   // Function to determine generator status based on real contract data
   const getGeneratorStatus = (generator) => {
@@ -220,40 +320,69 @@ export default function Home() {
 
   return (
     <div className="explore-container">
-      {generators.length === 0 ? (
+      <SearchFilters
+        onSearchChange={handleSearchChange}
+        onFiltersChange={handleFiltersChange}
+        onSortChange={handleSortChange}
+        totalCount={filteredGenerators.length}
+        currentCount={displayedGenerators.length}
+        loading={loading}
+      />
+
+      {allGenerators.length === 0 && !loading ? (
         <div className="empty-state">
           <p>No generators found.</p>
         </div>
-      ) : (
-        <div className="generators-grid">
-          {generators.map((generator) => (
-            <Link 
-              key={generator.id} 
-              to={`/generator/${generator.id}`}
-              className="generator-card"
-            >
-              <div className="generator-preview-container">
-                <SmartThumbnail
-                  src={getGeneratorThumbnailUrl(generator.id, generator.version)}
-                  width="500"
-                  height="500"
-                  alt={generator.name || `Generator #${generator.id}`}
-                  maxRetries={8}
-                  retryDelay={3000}
-                />
-              </div>
-              <div className="generator-card-info">
-                <div className="generator-card-title">
-                  {generator.name || `Generator #${generator.id}`}
-                </div>
-                <div className="generator-card-author">
-                  by {getAuthorDisplayName(generator.author)}
-                </div>
-                {renderGeneratorStatus(generator)}
-              </div>
-            </Link>
-          ))}
+      ) : filteredGenerators.length === 0 && !loading ? (
+        <div className="empty-state">
+          <p>No generators match your search criteria.</p>
+          <p>Try adjusting your filters or search terms.</p>
         </div>
+      ) : (
+        <>
+          <div className="generators-grid">
+            {displayedGenerators.map((generator) => (
+              <Link 
+                key={generator.id} 
+                to={`/generator/${generator.id}`}
+                className="generator-card"
+              >
+                <div className="generator-preview-container">
+                  <SmartThumbnail
+                    src={getGeneratorThumbnailUrl(generator.id, generator.version)}
+                    width="500"
+                    height="500"
+                    alt={generator.name || `Generator #${generator.id}`}
+                    maxRetries={8}
+                    retryDelay={3000}
+                  />
+                </div>
+                <div className="generator-card-info">
+                  <div className="generator-card-title">
+                    {generator.name || `Generator #${generator.id}`}
+                  </div>
+                  <div className="generator-card-author">
+                    by {getAuthorDisplayName(generator.author)}
+                  </div>
+                  {renderGeneratorStatus(generator)}
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          {/* Load More Button */}
+          {hasMore && (
+            <div className="pagination-info">
+              <button 
+                onClick={handleLoadMore}
+                className="load-more-button"
+                disabled={loading}
+              >
+                {loading ? 'Loading...' : 'Load More'}
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
