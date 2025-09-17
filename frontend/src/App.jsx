@@ -6,6 +6,7 @@ import { CONFIG } from './config.js';
 import WalletConnection from './components/WalletConnection.jsx';
 import Home from './components/Home.jsx';
 import Create from './components/Create.jsx';
+import Activity from './components/Activity.jsx';
 import GeneratorDetail from './components/GeneratorDetail.jsx';
 import TokenDetail from './components/TokenDetail.jsx';
 import Profile from './components/Profile.jsx';
@@ -121,6 +122,12 @@ function Navigation() {
               + create
             </Link>
             <Link 
+              to="/activity" 
+              className={location.pathname === '/activity' ? 'active' : ''}
+            >
+              activity
+            </Link>
+            <Link 
               to="/help" 
               className={location.pathname === '/help' ? 'active' : ''}
             >
@@ -201,6 +208,7 @@ function App() {
                   <Routes>
                     <Route path="/" element={<Home />} />
                     <Route path="/create" element={<Create />} />
+                    <Route path="/activity" element={<Activity />} />
                     <Route path="/generator/:id" element={<GeneratorDetail />} />
                     <Route path="/token/:tokenId" element={<TokenDetail />} />
                     <Route path="/profile/:address" element={<Profile />} />

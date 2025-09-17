@@ -269,6 +269,117 @@ class ObjktService {
       throw error;
     }
   }
+
+  // Get bootloader activity (mints and marketplace events)
+  async getBootloaderActivity(limit = 50, sinceTimestamp = null) {
+    const contractAddress = getContractAddress();
+    
+    if (!contractAddress) {
+      throw new Error('Contract address not configured for current network');
+    }
+
+    // Build where clause for filtering - only mints and specific marketplace events
+    let whereClause = {
+      fa_contract: { _eq: contractAddress },
+      _or: [
+        { event_type: { _eq: "mint" } },
+        { 
+          marketplace_event_type: { 
+            _in: ["dutch_auction_buy", "offer_accept", "offer_floor_accept", "english_auction_settle"] 
+          } 
+        }
+      ]
+    };
+
+    // Add timestamp filter for polling new events
+    if (sinceTimestamp) {
+      whereClause.timestamp = { _gt: sinceTimestamp };
+    }
+
+    const query = `
+      query GetBootloaderActivity($whereClause: event_bool_exp!, $limit: Int!) {
+        event(
+          where: $whereClause
+          order_by: { timestamp: desc }
+          limit: $limit
+        ) {
+          id
+          event_type
+          marketplace_event_type
+          amount
+          price
+          price_xtz
+          timestamp
+          ophash
+          level
+          creator {
+            address
+            alias
+            logo
+          }
+          recipient {
+            address
+            alias
+            logo
+          }
+          token {
+            pk
+            token_id
+            name
+            description
+            thumbnail_uri
+            display_uri
+            artifact_uri
+          }
+        }
+      }
+    `;
+
+    const variables = {
+      whereClause,
+      limit,
+    };
+
+    try {
+      const data = await this.graphqlQuery(query, variables);
+      
+      // Transform the data to match our expected format
+      const events = data.event.map(event => {
+        // Determine if this is a mint or sale event
+        const isMint = event.event_type === 'mint';
+        const eventType = isMint ? 'mint' : 'sale';
+        
+        return {
+          id: event.id,
+          event_type: eventType,
+          marketplace_event_type: event.marketplace_event_type,
+          amount: event.amount || 1,
+          price: event.price,
+          price_xtz: event.price_xtz,
+          timestamp: event.timestamp,
+          ophash: event.ophash,
+          level: event.level,
+          creator_address: event.creator?.address,
+          creator_alias: event.creator?.alias,
+          creator_logo: event.creator?.logo,
+          recipient_address: event.recipient?.address,
+          recipient_alias: event.recipient?.alias,
+          recipient_logo: event.recipient?.logo,
+          token_id: event.token?.token_id,
+          token_name: event.token?.name,
+          token_description: event.token?.description,
+          token_thumbnail_uri: event.token?.thumbnail_uri,
+          token_display_uri: event.token?.display_uri,
+          token_artifact_uri: event.token?.artifact_uri,
+        };
+      });
+
+      return events;
+    } catch (error) {
+      console.error('Failed to get bootloader activity:', error);
+      throw error;
+    }
+  }
 }
 
 export const objktService = new ObjktService();
