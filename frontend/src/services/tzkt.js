@@ -33,7 +33,6 @@ class TzKTService {
     return bigmaps.length > 0 ? bigmaps[0] : null;
   }
 
-
   // Get all keys from a bigmap
   async getBigMapKeys(bigmapId, options = {}) {
     let url = `${this.baseUrl}/v1/bigmaps/${bigmapId}/keys?active=true`;
@@ -81,13 +80,18 @@ class TzKTService {
   async getBigMapKeyCreationTime(bigmapId, key) {
     const url = `${
       this.baseUrl
-    }/v1/bigmaps/${bigmapId}/keys/${encodeURIComponent(key)}/updates?sort=id&limit=1`;
+    }/v1/bigmaps/${bigmapId}/keys/${encodeURIComponent(
+      key,
+    )}/updates?sort=id&limit=1`;
     try {
       const updates = await this.fetchJson(url);
       // Return the timestamp of the first (oldest) update, which should be the creation
       return updates.length > 0 ? updates[0].timestamp : null;
     } catch (error) {
-      console.error(`Failed to get creation time for bigmap key ${key}:`, error);
+      console.error(
+        `Failed to get creation time for bigmap key ${key}:`,
+        error,
+      );
       return null;
     }
   }
@@ -142,7 +146,7 @@ class TzKTService {
 
       const keyData = await this.getBigMapKey(
         generatorsBigMap.ptr,
-        generatorId.toString()
+        generatorId.toString(),
       );
       if (!keyData) {
         return null;
@@ -157,6 +161,10 @@ class TzKTService {
         code: this.bytesToStringAndDecodeUrl(generator.code),
         created: new Date(generator.created),
         lastUpdate: new Date(generator.last_update),
+        nTokens: parseInt(generator.n_tokens || 0),
+        maxTokens:
+          parseInt(generator.sale.editions || 0) ||
+          parseInt(generator.n_tokens || 0),
         version: parseInt(generator.version || 1),
         bootloaderId: parseInt(generator.type_id || 0),
       };
@@ -202,7 +210,7 @@ class TzKTService {
 
       const keyData = await this.getBigMapKey(
         fragsBigMap.ptr,
-        index.toString()
+        index.toString(),
       );
       if (!keyData) {
         return null;
@@ -272,7 +280,7 @@ class TzKTService {
     const url = `${
       this.baseUrl
     }/v1/bigmaps/${bigmapId}/historical_keys/${level}/${encodeURIComponent(
-      key
+      key,
     )}`;
     try {
       return await this.fetchJson(url);
@@ -350,11 +358,11 @@ class TzKTService {
         try {
           const tokenMetadata = await this.getBigMapKey(
             tokenMetadataBigMap.ptr,
-            tokenId.toString()
+            tokenId.toString(),
           );
           const tokenOwner = await this.getBigMapKey(
             ledgerBigMap.ptr,
-            tokenId.toString()
+            tokenId.toString(),
           );
 
           if (tokenMetadata && tokenOwner) {
@@ -368,7 +376,9 @@ class TzKTService {
               tokenId: tokenId,
               name: this.bytesToString(tokenInfo.name),
               artifactUri: artifactUri,
-              thumbnailUri: tokenInfo.thumbnailUri ? this.bytesToString(tokenInfo.thumbnailUri) : null,
+              thumbnailUri: tokenInfo.thumbnailUri
+                ? this.bytesToString(tokenInfo.thumbnailUri)
+                : null,
               seed: seed,
               generatorId: generatorId,
               owner: tokenOwner.value,
@@ -414,9 +424,7 @@ class TzKTService {
 
       // Now get the token metadata and generator info for these tokens
       const tokenMetadataBigMap = await this.getBigMapByPath("token_metadata");
-      const generatorMappingBigMap = await this.getBigMapByPath(
-        "token_extra"
-      );
+      const generatorMappingBigMap = await this.getBigMapByPath("token_extra");
       const generatorsBigMap = await this.getBigMapByPath("generators");
 
       if (
@@ -436,13 +444,13 @@ class TzKTService {
           // Get token metadata
           const tokenMetadata = await this.getBigMapKey(
             tokenMetadataBigMap.ptr,
-            tokenId.toString()
+            tokenId.toString(),
           );
 
           // Get generator mapping
           const generatorMapping = await this.getBigMapKey(
             generatorMappingBigMap.ptr,
-            tokenId.toString()
+            tokenId.toString(),
           );
 
           if (tokenMetadata && generatorMapping) {
@@ -451,7 +459,7 @@ class TzKTService {
             // Get generator info
             const generatorData = await this.getBigMapKey(
               generatorsBigMap.ptr,
-              generatorId.toString()
+              generatorId.toString(),
             );
 
             if (generatorData) {
@@ -464,12 +472,14 @@ class TzKTService {
                 tokenId: tokenId,
                 name: this.bytesToString(tokenInfo.name),
                 artifactUri: artifactUri,
-                thumbnailUri: tokenInfo.thumbnailUri ? this.bytesToString(tokenInfo.thumbnailUri) : null,
+                thumbnailUri: tokenInfo.thumbnailUri
+                  ? this.bytesToString(tokenInfo.thumbnailUri)
+                  : null,
                 seed: seed,
                 generatorId: generatorId,
                 generatorName: this.bytesToString(generatorData.value.name),
                 generatorCode: this.bytesToStringAndDecodeUrl(
-                  generatorData.value.code
+                  generatorData.value.code,
                 ),
                 owner: ownerAddress,
               });
@@ -502,7 +512,7 @@ class TzKTService {
 
       const keyData = await this.getBigMapKey(
         bootloadersBigMap.ptr,
-        bootloaderId.toString()
+        bootloaderId.toString(),
       );
       if (!keyData) {
         console.warn(`Bootloader ${bootloaderId} not found in bigmap`);
@@ -517,7 +527,10 @@ class TzKTService {
         fun: bootloader.fun || null,
       };
     } catch (error) {
-      console.error(`Failed to get bootloader ${bootloaderId} from TzKT:`, error);
+      console.error(
+        `Failed to get bootloader ${bootloaderId} from TzKT:`,
+        error,
+      );
       return null;
     }
   }
@@ -533,7 +546,7 @@ class TzKTService {
 
       const keyData = await this.getBigMapKey(
         tokenExtraBigMap.ptr,
-        tokenId.toString()
+        tokenId.toString(),
       );
       if (!keyData) {
         return null;
@@ -550,7 +563,6 @@ class TzKTService {
       return null;
     }
   }
-
 
   // Utility function to convert string to bytes (for comparison/filtering)
   stringToBytes(str) {

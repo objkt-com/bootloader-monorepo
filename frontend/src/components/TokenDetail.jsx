@@ -503,6 +503,15 @@ export default function TokenDetail() {
                   </span>
                 </div>
                 
+                {tokenExtra?.iterationNumber !== undefined && generator?.maxTokens !== undefined && (
+                  <div className="token-info-item">
+                    <span className="token-info-label">Iteration:</span>
+                    <span className="token-info-value">
+                      {tokenExtra.iterationNumber}/{generator.maxTokens}
+                    </span>
+                  </div>
+                )}
+                
                 <div className="token-info-item">
                   <span className="token-info-label">Bootloader:</span>
                   <span className="token-info-value">
