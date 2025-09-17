@@ -137,34 +137,6 @@ const Activity = () => {
     }
   };
 
-
-  if (loading) {
-    return (
-      <div className="activity-container">
-        <div className="activity-header">
-          <h1>Activity</h1>
-          <p className="activity-subtitle">Recent bootloader mints and marketplace activity</p>
-        </div>
-        <div className="loading">Loading activity...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="activity-container">
-        <div className="activity-header">
-          <h1>Activity</h1>
-          <p className="activity-subtitle">Recent bootloader mints and marketplace activity</p>
-        </div>
-        <div className="error">{error}</div>
-        <button onClick={loadInitialActivity} className="btn">
-          Try Again
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div className="activity-container">
       <div className="activity-header">
