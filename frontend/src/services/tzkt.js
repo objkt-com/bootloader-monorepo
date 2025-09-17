@@ -162,8 +162,9 @@ class TzKTService {
         created: new Date(generator.created),
         lastUpdate: new Date(generator.last_update),
         nTokens: parseInt(generator.n_tokens || 0),
+        sale: generator.sale || null,
         maxTokens:
-          parseInt(generator.sale.editions || 0) ||
+          parseInt(generator.sale?.editions || 0) ||
           parseInt(generator.n_tokens || 0),
         version: parseInt(generator.version || 1),
         bootloaderId: parseInt(generator.type_id || 0),
