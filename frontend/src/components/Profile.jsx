@@ -376,7 +376,7 @@ export default function Profile() {
               className="profile-link"
             >
               {userDisplayInfo.profile.twitter.startsWith('http') 
-                ? userDisplayInfo.profile.twitter 
+                ? userDisplayInfo.profile.twitter.replace(/^https?:\/\//, '') 
                 : `x.com/${userDisplayInfo.profile.twitter}`}
             </a>
           )}
