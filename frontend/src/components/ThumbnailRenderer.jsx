@@ -164,7 +164,16 @@ function ThumbnailRenderer() {
       overflow: 'hidden'
     }}>
       <iframe
-        src={tokenData.artifactUri}
+        ref={(iframe) => {
+          if (iframe && tokenData.artifactUri) {
+            // Set src after a brief delay to ensure iframe is ready
+            setTimeout(() => {
+              if (iframe.src !== tokenData.artifactUri) {
+                iframe.src = tokenData.artifactUri;
+              }
+            }, 0);
+          }
+        }}
         style={{
           width: '100%',
           height: '100%',

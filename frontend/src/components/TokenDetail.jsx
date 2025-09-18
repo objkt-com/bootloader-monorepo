@@ -433,7 +433,16 @@ export default function TokenDetail() {
           <div className="token-artwork-wrapper">
             {token.artifactUri ? (
               <iframe
-                src={token.artifactUri}
+                ref={(iframe) => {
+                  if (iframe && token.artifactUri) {
+                    // Set src after a brief delay to ensure iframe is ready
+                    setTimeout(() => {
+                      if (iframe.src !== token.artifactUri) {
+                        iframe.src = token.artifactUri;
+                      }
+                    }, 0);
+                  }
+                }}
                 title={token.name}
                 className="token-artwork-iframe"
                 sandbox="allow-scripts"
@@ -596,7 +605,16 @@ export default function TokenDetail() {
             <div className="token-fullscreen-artwork">
               {token.artifactUri ? (
                 <iframe
-                  src={token.artifactUri}
+                  ref={(iframe) => {
+                    if (iframe && token.artifactUri) {
+                      // Set src after a brief delay to ensure iframe is ready
+                      setTimeout(() => {
+                        if (iframe.src !== token.artifactUri) {
+                          iframe.src = token.artifactUri;
+                        }
+                      }, 0);
+                    }
+                  }}
                   title={token.name}
                   className="token-fullscreen-iframe"
                   sandbox="allow-scripts"

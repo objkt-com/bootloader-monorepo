@@ -113,7 +113,16 @@ function GeneratorThumbnailRenderer() {
       overflow: 'hidden'
     }}>
       <iframe
-        src={generatedSvg}
+        ref={(iframe) => {
+          if (iframe && generatedSvg) {
+            // Set src after a brief delay to ensure iframe is ready
+            setTimeout(() => {
+              if (iframe.src !== generatedSvg) {
+                iframe.src = generatedSvg;
+              }
+            }, 0);
+          }
+        }}
         style={{
           width: '100%',
           height: '100%',
