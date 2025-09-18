@@ -8,6 +8,7 @@ import { getUserDisplayInfo, formatAddress } from '../utils/userDisplay.js';
 import { useMetaTags, generateMetaTags } from '../hooks/useMetaTags.js';
 import { fixSeedEncoding } from './ThumbnailRenderer.jsx';
 import SmartThumbnail from './SmartThumbnail.jsx';
+import { useIframeRef } from '../utils/iframe.js';
 import './TokenDetail.css';
 
 export default function TokenDetail() {
@@ -433,16 +434,7 @@ export default function TokenDetail() {
           <div className="token-artwork-wrapper">
             {token.artifactUri ? (
               <iframe
-                ref={(iframe) => {
-                  if (iframe && token.artifactUri) {
-                    // Set src after a brief delay to ensure iframe is ready
-                    setTimeout(() => {
-                      if (iframe.src !== token.artifactUri) {
-                        iframe.src = token.artifactUri;
-                      }
-                    }, 0);
-                  }
-                }}
+                ref={useIframeRef(token.artifactUri)}
                 title={token.name}
                 className="token-artwork-iframe"
                 sandbox="allow-scripts"
@@ -605,16 +597,7 @@ export default function TokenDetail() {
             <div className="token-fullscreen-artwork">
               {token.artifactUri ? (
                 <iframe
-                  ref={(iframe) => {
-                    if (iframe && token.artifactUri) {
-                      // Set src after a brief delay to ensure iframe is ready
-                      setTimeout(() => {
-                        if (iframe.src !== token.artifactUri) {
-                          iframe.src = token.artifactUri;
-                        }
-                      }, 0);
-                    }
-                  }}
+                  ref={useIframeRef(token.artifactUri)}
                   title={token.name}
                   className="token-fullscreen-iframe"
                   sandbox="allow-scripts"

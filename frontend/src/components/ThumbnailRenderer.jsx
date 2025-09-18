@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { tzktService } from '../services/tzkt.js';
 import { processSeedLikeContract } from '../utils/thumbnail.js';
+import { useIframeRef } from '../utils/iframe.js';
 
 export function fixSeedEncoding(hexString) {
     // Hex prefixes to identify the seed location
@@ -164,16 +165,7 @@ function ThumbnailRenderer() {
       overflow: 'hidden'
     }}>
       <iframe
-        ref={(iframe) => {
-          if (iframe && tokenData.artifactUri) {
-            // Set src after a brief delay to ensure iframe is ready
-            setTimeout(() => {
-              if (iframe.src !== tokenData.artifactUri) {
-                iframe.src = tokenData.artifactUri;
-              }
-            }, 0);
-          }
-        }}
+        ref={useIframeRef(tokenData.artifactUri)}
         style={{
           width: '100%',
           height: '100%',

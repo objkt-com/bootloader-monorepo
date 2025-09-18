@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useIframeRef } from '../utils/iframe.js';
 
 export default function MintSuccessPopup({ 
   isOpen, 
@@ -92,16 +93,7 @@ export default function MintSuccessPopup({
               <div className="minted-artwork">
                 {svgDataUri && (
                   <iframe
-                    ref={(iframe) => {
-                      if (iframe && svgDataUri) {
-                        // Set src after a brief delay to ensure iframe is ready
-                        setTimeout(() => {
-                          if (iframe.src !== svgDataUri) {
-                            iframe.src = svgDataUri;
-                          }
-                        }, 0);
-                      }
-                    }}
+                    ref={useIframeRef(svgDataUri)}
                     width="300"
                     height="300"
                     style={{ border: '1px solid var(--color-black)' }}

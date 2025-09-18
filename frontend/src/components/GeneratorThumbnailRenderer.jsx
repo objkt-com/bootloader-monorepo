@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { tzktService } from '../services/tzkt.js';
 import { tezosService } from '../services/tezos.js';
 import { CONFIG } from '../config.js';
+import { useIframeRef } from '../utils/iframe.js';
 
 function GeneratorThumbnailRenderer() {
   const { generatorId } = useParams();
@@ -113,16 +114,7 @@ function GeneratorThumbnailRenderer() {
       overflow: 'hidden'
     }}>
       <iframe
-        ref={(iframe) => {
-          if (iframe && generatedSvg) {
-            // Set src after a brief delay to ensure iframe is ready
-            setTimeout(() => {
-              if (iframe.src !== generatedSvg) {
-                iframe.src = generatedSvg;
-              }
-            }, 0);
-          }
-        }}
+        ref={useIframeRef(generatedSvg)}
         style={{
           width: '100%',
           height: '100%',

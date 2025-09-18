@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { tezosService } from '../services/tezos.js';
+import { useIframeRef } from '../utils/iframe.js';
 
 export default function SVGPreview({
   code,
@@ -101,16 +102,7 @@ export default function SVGPreview({
     <div className={`preview-content ${isReloading ? 'preview-loading' : ''} ${noPadding ? 'no-padding' : ''}`}>
       <iframe
         key={renderCounter}
-        ref={(iframe) => {
-          if (iframe && svgUrl) {
-            // Set src after a brief delay to ensure iframe is ready
-            setTimeout(() => {
-              if (iframe.src !== svgUrl) {
-                iframe.src = svgUrl;
-              }
-            }, 0);
-          }
-        }}
+        ref={useIframeRef(svgUrl)}
         style={{ 
           overflow: 'hidden'
         }}
