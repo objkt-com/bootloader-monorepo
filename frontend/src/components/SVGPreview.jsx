@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { tezosService } from '../services/tezos.js';
 import { useIframeRef } from '../utils/iframe.js';
 
@@ -6,10 +6,6 @@ export default function SVGPreview({
   code,
   seed = 12345,
   iterationNumber = 1,
-  width = 400,
-  height = 300,
-  showHeader = false,
-  onRefresh = null,
   noPadding = false,
   useObjktCDN = false,
   contractAddress = null,
@@ -82,6 +78,9 @@ export default function SVGPreview({
     }
   };
 
+  // Memoize the iframe ref to prevent multiple calls
+  const iframeRef = useMemo(() => useIframeRef(svgUrl), [svgUrl]);
+
   if (error) {
     return (
       <div className="preview-content">
@@ -102,7 +101,7 @@ export default function SVGPreview({
     <div className={`preview-content ${isReloading ? 'preview-loading' : ''} ${noPadding ? 'no-padding' : ''}`}>
       <iframe
         key={renderCounter}
-        ref={useIframeRef(svgUrl)}
+        ref={iframeRef}
         style={{ 
           overflow: 'hidden'
         }}
