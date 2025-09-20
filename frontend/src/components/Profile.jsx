@@ -5,7 +5,7 @@ import { tzktService } from '../services/tzkt.js';
 import { objktService } from '../services/objkt.js';
 import { getNetworkConfig, getContractAddress } from '../config.js';
 import { getGeneratorThumbnailUrl, getNetwork, getTokenThumbnailUrl } from '../utils/thumbnail.js';
-import { getUserDisplayInfo, formatAddress } from '../utils/userDisplay.js';
+import { getUserDisplayInfo, getUserDisplayInfoBatch, formatAddress } from '../utils/userDisplay.js';
 import SmartThumbnail from './SmartThumbnail.jsx';
 import { useMetaTags, generateMetaTags } from '../hooks/useMetaTags.js';
 
@@ -91,32 +91,45 @@ export default function Profile() {
   // Function to resolve artist names for creators
   const resolveArtistNames = async (tokens) => {
     const newArtistNames = new Map(artistNames);
-    const addressesToResolve = new Set();
+    const addressesToResolve = [];
 
     // Collect all unique creator addresses that we haven't resolved yet
     tokens.forEach(token => {
       if (token.creators && token.creators.length > 0) {
         token.creators.forEach(creator => {
           if (!newArtistNames.has(creator.creator_address)) {
-            addressesToResolve.add(creator.creator_address);
+            addressesToResolve.push(creator.creator_address);
           }
         });
       }
     });
 
-    // Resolve display names for new addresses
-    const resolvePromises = Array.from(addressesToResolve).map(async (creatorAddress) => {
-      try {
-        const displayInfo = await getUserDisplayInfo(creatorAddress);
-        newArtistNames.set(creatorAddress, displayInfo.displayName);
-      } catch (err) {
-        console.error(`Failed to resolve artist name for ${creatorAddress}:`, err);
-        newArtistNames.set(creatorAddress, formatAddress(creatorAddress));
-      }
-    });
+    // Remove duplicates
+    const uniqueAddresses = [...new Set(addressesToResolve)];
 
-    await Promise.all(resolvePromises);
-    setArtistNames(newArtistNames);
+    if (uniqueAddresses.length === 0) {
+      return; // No new addresses to resolve
+    }
+
+    try {
+      // Use batch request to get all display info in one API call
+      const displayInfoMap = await getUserDisplayInfoBatch(uniqueAddresses);
+      
+      // Update the artist names map with the results
+      displayInfoMap.forEach((displayInfo, address) => {
+        newArtistNames.set(address, displayInfo.displayName);
+      });
+      
+      setArtistNames(newArtistNames);
+    } catch (err) {
+      console.error('Failed to resolve artist names:', err);
+      
+      // Fallback: set formatted addresses for all failed addresses
+      uniqueAddresses.forEach(address => {
+        newArtistNames.set(address, formatAddress(address));
+      });
+      setArtistNames(newArtistNames);
+    }
   };
 
   // Load total count of owned tokens using fast pk-only query

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { tezosService } from '../services/tezos.js';
 import { getGeneratorThumbnailUrl } from '../utils/thumbnail.js';
-import { getUserDisplayInfo } from '../utils/userDisplay.js';
+import { getUserDisplayInfoBatch } from '../utils/userDisplay.js';
 import SmartThumbnail from './SmartThumbnail.jsx';
 import SearchFilters from './SearchFilters.jsx';
 import { useMetaTags, generateMetaTags } from '../hooks/useMetaTags.js';
@@ -74,23 +74,30 @@ export default function Home() {
   };
 
   const loadAuthorDisplayInfo = async (authors) => {
-    const displayInfoPromises = authors.map(async (author) => {
-      try {
-        const displayInfo = await getUserDisplayInfo(author);
-        return { author, displayInfo };
-      } catch (err) {
-        console.error(`Failed to load display info for ${author}:`, err);
-        return { author, displayInfo: { displayName: '', profile: null } };
-      }
-    });
-
-    const results = await Promise.all(displayInfoPromises);
-    const displayInfoMap = {};
-    results.forEach(({ author, displayInfo }) => {
-      displayInfoMap[author] = displayInfo;
-    });
-    
-    setAuthorDisplayInfo(displayInfoMap);
+    try {
+      // Use batch request to get all author display info in one API call
+      const displayInfoMap = await getUserDisplayInfoBatch(authors);
+      
+      // Convert Map to plain object for state
+      const displayInfoObject = {};
+      displayInfoMap.forEach((displayInfo, author) => {
+        displayInfoObject[author] = displayInfo;
+      });
+      
+      setAuthorDisplayInfo(displayInfoObject);
+    } catch (err) {
+      console.error('Failed to load author display info:', err);
+      
+      // Fallback: create display info with shortened addresses
+      const fallbackDisplayInfo = {};
+      authors.forEach(author => {
+        fallbackDisplayInfo[author] = {
+          displayName: `${author.slice(0, 6)}...${author.slice(-4)}`,
+          profile: null
+        };
+      });
+      setAuthorDisplayInfo(fallbackDisplayInfo);
+    }
   };
 
   const getAuthorDisplayName = (author) => {

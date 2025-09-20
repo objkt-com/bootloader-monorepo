@@ -77,6 +77,87 @@ export async function fetchUserProfile(address) {
 }
 
 /**
+ * Fetches multiple user profiles in a single batch request
+ * @param {string[]} addresses - Array of user addresses
+ * @returns {Promise<Map<string, Object|null>>} Map of address to profile object
+ */
+export async function fetchUserProfilesBatch(addresses) {
+  if (!addresses || addresses.length === 0) {
+    return new Map();
+  }
+
+  // Filter out addresses that are already cached
+  const uncachedAddresses = addresses.filter(address => !userProfileCache.has(address));
+  const results = new Map();
+
+  // Add cached results first
+  addresses.forEach(address => {
+    if (userProfileCache.has(address)) {
+      results.set(address, userProfileCache.get(address));
+    }
+  });
+
+  // If all addresses are cached, return early
+  if (uncachedAddresses.length === 0) {
+    return results;
+  }
+
+  try {
+    const query = `
+      query GetHolders($addresses: [String!]!) {
+        holder(where: {address: {_in: $addresses}}) {
+          address
+          alias
+          description
+          twitter
+          tzdomain
+          logo
+        }
+      }
+    `;
+    
+    const response = await fetch(getObjktApiUrl(), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query,
+        variables: { addresses: uncachedAddresses }
+      })
+    });
+    
+    const data = await response.json();
+    const holders = data.data?.holder || [];
+    
+    // Create a map of found profiles
+    const foundProfiles = new Map();
+    holders.forEach(holder => {
+      foundProfiles.set(holder.address, holder);
+    });
+
+    // Process all uncached addresses
+    uncachedAddresses.forEach(address => {
+      const profile = foundProfiles.get(address) || null;
+      userProfileCache.set(address, profile);
+      results.set(address, profile);
+    });
+
+    return results;
+  } catch (err) {
+    console.error('Failed to fetch user profiles batch:', err);
+    
+    // Cache null for all failed addresses to prevent repeated failures
+    uncachedAddresses.forEach(address => {
+      userProfileCache.set(address, null);
+      results.set(address, null);
+    });
+    
+    return results;
+  }
+}
+
+/**
  * Formats an address to a shortened version
  * @param {string} address - The full address
  * @returns {string} Shortened address (first 6 + last 4 characters)
@@ -144,6 +225,49 @@ export async function getUserDisplayInfo(address) {
       profile: null,
       isLoading: false
     };
+  }
+}
+
+/**
+ * Batch version that fetches display information for multiple users efficiently
+ * @param {string[]} addresses - Array of user addresses
+ * @returns {Promise<Map<string, Object>>} Map of address to display info object
+ */
+export async function getUserDisplayInfoBatch(addresses) {
+  if (!addresses || addresses.length === 0) {
+    return new Map();
+  }
+
+  try {
+    const profilesMap = await fetchUserProfilesBatch(addresses);
+    const results = new Map();
+    
+    addresses.forEach(address => {
+      const profile = profilesMap.get(address);
+      const displayName = getDisplayName(profile, address);
+      
+      results.set(address, {
+        displayName,
+        profile,
+        isLoading: false
+      });
+    });
+    
+    return results;
+  } catch (err) {
+    console.error('Error getting user display info batch:', err);
+    
+    // Return fallback data for all addresses
+    const results = new Map();
+    addresses.forEach(address => {
+      results.set(address, {
+        displayName: formatAddress(address),
+        profile: null,
+        isLoading: false
+      });
+    });
+    
+    return results;
   }
 }
 
