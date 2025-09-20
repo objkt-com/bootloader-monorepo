@@ -994,6 +994,32 @@ beacon-toast {
   border-bottom: var(--border-width) solid var(--color-black);
 }
 
+.flagging-banner {
+  background: #ff4444;
+  color: white;
+  padding: var(--spacing-md);
+  margin: var(--spacing-lg) 0;
+  border-radius: var(--border-radius);
+  border: var(--border-width) solid #cc0000;
+  text-align: center;
+  font-weight: 500;
+  font-size: 14px;
+  animation: flaggingPulse 2s ease-in-out infinite;
+}
+
+.flagging-banner strong {
+  font-weight: 600;
+}
+
+@keyframes flaggingPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
 .generator-header h1 {
   font-size: 24px;
   font-weight: 500;

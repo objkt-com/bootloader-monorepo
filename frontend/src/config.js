@@ -31,6 +31,11 @@ export const CONFIG = {
 
   // Default preview seed for consistent generator previews
   defaultPreviewSeed: 888888,
+
+  // Flagging reasons mapping
+  flagReasons: {
+    1: "Copyright violation",
+  },
 };
 
 export const getNetworkConfig = () => {

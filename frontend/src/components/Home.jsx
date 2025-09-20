@@ -113,6 +113,9 @@ export default function Home() {
   const applyFiltersAndSearch = useCallback(() => {
     let filtered = [...allGenerators];
 
+    // Filter out flagged generators (only show flag=0)
+    filtered = filtered.filter(generator => (generator.flag || 0) === 0);
+
     // Apply search filter
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();

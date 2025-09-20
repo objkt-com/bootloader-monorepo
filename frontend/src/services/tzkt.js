@@ -123,6 +123,7 @@ class TzKTService {
           sale: generator.sale || null,
           version: parseInt(generator.version || 1),
           bootloaderId: parseInt(generator.type_id || 0),
+          flag: parseInt(generator.flag || 0),
         };
       });
 
@@ -168,6 +169,7 @@ class TzKTService {
           parseInt(generator.n_tokens || 0),
         version: parseInt(generator.version || 1),
         bootloaderId: parseInt(generator.type_id || 0),
+        flag: parseInt(generator.flag || 0),
       };
     } catch (error) {
       console.error(`Failed to get generator ${generatorId} from TzKT:`, error);

@@ -737,6 +737,12 @@ export default function GeneratorDetail() {
           </div>
         )}
       </div>
+
+      {generator.flag && generator.flag !== 0 && (
+        <div className="flagging-banner">
+          <strong>⚠️ This generator has been flagged for: {CONFIG.flagReasons[generator.flag] || 'Unknown reason'}</strong>
+        </div>
+      )}
       
       {isEditing && (
         <div className="form-group">
