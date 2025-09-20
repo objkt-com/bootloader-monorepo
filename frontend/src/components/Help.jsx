@@ -396,6 +396,11 @@ for (let i = 0; i < 5; i++) {
           Join our community to share your creations and learn from other generative artists.
         </p>
 
+        <h2>Code of Conduct</h2>
+        <p>
+          Please only publish work that is your own, or that you have the rights to use. Copying or reselling code from others without permission is not allowed. If you build on existing work, make sure the license permits it and credit the source clearly when required. Content that violates these rules may be removed and the account suspended.
+        </p>
+
         <div className="help-footer">
           <p><em>Ready to create? <Link to="/create">Start building your first generator →</Link></em></p>
         </div>
