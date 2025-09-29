@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { tzktService } from '../services/tzkt.js';
 import { tezosService } from '../services/tezos.js';
-import { CONFIG } from '../config.js';
 import { useIframeRef } from '../utils/iframe.js';
 
 function GeneratorThumbnailRenderer() {
@@ -10,6 +9,38 @@ function GeneratorThumbnailRenderer() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [generatorData, setGeneratorData] = useState(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const html = document.documentElement;
+    const body = document.body;
+    const root = document.getElementById('root');
+
+    const previousHtmlOverflow = html.style.overflow;
+    const previousHtmlScrollbarGutter = html.style.scrollbarGutter;
+    const previousBodyOverflow = body.style.overflow;
+    const previousRootOverflow = root ? root.style.overflow : undefined;
+    const previousRootHeight = root ? root.style.height : undefined;
+
+    html.style.overflow = 'hidden';
+    html.style.scrollbarGutter = 'stable both-edges';
+    body.style.overflow = 'hidden';
+    if (root) {
+      root.style.overflow = 'hidden';
+      root.style.height = '100%';
+    }
+
+    return () => {
+      html.style.overflow = previousHtmlOverflow;
+      html.style.scrollbarGutter = previousHtmlScrollbarGutter;
+      body.style.overflow = previousBodyOverflow;
+      if (root) {
+        root.style.overflow = previousRootOverflow ?? '';
+        root.style.height = previousRootHeight ?? '';
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const fetchGeneratorData = async () => {
@@ -42,10 +73,7 @@ function GeneratorThumbnailRenderer() {
     return (
       <div style={{ 
         position: 'fixed',
-        top: 0,
-        left: 0,
-        width: '100vw',
-        height: '100vh',
+        inset: 0,
         display: 'flex', 
         justifyContent: 'center', 
         alignItems: 'center', 
@@ -62,10 +90,7 @@ function GeneratorThumbnailRenderer() {
     return (
       <div style={{ 
         position: 'fixed',
-        top: 0,
-        left: 0,
-        width: '100vw',
-        height: '100vh',
+        inset: 0,
         display: 'flex', 
         justifyContent: 'center', 
         alignItems: 'center', 
@@ -83,10 +108,7 @@ function GeneratorThumbnailRenderer() {
     return (
       <div style={{ 
         position: 'fixed',
-        top: 0,
-        left: 0,
-        width: '100vw',
-        height: '100vh',
+        inset: 0,
         display: 'flex', 
         justifyContent: 'center', 
         alignItems: 'center', 
@@ -105,10 +127,7 @@ function GeneratorThumbnailRenderer() {
   return (
     <div style={{ 
       position: 'fixed',
-      top: 0,
-      left: 0,
-      width: '100vw',
-      height: '100vh',
+      inset: 0,
       margin: 0,
       padding: 0,
       overflow: 'hidden'
@@ -116,6 +135,8 @@ function GeneratorThumbnailRenderer() {
       <iframe
         ref={useIframeRef(generatedSvg)}
         style={{
+          position: 'absolute',
+          inset: 0,
           width: '100%',
           height: '100%',
           border: 'none',
@@ -126,6 +147,7 @@ function GeneratorThumbnailRenderer() {
         title={`Generator ${generatorId} - ${generatorData.name}`}
         sandbox="allow-scripts"
         allow="accelerometer; camera; gyroscope; microphone; xr-spatial-tracking; midi;"
+        scrolling="no"
       />
     </div>
   );

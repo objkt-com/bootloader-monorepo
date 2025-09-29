@@ -45,6 +45,38 @@ function ThumbnailRenderer() {
   const [tokenData, setTokenData] = useState(null);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const html = document.documentElement;
+    const body = document.body;
+    const root = document.getElementById('root');
+
+    const previousHtmlOverflow = html.style.overflow;
+    const previousHtmlScrollbarGutter = html.style.scrollbarGutter;
+    const previousBodyOverflow = body.style.overflow;
+    const previousRootOverflow = root ? root.style.overflow : undefined;
+    const previousRootHeight = root ? root.style.height : undefined;
+
+    html.style.overflow = 'hidden';
+    html.style.scrollbarGutter = 'stable both-edges';
+    body.style.overflow = 'hidden';
+    if (root) {
+      root.style.overflow = 'hidden';
+      root.style.height = '100%';
+    }
+
+    return () => {
+      html.style.overflow = previousHtmlOverflow;
+      html.style.scrollbarGutter = previousHtmlScrollbarGutter;
+      body.style.overflow = previousBodyOverflow;
+      if (root) {
+        root.style.overflow = previousRootOverflow ?? '';
+        root.style.height = previousRootHeight ?? '';
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     const fetchTokenData = async () => {
       try {
         setLoading(true);
@@ -96,10 +128,7 @@ function ThumbnailRenderer() {
     return (
       <div style={{ 
         position: 'fixed',
-        top: 0,
-        left: 0,
-        width: '100vw',
-        height: '100vh',
+        inset: 0,
         display: 'flex', 
         justifyContent: 'center', 
         alignItems: 'center', 
@@ -116,10 +145,7 @@ function ThumbnailRenderer() {
     return (
       <div style={{ 
         position: 'fixed',
-        top: 0,
-        left: 0,
-        width: '100vw',
-        height: '100vh',
+        inset: 0,
         display: 'flex', 
         justifyContent: 'center', 
         alignItems: 'center', 
@@ -137,10 +163,7 @@ function ThumbnailRenderer() {
     return (
       <div style={{ 
         position: 'fixed',
-        top: 0,
-        left: 0,
-        width: '100vw',
-        height: '100vh',
+        inset: 0,
         display: 'flex', 
         justifyContent: 'center', 
         alignItems: 'center', 
@@ -156,10 +179,7 @@ function ThumbnailRenderer() {
   return (
     <div style={{ 
       position: 'fixed',
-      top: 0,
-      left: 0,
-      width: '100vw',
-      height: '100vh',
+      inset: 0,
       margin: 0,
       padding: 0,
       overflow: 'hidden'
@@ -167,6 +187,8 @@ function ThumbnailRenderer() {
       <iframe
         ref={useIframeRef(tokenData.artifactUri)}
         style={{
+          position: 'absolute',
+          inset: 0,
           width: '100%',
           height: '100%',
           border: 'none',
@@ -178,6 +200,7 @@ function ThumbnailRenderer() {
         title={`Token ${tokenId} - ${tokenData.name}`}
         sandbox="allow-scripts"
         allow="accelerometer; camera; gyroscope; microphone; xr-spatial-tracking; midi;"
+        scrolling="no"
       />
     </div>
   );
