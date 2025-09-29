@@ -76,6 +76,23 @@ class TzKTService {
     }
   }
 
+  // Get multiple keys from a bigmap using batch query with key.in syntax
+  async getBatchBigMapKeys(bigmapId, keys) {
+    if (!keys || keys.length === 0) {
+      return [];
+    }
+
+    try {
+      // Use the key.in syntax to batch query multiple keys at once
+      const keysParam = keys.join(',');
+      const url = `${this.baseUrl}/v1/bigmaps/${bigmapId}/keys?key.in=${keysParam}&active=true`;
+      return await this.fetchJson(url);
+    } catch (error) {
+      console.error(`Failed to batch get bigmap keys for bigmap ${bigmapId}:`, error);
+      throw error;
+    }
+  }
+
   // Get the creation timestamp for a specific bigmap key
   async getBigMapKeyCreationTime(bigmapId, key) {
     const url = `${
@@ -354,19 +371,36 @@ class TzKTService {
         return [];
       }
 
-      // Get metadata and owner for each token
+      // Extract token IDs for batch queries
+      const tokenIds = generatorTokens.map(tokenMapping => tokenMapping.key);
+      
+      // Batch get metadata and owner info using key.in syntax
+      const [metadataResults, ownerResults] = await Promise.all([
+        this.getBatchBigMapKeys(tokenMetadataBigMap.ptr, tokenIds),
+        this.getBatchBigMapKeys(ledgerBigMap.ptr, tokenIds)
+      ]);
+
+      // Create lookup maps for efficient access
+      const metadataMap = new Map();
+      const ownerMap = new Map();
+      
+      metadataResults.forEach(result => {
+        metadataMap.set(result.key, result);
+      });
+      
+      ownerResults.forEach(result => {
+        ownerMap.set(result.key, result);
+      });
+
+      // Build token objects using batch results
       const tokens = [];
       for (const tokenMapping of generatorTokens) {
         const tokenId = parseInt(tokenMapping.key);
+        const tokenIdStr = tokenMapping.key;
+        
         try {
-          const tokenMetadata = await this.getBigMapKey(
-            tokenMetadataBigMap.ptr,
-            tokenId.toString(),
-          );
-          const tokenOwner = await this.getBigMapKey(
-            ledgerBigMap.ptr,
-            tokenId.toString(),
-          );
+          const tokenMetadata = metadataMap.get(tokenIdStr);
+          const tokenOwner = ownerMap.get(tokenIdStr);
 
           if (tokenMetadata && tokenOwner) {
             const tokenInfo = tokenMetadata.value.token_info;
@@ -439,31 +473,54 @@ class TzKTService {
         return [];
       }
 
-      // Get metadata and generator info for each token
+      // Extract token IDs for batch queries
+      const tokenIds = ownedTokens.map(tokenOwnership => tokenOwnership.key);
+
+      // Batch get metadata and generator mapping data
+      const [metadataResults, generatorMappingResults] = await Promise.all([
+        this.getBatchBigMapKeys(tokenMetadataBigMap.ptr, tokenIds),
+        this.getBatchBigMapKeys(generatorMappingBigMap.ptr, tokenIds)
+      ]);
+
+      // Create lookup maps for efficient access
+      const metadataMap = new Map();
+      const generatorMappingMap = new Map();
+      
+      metadataResults.forEach(result => {
+        metadataMap.set(result.key, result);
+      });
+      
+      generatorMappingResults.forEach(result => {
+        generatorMappingMap.set(result.key, result);
+      });
+
+      // Extract unique generator IDs for batch generator data retrieval
+      const uniqueGeneratorIds = [...new Set(
+        generatorMappingResults.map(result => result.value.generator_id.toString())
+      )];
+
+      // Batch get generator data
+      const generatorResults = await this.getBatchBigMapKeys(generatorsBigMap.ptr, uniqueGeneratorIds);
+      
+      // Create generator lookup map
+      const generatorMap = new Map();
+      generatorResults.forEach(result => {
+        generatorMap.set(result.key, result);
+      });
+
+      // Build token objects using batch results
       const tokens = [];
       for (const tokenOwnership of ownedTokens) {
         const tokenId = parseInt(tokenOwnership.key);
+        const tokenIdStr = tokenOwnership.key;
+        
         try {
-          // Get token metadata
-          const tokenMetadata = await this.getBigMapKey(
-            tokenMetadataBigMap.ptr,
-            tokenId.toString(),
-          );
-
-          // Get generator mapping
-          const generatorMapping = await this.getBigMapKey(
-            generatorMappingBigMap.ptr,
-            tokenId.toString(),
-          );
+          const tokenMetadata = metadataMap.get(tokenIdStr);
+          const generatorMapping = generatorMappingMap.get(tokenIdStr);
 
           if (tokenMetadata && generatorMapping) {
             const generatorId = parseInt(generatorMapping.value.generator_id);
-
-            // Get generator info
-            const generatorData = await this.getBigMapKey(
-              generatorsBigMap.ptr,
-              generatorId.toString(),
-            );
+            const generatorData = generatorMap.get(generatorId.toString());
 
             if (generatorData) {
               const tokenInfo = tokenMetadata.value.token_info;
