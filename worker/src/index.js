@@ -1,5 +1,5 @@
 const EDGE_TTL_SECONDS = 86400;
-const WORKER_CACHE_BUSTER = "wcb-v2";
+const WORKER_CACHE_BUSTER = "wcb-v3";
 const CACHE_CONTROL_HEADER = `public, max-age=${EDGE_TTL_SECONDS}, s-maxage=${EDGE_TTL_SECONDS}, stale-while-revalidate=86400, stale-if-error=604800`;
 const TRANSPARENT_PNG = decodeBase64(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg=="
