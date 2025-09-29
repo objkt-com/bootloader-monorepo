@@ -82,9 +82,28 @@ export function processSeedLikeContract(hexString) {
  * Get a thumbnail URL for a token from chain data
  * @param {number} tokenId - The token ID
  * @param {Object} tokenData - Optional token data if already available
+ * @param {Object} [options]
+ * @param {number|string|null} [options.generatorVersion]
+ * @param {string|null} [options.network]
  * @returns {Promise<string>} The thumbnail URL from chain or fallback URL
  */
-export async function getTokenThumbnailUrl(tokenId, tokenData = null) {
+export async function getTokenThumbnailUrl(
+  tokenId,
+  tokenData = null,
+  options = {},
+) {
+  const { generatorVersion, network } = {
+    generatorVersion: null,
+    network: null,
+    ...options,
+  };
+  const resolvedGeneratorVersion =
+    generatorVersion ?? tokenData?.generatorVersion ?? null;
+  const fallbackUrl = buildTokenThumbnailUrl(tokenId, {
+    generatorVersion: resolvedGeneratorVersion,
+    network,
+  });
+
   try {
     // If token data is provided, use it directly
     if (tokenData && tokenData.thumbnailUri) {
@@ -97,7 +116,7 @@ export async function getTokenThumbnailUrl(tokenId, tokenData = null) {
     );
     if (!tokenMetadataBigMap) {
       console.warn("Token metadata bigmap not found, using fallback URL");
-      return `https://media.bootloader.art/thumbnail/${tokenId}?n=${getNetwork()}`;
+      return fallbackUrl;
     }
 
     const tokenMetadata = await tzktService.getBigMapKey(
@@ -122,11 +141,11 @@ export async function getTokenThumbnailUrl(tokenId, tokenData = null) {
     console.warn(
       `No thumbnailUri found for token ${tokenId}, using fallback URL`,
     );
-    return `https://media.bootloader.art/thumbnail/${tokenId}?n=${getNetwork()}`;
+    return fallbackUrl;
   } catch (error) {
     console.error(`Failed to get thumbnailUri for token ${tokenId}:`, error);
     // Fallback to constructed URL on error
-    return `https://media.bootloader.art/thumbnail/${tokenId}?n=${getNetwork()}`;
+    return fallbackUrl;
   }
 }
 
@@ -144,10 +163,17 @@ export function getGeneratorThumbnailUrl(generatorId, generatorVersion = 1) {
  * Get a prefetch URL for a token (same as regular URL)
  * @param {number} tokenId - The token ID
  * @param {Object} tokenData - Optional token data if already available
+ * @param {Object} [options]
+ * @param {number|string|null} [options.generatorVersion]
+ * @param {string|null} [options.network]
  * @returns {Promise<string>} The thumbnail URL from chain or fallback URL
  */
-export async function getTokenThumbnailPrefetchUrl(tokenId, tokenData = null) {
-  return await getTokenThumbnailUrl(tokenId, tokenData);
+export async function getTokenThumbnailPrefetchUrl(
+  tokenId,
+  tokenData = null,
+  options = {},
+) {
+  return await getTokenThumbnailUrl(tokenId, tokenData, options);
 }
 
 /**
@@ -163,12 +189,23 @@ export function getGeneratorThumbnailPrefetchUrl(generatorId, generatorVersion =
 /**
  * Call prefetch for a token thumbnail (simplified since we're using direct URLs)
  * @param {number} tokenId - The token ID
- * @param {Object} tokenData - Optional token data if already available
+ * @param {Object} [options]
+ * @param {Object|null} [options.tokenData] - Optional token data if already available
+ * @param {number|string|null} [options.generatorVersion] - Explicit generator version to include in the cache key
+ * @param {string|null} [options.network] - Optional override for the network code (m/g/s)
  * @returns {Promise<boolean>} Success status
  */
-export async function prefetchTokenThumbnail(tokenId, tokenData = null) {
+export async function prefetchTokenThumbnail(
+  tokenId,
+  options = {},
+) {
   try {
-    const prefetchUrl = await getTokenThumbnailPrefetchUrl(tokenId, tokenData);
+    const { tokenData = null, ...rest } = options || {};
+    const prefetchUrl = await getTokenThumbnailPrefetchUrl(
+      tokenId,
+      tokenData,
+      rest,
+    );
     const response = await fetch(prefetchUrl, { method: "HEAD" });
 
     if (response.ok) {
@@ -223,4 +260,24 @@ export function getNetwork() {
     default:
       return "m";
   }
+}
+
+export function buildTokenThumbnailUrl(
+  tokenId,
+  { generatorVersion = null, network = null } = {},
+) {
+  const params = new URLSearchParams();
+  if (generatorVersion != null) {
+    params.set("v", String(generatorVersion));
+  }
+
+  const networkCode = network || getNetwork();
+  if (networkCode) {
+    params.set("n", networkCode);
+  }
+
+  const query = params.toString();
+  return query
+    ? `https://media.bootloader.art/thumbnail/${tokenId}?${query}`
+    : `https://media.bootloader.art/thumbnail/${tokenId}`;
 }

@@ -1,16 +1,25 @@
 name = "bootloader-thumbnail-renderer"
 main = "src/index.js"
-compatibility_date = "2024-01-01"
+compatibility_date = "2024-09-01"
 compatibility_flags = ["nodejs_compat"]
 
 [build]
 command = ""
 
-[browser]
-binding = "MYBROWSER"
-
 [vars]
 ENVIRONMENT = "production"
+
+[[r2_buckets]]
+binding = "R2_THUMBS"
+bucket_name = "bootloader-thumbs"
+
+[[durable_objects.bindings]]
+name = "RENDO"
+class_name = "RenderCoordinator"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["RenderCoordinator"]
 
 [[routes]]
 pattern = "media.bootloader.art"

@@ -10,7 +10,7 @@ import SVGPreview from './SVGPreview.jsx';
 import PreviewControls from './PreviewControls.jsx';
 import MintSuccessPopup from './MintSuccessPopup.jsx';
 import { estimateMint, estimateUpdateGenerator, getByteLength, formatStorageCost } from '../utils/storageCost.js';
-import { getTokenThumbnailUrl, prefetchTokenThumbnail } from '../utils/thumbnail.js';
+import { buildTokenThumbnailUrl, prefetchTokenThumbnail } from '../utils/thumbnail.js';
 import { getUserDisplayInfo, formatAddress } from '../utils/userDisplay.js';
 import SmartThumbnail from './SmartThumbnail.jsx';
 import { useMetaTags, generateMetaTags } from '../hooks/useMetaTags.js';
@@ -375,7 +375,9 @@ export default function GeneratorDetail() {
         setShowSuccessPopup(true);
         
         // Prefetch token thumbnail with identical parameters to the ones used in display
-        prefetchTokenThumbnail(mintedTokenId).catch(err => {
+        prefetchTokenThumbnail(mintedTokenId, {
+          generatorVersion: generator?.version ?? 1,
+        }).catch(err => {
           console.warn('Token thumbnail prefetch failed:', err);
         });
         
@@ -1031,7 +1033,12 @@ export default function GeneratorDetail() {
                 >
                   <div className="token-preview-container">
                     <SmartThumbnail
-                      src={token.thumbnailUri || `https://media.bootloader.art/thumbnail/${token.tokenId}?n=${CONFIG.network}`}
+                      src={
+                        token.thumbnailUri ||
+                        buildTokenThumbnailUrl(token.tokenId, {
+                          generatorVersion: generator?.version,
+                        })
+                      }
                       width="200"
                       height="200"
                       alt={`${generator.name || `Generator #${generator.id}`} #${token.tokenId}`}
