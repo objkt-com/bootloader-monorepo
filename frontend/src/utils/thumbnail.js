@@ -3,7 +3,7 @@ import { CONFIG } from "../config.js";
 import { tzktService } from "../services/tzkt.js";
 
 // Global cache buster - change this value to force refresh all thumbnails
-const CACHE_BUSTER = "v12";
+const CACHE_BUSTER = "v13";
 
 /**
  * JavaScript equivalent of the smart contract's bytes_utils.to_nat function

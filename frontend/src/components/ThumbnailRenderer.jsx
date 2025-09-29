@@ -52,13 +52,11 @@ function ThumbnailRenderer() {
     const root = document.getElementById('root');
 
     const previousHtmlOverflow = html.style.overflow;
-    const previousHtmlScrollbarGutter = html.style.scrollbarGutter;
     const previousBodyOverflow = body.style.overflow;
     const previousRootOverflow = root ? root.style.overflow : undefined;
     const previousRootHeight = root ? root.style.height : undefined;
 
     html.style.overflow = 'hidden';
-    html.style.scrollbarGutter = 'stable both-edges';
     body.style.overflow = 'hidden';
     if (root) {
       root.style.overflow = 'hidden';
@@ -67,7 +65,6 @@ function ThumbnailRenderer() {
 
     return () => {
       html.style.overflow = previousHtmlOverflow;
-      html.style.scrollbarGutter = previousHtmlScrollbarGutter;
       body.style.overflow = previousBodyOverflow;
       if (root) {
         root.style.overflow = previousRootOverflow ?? '';
