@@ -3,6 +3,7 @@ import { objktService } from '../services/objkt.js';
 import { getContractAddress } from '../config.js';
 import { getDisplayName, formatAddress } from '../utils/userDisplay.js';
 import { Link } from 'react-router-dom';
+import SmartThumbnail from './SmartThumbnail.jsx';
 import './Activity.css';
 
 const Activity = () => {
@@ -168,12 +169,12 @@ const Activity = () => {
             >
               {event.token_thumbnail_uri && (
                 <Link to={`/token/${event.token_id}`} className="activity-thumbnail">
-                  <img 
+                  <SmartThumbnail 
                     src={event.token_thumbnail_uri} 
                     alt={event.token_name || `Token #${event.token_id}`}
-                    onError={(e) => {
-                      e.target.style.display = 'none';
-                    }}
+                    width="60"
+                    height="60"
+                    style={{ borderRadius: '4px' }}
                   />
                 </Link>
               )}
