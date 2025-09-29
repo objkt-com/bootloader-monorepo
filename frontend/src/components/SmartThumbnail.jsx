@@ -45,6 +45,7 @@ function SmartThumbnail({
   const timeoutRef = useRef(null);
   const retryRef = useRef(0);
   const scheduleRetryRef = useRef(null);
+  const renderRequestedRef = useRef(false);
 
   const normalisedSrc = useMemo(() => normaliseThumbnailSrc(src), [src]);
   const isFetchable = useMemo(
@@ -55,10 +56,35 @@ function SmartThumbnail({
   useEffect(() => {
     let cancelled = false;
 
+    renderRequestedRef.current = false;
+
     const clearPendingRetry = () => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
+      }
+    };
+
+    const triggerRender = async () => {
+      if (!isFetchable || renderRequestedRef.current) {
+        return;
+      }
+
+      renderRequestedRef.current = true;
+      try {
+        const response = await fetch(normalisedSrc, {
+          method: "GET",
+          mode: "cors",
+          cache: "reload",
+        });
+        if (!response.ok && response.status !== 425) {
+          renderRequestedRef.current = false;
+        }
+        await response.body?.cancel?.();
+      } catch (error) {
+        renderRequestedRef.current = false;
+        // Allow the retry loop to continue polling with HEAD requests
+        console.warn("Thumbnail render trigger failed:", error);
       }
     };
 
@@ -106,6 +132,7 @@ function SmartThumbnail({
           : response.status;
 
         if (effectiveStatus === 204 || effectiveStatus === 404 || effectiveStatus === 425) {
+          void triggerRender();
           scheduleRetry();
           return;
         }
@@ -212,6 +239,7 @@ function SmartThumbnail({
         // go back to placeholder and retry
         setShowImage(false);
         retryRef.current = 0;
+        renderRequestedRef.current = false;
         scheduleRetryRef.current?.(500);
       }}
     />
