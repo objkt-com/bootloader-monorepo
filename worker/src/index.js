@@ -1,5 +1,5 @@
 const EDGE_TTL_SECONDS = 86400;
-const WORKER_CACHE_BUSTER = "wcb-v1";
+const WORKER_CACHE_BUSTER = "wcb-v2";
 const CACHE_CONTROL_HEADER = `public, max-age=${EDGE_TTL_SECONDS}, s-maxage=${EDGE_TTL_SECONDS}, stale-while-revalidate=86400, stale-if-error=604800`;
 
 export default {
@@ -19,7 +19,7 @@ export default {
       const id = segments[1];
       if (!id || Number.isNaN(Number(id))) {
         return withCORS(
-          new Response("Invalid ID. Must be a number.", { status: 400 }),
+          new Response("Invalid ID. Must be a number.", { status: 400 })
         );
       }
 
@@ -82,7 +82,7 @@ export default {
           new Response(edgeHit.body, {
             status: edgeHit.status,
             headers,
-          }),
+          })
         );
       }
 
@@ -98,7 +98,7 @@ export default {
           new Response(r2Response.body, {
             status: r2Response.status,
             headers,
-          }),
+          })
         );
       }
 
@@ -128,7 +128,7 @@ export default {
           new Response(text || "Thumbnail render failed", {
             status,
             headers,
-          }),
+          })
         );
       }
 
@@ -145,14 +145,14 @@ export default {
         new Response(renderResponse.body, {
           status: renderResponse.status,
           headers,
-        }),
+        })
       );
     } catch (err) {
       return withCORS(
         new Response(`Unhandled error: ${err?.message || "unknown"}`, {
           status: 500,
           headers: { "Cache-Control": "no-store" },
-        }),
+        })
       );
     }
   },
@@ -224,7 +224,7 @@ export class RenderCoordinator {
               status: 502,
               headers: { "Cache-Control": "no-store" },
             }
-          ),
+          )
         );
       }
 
@@ -253,7 +253,7 @@ export class RenderCoordinator {
           new Response(`Thumbnail not ready yet: ${message}`, {
             status,
             headers,
-          }),
+          })
         );
       }
 
@@ -279,7 +279,7 @@ export class RenderCoordinator {
                 status: 502,
                 headers: { "Cache-Control": "no-store" },
               }
-            ),
+            )
           );
         }
       }
@@ -295,7 +295,7 @@ export class RenderCoordinator {
         new Response(bytes, {
           status: 200,
           headers: makeImageHeaders(cacheControl, type, id),
-        }),
+        })
       );
     })();
 
