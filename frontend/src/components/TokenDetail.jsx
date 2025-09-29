@@ -134,6 +134,26 @@ function parseDimension(value) {
   return Number.isFinite(numeric) ? numeric : null;
 }
 
+function normalizeViewportDimension(value, fallback = DEFAULT_DOWNLOAD_RESOLUTION) {
+  const parsed = parseDimension(value);
+  if (Number.isFinite(parsed) && parsed > 0) {
+    return Math.min(
+      MAX_DOWNLOAD_RESOLUTION,
+      Math.max(1, Math.round(parsed)),
+    );
+  }
+
+  const fallbackParsed = parseDimension(fallback);
+  if (Number.isFinite(fallbackParsed) && fallbackParsed > 0) {
+    return Math.min(
+      MAX_DOWNLOAD_RESOLUTION,
+      Math.max(1, Math.round(fallbackParsed)),
+    );
+  }
+
+  return DEFAULT_DOWNLOAD_RESOLUTION;
+}
+
 function extractSvgMetrics(svgText) {
   try {
     const parser = new DOMParser();
@@ -381,14 +401,24 @@ function ensureSvgXmlHeader(svgString) {
 function captureSvgFromIframe(loadContent, {
   renderDelayMs = STATIC_CAPTURE_BASE_DELAY_MS,
   timeoutMs = STATIC_CAPTURE_TIMEOUT_MS,
+  viewportWidth = DEFAULT_DOWNLOAD_RESOLUTION,
+  viewportHeight = DEFAULT_DOWNLOAD_RESOLUTION,
 } = {}) {
   return new Promise((resolve, reject) => {
     const iframe = document.createElement('iframe');
     iframe.style.position = 'absolute';
     iframe.style.opacity = '0';
     iframe.style.pointerEvents = 'none';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
+    iframe.style.visibility = 'hidden';
+    iframe.style.left = '-10000px';
+    iframe.style.top = '-10000px';
+
+    const normalizedWidth = normalizeViewportDimension(viewportWidth);
+    const normalizedHeight = normalizeViewportDimension(viewportHeight, normalizedWidth);
+    iframe.style.width = `${normalizedWidth}px`;
+    iframe.style.height = `${normalizedHeight}px`;
+    iframe.setAttribute('width', String(normalizedWidth));
+    iframe.setAttribute('height', String(normalizedHeight));
     iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin');
 
     const cleanup = () => {
@@ -497,6 +527,31 @@ async function createStaticSvgSnapshot({
   let capturedViewBox = metadata?.viewBox || null;
   const captureTimeoutMs = Math.max(captureDelayMs + 2000, 5000);
 
+  const metadataWidth = metadata?.width;
+  const metadataHeight = metadata?.height;
+  const metadataAspect = metadata?.aspect;
+
+  const fallbackWidth = Number.isFinite(metadataWidth) && metadataWidth > 0
+    ? metadataWidth
+    : DEFAULT_DOWNLOAD_RESOLUTION;
+  const viewportWidth = normalizeViewportDimension(targetWidth, fallbackWidth);
+
+  let derivedHeightFallback = Number.isFinite(metadataHeight) && metadataHeight > 0
+    ? metadataHeight
+    : null;
+  if (!derivedHeightFallback) {
+    const aspect = Number.isFinite(metadataAspect) && metadataAspect > 0
+      ? metadataAspect
+      : (Number.isFinite(metadataWidth) && metadataWidth > 0 && Number.isFinite(metadataHeight) && metadataHeight > 0
+        ? metadataHeight / Math.max(metadataWidth, 1)
+        : 1);
+    derivedHeightFallback = viewportWidth * aspect;
+  }
+  if (!derivedHeightFallback || !Number.isFinite(derivedHeightFallback) || derivedHeightFallback <= 0) {
+    derivedHeightFallback = viewportWidth;
+  }
+  const viewportHeight = normalizeViewportDimension(targetHeight, derivedHeightFallback);
+
   const applyFinalize = (snapshot) => {
     if (!snapshot || typeof snapshot.serialized !== 'string') {
       throw new Error('Invalid SVG snapshot');
@@ -533,6 +588,8 @@ async function createStaticSvgSnapshot({
       }, {
         renderDelayMs: captureDelayMs,
         timeoutMs: captureTimeoutMs,
+        viewportWidth,
+        viewportHeight,
       });
       return applyFinalize(snapshot);
     } catch (error) {
@@ -549,6 +606,8 @@ async function createStaticSvgSnapshot({
       }, {
         renderDelayMs: captureDelayMs,
         timeoutMs: captureTimeoutMs,
+        viewportWidth,
+        viewportHeight,
       });
       return applyFinalize(snapshot);
     } catch (error) {
