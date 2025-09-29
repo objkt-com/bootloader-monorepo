@@ -199,7 +199,7 @@ export default function GeneratorDetail() {
       setTokensLoading(true);
       if (generator) {
         // Use TzKT API to get real mints for this generator
-        const tokens = await tzktService.getGeneratorMints(generator.id, 6); // Get 6 latest mints
+        const tokens = await tzktService.getGeneratorMints(generator.id, 36); // Get 6 latest mints
         setLatestTokens(tokens);
       }
     } catch (err) {
