@@ -1,31 +1,75 @@
 const EDGE_TTL_SECONDS = 86400;
 const WORKER_CACHE_BUSTER = "wcb-v2";
 const CACHE_CONTROL_HEADER = `public, max-age=${EDGE_TTL_SECONDS}, s-maxage=${EDGE_TTL_SECONDS}, stale-while-revalidate=86400, stale-if-error=604800`;
+const TRANSPARENT_PNG = decodeBase64(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg=="
+);
 
 export default {
   async fetch(request, env, ctx) {
     try {
       const url = new URL(request.url);
       const segments = url.pathname.split("/").filter(Boolean);
+      const isImg = isImageRequest(request);
+      const type = segments[0] || "thumbnail";
+      const id = segments[1] || "unknown";
 
       if (
         segments.length < 2 ||
-        (segments[0] !== "thumbnail" && segments[0] !== "generator-thumbnail")
+        (type !== "thumbnail" && type !== "generator-thumbnail")
       ) {
-        return withCORS(new Response("Nothing here.", { status: 404 }));
+        if (isImg) {
+          return withCORS(
+            imageErrorResponse({
+              status: 200,
+              cacheControl: "no-store",
+              type,
+              id,
+              request,
+              note: "invalid-path",
+              originalStatus: 404,
+            })
+          );
+        }
+
+        return withCORS(textResponse("Nothing here.", 404));
       }
 
-      const type = segments[0];
-      const id = segments[1];
       if (!id || Number.isNaN(Number(id))) {
-        return withCORS(
-          new Response("Invalid ID. Must be a number.", { status: 400 })
-        );
+        if (isImg) {
+          return withCORS(
+            imageErrorResponse({
+              status: 200,
+              cacheControl: "no-store",
+              type,
+              id,
+              request,
+              note: "invalid-id",
+              originalStatus: 400,
+            })
+          );
+        }
+
+        return withCORS(textResponse("Invalid ID. Must be a number.", 400));
       }
 
       const network = url.searchParams.get("n") || "m";
       if (!network || !["m", "g", "s"].includes(network)) {
-        return withCORS(new Response("wrong network", { status: 400 }));
+        if (isImg) {
+          return withCORS(
+            imageErrorResponse({
+              status: 200,
+              cacheControl: "no-store",
+              type,
+              id,
+              request,
+              note: "invalid-network",
+              originalStatus: 400,
+            })
+          );
+        }
+
+        return withCORS(textResponse("wrong network", 400));
       }
 
       const version = url.searchParams.get("v") || "v1";
@@ -59,7 +103,21 @@ export default {
       if (url.searchParams.get("purge") === "1") {
         const authHeader = request.headers.get("authorization") || "";
         if (authHeader !== `Bearer ${env.ADMIN_TOKEN}`) {
-          return withCORS(new Response("Unauthorized", { status: 401 }));
+          if (isImg) {
+            return withCORS(
+              imageErrorResponse({
+                status: 200,
+                cacheControl: "no-store",
+                type,
+                id,
+                request,
+                note: "unauthorized",
+                originalStatus: 401,
+              })
+            );
+          }
+
+          return withCORS(textResponse("Unauthorized", 401));
         }
 
         await env.R2_THUMBS.delete(r2Key);
@@ -69,7 +127,21 @@ export default {
           // best-effort edge purge
         }
 
-        return withCORS(new Response(`Purged ${r2Key}`, { status: 200 }));
+        if (isImg) {
+          return withCORS(
+            imageErrorResponse({
+              status: 200,
+              cacheControl: "no-store",
+              type,
+              id,
+              request,
+              note: "purged",
+              originalStatus: 200,
+            })
+          );
+        }
+
+        return withCORS(textResponse(`Purged ${r2Key}`, 200, "no-store"));
       }
 
       const edgeCache = caches.default;
@@ -78,8 +150,11 @@ export default {
         const headers = new Headers(edgeHit.headers);
         headers.set("X-Worker-Cache", "EDGE_HIT");
         headers.set("X-Worker-Key", cacheKeyUrl.toString());
+        if (request.method === "HEAD") {
+          await edgeHit.body?.cancel();
+        }
         return withCORS(
-          new Response(edgeHit.body, {
+          new Response(request.method === "HEAD" ? null : edgeHit.body, {
             status: edgeHit.status,
             headers,
           })
@@ -89,17 +164,34 @@ export default {
       const object = await env.R2_THUMBS.get(r2Key);
       if (object) {
         const r2Response = r2ToResponse(object, CACHE_CONTROL_HEADER);
-        const cacheCopy = r2Response.clone();
-        ctx.waitUntil(edgeCache.put(cacheKey, cacheCopy));
+        ctx.waitUntil(edgeCache.put(cacheKey, r2Response.clone()));
         const headers = new Headers(r2Response.headers);
         headers.set("X-Worker-Cache", "R2_HIT");
         headers.set("X-Worker-Key", cacheKeyUrl.toString());
+        if (request.method === "HEAD") {
+          await r2Response.body?.cancel();
+          return withCORS(
+            new Response(null, {
+              status: r2Response.status,
+              headers,
+            })
+          );
+        }
         return withCORS(
           new Response(r2Response.body, {
             status: r2Response.status,
             headers,
           })
         );
+      }
+
+      if (request.method === "HEAD") {
+        const headers = new Headers({
+          "Cache-Control": "no-store",
+        });
+        headers.set("X-Worker-Cache", "MISS_NO_RENDER");
+        headers.set("X-Worker-Key", cacheKeyUrl.toString());
+        return withCORS(new Response(null, { status: 204, headers }));
       }
 
       const coordinatorId = env.RENDO.idFromName(r2Key);
@@ -121,14 +213,26 @@ export default {
       if (!doResponse.ok) {
         const text = await doResponse.text().catch(() => "");
         const status = doResponse.status || 500;
-        const headers = new Headers({
-          "Cache-Control": "no-store",
-        });
+        if (isImg) {
+          return withCORS(
+            imageErrorResponse({
+              status: 200,
+              cacheControl: "no-store",
+              type,
+              id,
+              request,
+              note: `render-error-${status}`,
+              originalStatus: status,
+            })
+          );
+        }
+
         return withCORS(
-          new Response(text || "Thumbnail render failed", {
+          textResponse(
+            text || "Thumbnail render failed",
             status,
-            headers,
-          })
+            "no-store"
+          )
         );
       }
 
@@ -141,6 +245,15 @@ export default {
       const headers = new Headers(renderResponse.headers);
       headers.set("X-Worker-Cache", "DO_RENDER");
       headers.set("X-Worker-Key", cacheKeyUrl.toString());
+      if (request.method === "HEAD") {
+        await renderResponse.body?.cancel();
+        return withCORS(
+          new Response(null, {
+            status: renderResponse.status,
+            headers,
+          })
+        );
+      }
       return withCORS(
         new Response(renderResponse.body, {
           status: renderResponse.status,
@@ -148,11 +261,26 @@ export default {
         })
       );
     } catch (err) {
+      if (isImageRequest(request)) {
+        return withCORS(
+          imageErrorResponse({
+            status: 200,
+            cacheControl: "no-store",
+            type: "thumbnail",
+            id: "error",
+            request,
+            note: "unhandled-error",
+            originalStatus: 500,
+          })
+        );
+      }
+
       return withCORS(
-        new Response(`Unhandled error: ${err?.message || "unknown"}`, {
-          status: 500,
-          headers: { "Cache-Control": "no-store" },
-        })
+        textResponse(
+          `Unhandled error: ${err?.message || "unknown"}`,
+          500,
+          "no-store"
+        )
       );
     }
   },
@@ -168,20 +296,20 @@ export class RenderCoordinator {
   async fetch(request) {
     const url = new URL(request.url);
     if (url.pathname !== "/render") {
-      return withCORS(new Response("Not found", { status: 404 }));
+      return withCORS(textResponse("Not found", 404));
     }
 
     let payload;
     try {
       payload = await request.json();
     } catch {
-      return withCORS(new Response("Bad JSON", { status: 400 }));
+      return withCORS(textResponse("Bad JSON", 400));
     }
 
     const { r2Key, target, width, height, cacheControl, type, id } =
       payload || {};
     if (!r2Key || !target || !width || !height) {
-      return withCORS(new Response("Missing fields", { status: 400 }));
+      return withCORS(textResponse("Missing fields", 400));
     }
 
     if (this.inflight.has(r2Key)) {
@@ -218,12 +346,9 @@ export class RenderCoordinator {
         });
       } catch (error) {
         return withCORS(
-          new Response(
+          textResponse(
             `Screenshot network error: ${error?.message || "unknown"}`,
-            {
-              status: 502,
-              headers: { "Cache-Control": "no-store" },
-            }
+            502
           )
         );
       }
@@ -271,14 +396,11 @@ export class RenderCoordinator {
           bytes = decodeBase64(base64);
         } catch (error) {
           return withCORS(
-            new Response(
+            textResponse(
               `Unexpected content-type from screenshot API: ${
                 error?.message || "unknown"
               }`,
-              {
-                status: 502,
-                headers: { "Cache-Control": "no-store" },
-              }
+              502
             )
           );
         }
@@ -302,7 +424,7 @@ export class RenderCoordinator {
     this.inflight.set(r2Key, task);
     try {
       const response = await task;
-      return response.clone();
+      return response;
     } finally {
       this.inflight.delete(r2Key);
     }
@@ -342,14 +464,17 @@ function r2ToResponse(object, cacheControl) {
     headers.set("Content-Type", "image/png");
   }
   headers.set("Cache-Control", cacheControl);
+  headers.set("X-Content-Type-Options", "nosniff");
   return new Response(object.body, { status: 200, headers });
 }
 
 function makeImageHeaders(cacheControl, type, id) {
+  const resolvedType = type === "generator-thumbnail" ? type : "thumbnail";
+  const resolvedId = id != null ? id : "unknown";
   const filename =
-    type === "generator-thumbnail"
-      ? `generator-${id}-thumb.png`
-      : `token-${id}-thumb.png`;
+    resolvedType === "generator-thumbnail"
+      ? `generator-${resolvedId}-thumb.png`
+      : `token-${resolvedId}-thumb.png`;
 
   return {
     "Content-Type": "image/png",
@@ -358,7 +483,49 @@ function makeImageHeaders(cacheControl, type, id) {
     "Cross-Origin-Resource-Policy": "cross-origin",
     "Timing-Allow-Origin": "*",
     "Content-Disposition": `inline; filename="${filename}"`,
+    "X-Content-Type-Options": "nosniff",
   };
+}
+
+function textResponse(message, status, cacheControl = "no-store") {
+  return new Response(message, {
+    status,
+    headers: {
+      "Cache-Control": cacheControl,
+      "Content-Type": "text/plain; charset=utf-8",
+    },
+  });
+}
+
+function isImageRequest(request) {
+  const dest = request.headers.get("sec-fetch-dest");
+  if (dest) {
+    return dest === "image";
+  }
+  const accept = request.headers.get("accept") || "";
+  return accept.includes("image/");
+}
+
+function imageErrorResponse({
+  status = 200,
+  cacheControl = "no-store",
+  type,
+  id,
+  request,
+  note,
+  originalStatus,
+}) {
+  const headers = new Headers(makeImageHeaders(cacheControl, type, id));
+  if (note) {
+    headers.set("X-Worker-Note", note);
+  }
+  if (originalStatus != null) {
+    headers.set("X-Worker-Status", String(originalStatus));
+  }
+  return new Response(request.method === "HEAD" ? null : TRANSPARENT_PNG, {
+    status,
+    headers,
+  });
 }
 
 function withCORS(response) {
@@ -379,7 +546,7 @@ function withCORS(response) {
 }
 
 function decodeBase64(value) {
-  const binary = Buffer.from(str, "base64");
+  const binary = globalThis.atob(value);
   const length = binary.length;
   const bytes = new Uint8Array(length);
   for (let index = 0; index < length; index += 1) {

@@ -36,7 +36,7 @@ GET /thumbnail/456?width=300&height=200&n=g
 
 #### Success (200)
 - **Content-Type**: `image/png`
-- **Cache-Control**: `public, max-age=300`
+- **Cache-Control**: `public, max-age=86400, s-maxage=86400, stale-while-revalidate=86400, stale-if-error=604800`
 - **Body**: PNG image data
 
 #### Errors
