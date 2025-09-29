@@ -241,49 +241,6 @@ function formatDownloadFileName(name, tokenId, width, height, format) {
 
 function removeDynamicContent(svgElement) {
   svgElement.querySelectorAll('script').forEach((node) => node.remove());
-  svgElement.querySelectorAll('animate, animateTransform, animateMotion, animateColor, set').forEach((node) => node.remove());
-  svgElement.querySelectorAll('*').forEach((node) => {
-    Array.from(node.attributes).forEach((attr) => {
-      if (attr.name && attr.name.toLowerCase().startsWith('on')) {
-        node.removeAttribute(attr.name);
-      }
-    });
-
-    if (node.style) {
-      node.style.animation = '';
-      node.style.transition = '';
-      node.style.filter = '';
-      node.style.mixBlendMode = '';
-      node.style.removeProperty('animation');
-      node.style.removeProperty('transition');
-      node.style.removeProperty('filter');
-      node.style.removeProperty('mix-blend-mode');
-      if (node.style.length === 0) {
-        node.removeAttribute('style');
-      }
-    }
-
-    if (node.hasAttribute('filter')) {
-      node.removeAttribute('filter');
-    }
-    if (node.hasAttribute('mask')) {
-      node.removeAttribute('mask');
-    }
-    if (node.hasAttribute('clip-path')) {
-      node.removeAttribute('clip-path');
-    }
-  });
-
-  svgElement.querySelectorAll('filter, feGaussianBlur, feBlend, feColorMatrix, feComponentTransfer, feImage').forEach((node) => {
-    if (node.parentNode) {
-      node.parentNode.removeChild(node);
-    }
-  });
-
-  if (!svgElement.getAttribute('xmlns')) {
-    svgElement.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-  }
-
   return svgElement;
 }
 
@@ -630,59 +587,8 @@ function svgStringToDataUrl(svgString) {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(ensured)}`;
 }
 
-function stripRasterizationUnsafeStyles(svgString) {
-  try {
-    const parsed = new DOMParser().parseFromString(svgString, 'image/svg+xml');
-    const root = parsed.documentElement;
-    if (!root) {
-      return svgString;
-    }
-
-    root.querySelectorAll('*').forEach((node) => {
-      if (node.style) {
-        node.style.animation = '';
-        node.style.transition = '';
-        node.style.mixBlendMode = '';
-        node.style.filter = '';
-        node.style.removeProperty('animation');
-        node.style.removeProperty('transition');
-        node.style.removeProperty('mix-blend-mode');
-        node.style.removeProperty('filter');
-        if (node.style.length === 0) {
-          node.removeAttribute('style');
-        }
-      }
-
-      if (node.hasAttribute('filter')) {
-        node.removeAttribute('filter');
-      }
-      if (node.hasAttribute('clip-path')) {
-        node.removeAttribute('clip-path');
-      }
-      if (node.hasAttribute('mask')) {
-        node.removeAttribute('mask');
-      }
-    });
-
-    root.querySelectorAll('filter, feGaussianBlur, feBlend, feColorMatrix, feComponentTransfer, feImage').forEach((node) => {
-      if (node.parentNode) {
-        node.parentNode.removeChild(node);
-      }
-    });
-
-    return serializeSanitizedSvg(root);
-  } catch (error) {
-    console.warn('Failed to strip rasterization styles:', error);
-    return svgString;
-  }
-}
-
 async function rasterizeSvg(preparedSvg, width, height, { format = 'png', background = null } = {}) {
   const attempts = [preparedSvg];
-
-  if (RASTERIZATION_ATTEMPTS > 1) {
-    attempts.push(stripRasterizationUnsafeStyles(preparedSvg));
-  }
 
   let lastError = null;
   const normalizedBackground = normalizeHexColor(background || '') || null;
