@@ -49,14 +49,20 @@ export default function CodeEditor({
   className = '',
   toolbarControls = null,
   onManualRun = null,
-  autoRefresh = true
+  autoRefresh = true,
+  enableManualShortcut = true
 }) {
   const { theme } = useTheme();
   const manualRunRef = useRef(onManualRun);
+  const manualShortcutEnabledRef = useRef(enableManualShortcut);
 
   useEffect(() => {
     manualRunRef.current = onManualRun;
   }, [onManualRun]);
+
+  useEffect(() => {
+    manualShortcutEnabledRef.current = enableManualShortcut;
+  }, [enableManualShortcut]);
   
   const handleEditorChange = (newValue) => {
     onChange(newValue || '');
@@ -73,7 +79,7 @@ export default function CodeEditor({
     editor.addCommand(
       monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
       () => {
-        if (manualRunRef.current) {
+        if (manualShortcutEnabledRef.current && manualRunRef.current) {
           manualRunRef.current();
         }
       }
@@ -96,19 +102,15 @@ export default function CodeEditor({
   return (
     <div className={`editor-panel ${className}`.trim()}>
       <div className="editor-header">
-        <span>
+        <span className="editor-header-title">
           Generator Code
-          {!autoRefresh && (
+          {!autoRefresh && enableManualShortcut && (
             <span className="editor-shortcut-hint"> (ctrl+enter to run)</span>
           )}
         </span>
         <div className="editor-header-actions">
-          {toolbarControls && (
-            <div className="editor-controls">
-              {toolbarControls}
-            </div>
-          )}
-          <div className="editor-environment">
+          <div className="editor-controls">
+            {toolbarControls}
             <button 
               className="help-btn"
               onClick={() => window.open('/help', '_blank')}

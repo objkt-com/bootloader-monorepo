@@ -780,8 +780,8 @@ export default function GeneratorDetail() {
         
         <div className="preview-panel">
           <div className="preview-header">
-            <span>Exploration<sup>*</sup></span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span className="preview-header-title">Exploration<sup>*</sup></span>
+            <div className="preview-header-controls">
               <span className="loading-indicator">updating...</span>
               <PreviewControls
                 seed={previewSeed}

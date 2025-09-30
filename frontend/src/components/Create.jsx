@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Maximize2, X, Play, RefreshCw } from 'lucide-react';
+import { Play, RefreshCw } from 'lucide-react';
 import { tezosService } from '../services/tezos.js';
 import CodeEditor from './CodeEditor.jsx';
 import SVGPreview from './SVGPreview.jsx';
@@ -20,23 +20,12 @@ export default function Create() {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [previewCode, setPreviewCode] = useState('');
   const [previewIterationNumber, setPreviewIterationNumber] = useState(1);
-  const [showFullscreenPreview, setShowFullscreenPreview] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(max-width: 768px)').matches;
+  });
   const navigate = useNavigate();
   const location = useLocation();
-
-  // Handle escape key to close fullscreen
-  useEffect(() => {
-    const handleEscapeKey = (event) => {
-      if (event.key === 'Escape' && showFullscreenPreview) {
-        setShowFullscreenPreview(false);
-      }
-    };
-
-    if (showFullscreenPreview) {
-      document.addEventListener('keydown', handleEscapeKey);
-      return () => document.removeEventListener('keydown', handleEscapeKey);
-    }
-  }, [showFullscreenPreview]);
 
   // Handle navigation warning when user has made changes
   useEffect(() => {
@@ -133,6 +122,31 @@ for (let i = 0; i < 5; i++) {
     }
   };
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const media = window.matchMedia('(max-width: 768px)');
+    const handler = (event) => setIsMobile(event.matches);
+    if (media.addEventListener) {
+      media.addEventListener('change', handler);
+    } else {
+      media.addListener(handler);
+    }
+    setIsMobile(media.matches);
+    return () => {
+      if (media.removeEventListener) {
+        media.removeEventListener('change', handler);
+      } else {
+        media.removeListener(handler);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isMobile && autoRefresh) {
+      setAutoRefresh(false);
+    }
+  }, [isMobile, autoRefresh]);
+
   const editorToolbarControls = (
     <>
       <button
@@ -143,14 +157,16 @@ for (let i = 0; i < 5; i++) {
         <Play size={14} />
         <span>play</span>
       </button>
-      <button
-        className={`editor-control-btn ${autoRefresh ? 'is-active' : ''}`.trim()}
-        onClick={() => handleAutoRefreshChange(!autoRefresh)}
-        title={autoRefresh ? 'Disable auto-refresh' : 'Enable auto-refresh'}
-      >
-        <RefreshCw size={14} />
-        <span>auto-refresh</span>
-      </button>
+      {!isMobile && (
+        <button
+          className={`editor-control-btn auto-refresh-toggle ${autoRefresh ? 'is-active' : ''}`.trim()}
+          onClick={() => handleAutoRefreshChange(!autoRefresh)}
+          title={autoRefresh ? 'Disable auto-refresh' : 'Enable auto-refresh'}
+        >
+          <RefreshCw size={14} />
+          <span>auto-refresh</span>
+        </button>
+      )}
     </>
   );
 
@@ -240,6 +256,7 @@ for (let i = 0; i < 5; i++) {
           onChange={setCode}
           height="100%"
           autoRefresh={autoRefresh}
+          enableManualShortcut={!isMobile}
           toolbarControls={editorToolbarControls}
           onManualRun={refreshPreview}
           className='show-on-mobile'
@@ -247,9 +264,9 @@ for (let i = 0; i < 5; i++) {
         
         <div className="preview-panel">
           <div className="preview-header">
-            <span>Live Preview</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              {!autoRefresh && (
+            <span className="preview-header-title">Live Preview</span>
+            <div className="preview-header-controls">
+              {!autoRefresh && !isMobile && (
                 <span className="preview-status paused">
                   auto-refresh off
                 </span>
@@ -263,14 +280,11 @@ for (let i = 0; i < 5; i++) {
                 onRefresh={refreshPreview}
                 showRefresh={true}
                 showPreviewMode={true}
+                hideIteration={isMobile}
+                hidePreviewToggle={isMobile}
+                hideSeedLabel={isMobile}
+                compactLabels={isMobile}
               />
-              <button 
-                className="fullscreen-btn"
-                onClick={() => setShowFullscreenPreview(true)}
-                title="View fullscreen"
-              >
-                <Maximize2 size={16} />
-              </button>
             </div>
           </div>
           <SVGPreview 
@@ -290,19 +304,19 @@ for (let i = 0; i < 5; i++) {
 
       <div className="actions" style={{ justifyContent: 'flex-end' }}>
         <div className="action-with-cost">
-        <button 
-          onClick={handleCreate}
-          disabled={isCreating || (() => {
-            if (!code.trim()) return false;
-            const nameBytes = getByteLength(name.trim());
-            const encodedCode = encodeURIComponent(code);
-            const codeBytes = getByteLength(encodedCode);
-            const cost = estimateCreateGenerator(nameBytes, codeBytes);
-            return cost.tez > 8;
-          })()}
-        >
-          {isCreating ? 'creating...' : 'create generator'}
-        </button>
+          <button 
+            onClick={handleCreate}
+            disabled={isCreating || (() => {
+              if (!code.trim()) return false;
+              const nameBytes = getByteLength(name.trim());
+              const encodedCode = encodeURIComponent(code);
+              const codeBytes = getByteLength(encodedCode);
+              const cost = estimateCreateGenerator(nameBytes, codeBytes);
+              return cost.tez > 8;
+            })()}
+          >
+            {isCreating ? 'creating...' : 'create generator'}
+          </button>
           {/* Storage Cost Display */}
           {code.trim() && (
             <div className="storage-cost">
@@ -331,52 +345,6 @@ for (let i = 0; i < 5; i++) {
           )}
         </div>
       </div>
-
-
-      {/* Fullscreen Preview Modal */}
-      {showFullscreenPreview && (
-        <div className="fullscreen-modal" onClick={() => setShowFullscreenPreview(false)}>
-          <div className="fullscreen-modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="fullscreen-modal-header">
-              <h2>{name || 'Untitled Generator'}</h2>
-              <div className="fullscreen-controls">
-                {!autoRefresh && (
-                  <span className="preview-status paused">
-                    auto-refresh off
-                  </span>
-                )}
-                <PreviewControls
-                  seed={previewSeed}
-                  onSeedChange={setPreviewSeed}
-                  iterationNumber={previewIterationNumber}
-                  onIterationNumberChange={setPreviewIterationNumber}
-                  onRefresh={refreshPreview}
-                  showRefresh={true}
-                  showPreviewMode={true}
-                />
-                <button 
-                  className="close-fullscreen-btn"
-                  onClick={() => setShowFullscreenPreview(false)}
-                  title="Close fullscreen"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-            </div>
-            <div className="fullscreen-preview">
-              <SVGPreview 
-                code={previewCode}
-                seed={previewSeed}
-                renderCounter={renderCounter}
-                iterationNumber={previewIterationNumber}
-                width={Math.min(window.innerWidth - 100, window.innerHeight - 150)}
-                height={Math.min(window.innerWidth - 100, window.innerHeight - 150)}
-                noPadding={true}
-              />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
