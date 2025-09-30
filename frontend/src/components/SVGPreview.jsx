@@ -16,8 +16,18 @@ export default function SVGPreview({
   const [error, setError] = useState(null);
   const [isReloading, setIsReloading] = useState(false);
   const debounceRef = useRef(null);
+  const previousRenderCounter = useRef(renderCounter);
+  const previousSeed = useRef(seed);
+  const previousIterationNumber = useRef(iterationNumber);
 
   useEffect(() => {
+    const manualTrigger = renderCounter !== previousRenderCounter.current;
+    const seedChanged = seed !== previousSeed.current;
+    const iterationChanged = iterationNumber !== previousIterationNumber.current;
+    previousRenderCounter.current = renderCounter;
+    previousSeed.current = seed;
+    previousIterationNumber.current = iterationNumber;
+
     if (useObjktCDN && contractAddress && tokenId) {
       // Use objkt CDN for token previews with network-specific URL format
       const isGhostnet = window.location.hostname.includes('ghostnet') || 
@@ -38,20 +48,24 @@ export default function SVGPreview({
       clearTimeout(debounceRef.current);
     }
 
-    // Set loading state immediately for visual feedback
-    setIsReloading(true);
+    if (manualTrigger || seedChanged || iterationChanged) {
+      setIsReloading(true);
+      generatePreview();
+      return;
+    }
 
     // Debounce the preview generation
     debounceRef.current = setTimeout(() => {
+      setIsReloading(true);
       generatePreview();
-    }, 300); // 300ms debounce
+    }, 500); // 500ms debounce to allow longer typing bursts
 
     return () => {
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
       }
     };
-  }, [code, seed, iterationNumber, useObjktCDN, contractAddress, tokenId]);
+  }, [code, seed, iterationNumber, useObjktCDN, contractAddress, tokenId, renderCounter]);
 
   const generatePreview = () => {
     try {

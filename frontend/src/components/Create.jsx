@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Maximize2, X } from 'lucide-react';
+import { Play, RefreshCw, Maximize2, X } from 'lucide-react';
 import { tezosService } from '../services/tezos.js';
 import CodeEditor from './CodeEditor.jsx';
 import SVGPreview from './SVGPreview.jsx';
@@ -17,7 +17,13 @@ export default function Create() {
   const [success, setSuccess] = useState(null);
   const [previewSeed, setPreviewSeed] = useState(Math.floor(Math.random() * 1000000));
   const [renderCounter, setRenderCounter] = useState(0);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [previewCode, setPreviewCode] = useState('');
   const [previewIterationNumber, setPreviewIterationNumber] = useState(1);
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(max-width: 768px)').matches;
+  });
   const [showFullscreenPreview, setShowFullscreenPreview] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -97,10 +103,13 @@ for (let i = 0; i < 5; i++) {
   useEffect(() => {
     // Check if we're forking from another generator
     if (location.state?.forkCode) {
-      setCode(location.state.forkCode);
+      const forkedCode = location.state.forkCode;
+      setCode(forkedCode);
+      setPreviewCode(forkedCode);
       setName(location.state.forkName || '');
     } else {
       setCode(defaultCode);
+      setPreviewCode(defaultCode);
     }
   }, [location.state]);
 
@@ -109,8 +118,72 @@ for (let i = 0; i < 5; i++) {
   useMetaTags(metaTags);
 
   const refreshPreview = () => {
+    setPreviewCode(code);
     setRenderCounter(prevCounter => prevCounter + 1);
   };
+
+  useEffect(() => {
+    if (!autoRefresh) return;
+    if (previewCode !== code) {
+      setPreviewCode(code);
+    }
+  }, [autoRefresh, code, previewCode]);
+
+  const handleAutoRefreshChange = (enabled) => {
+    setAutoRefresh(enabled);
+
+    if (enabled) {
+      refreshPreview();
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const media = window.matchMedia('(max-width: 768px)');
+    const handler = (event) => setIsMobile(event.matches);
+    if (media.addEventListener) {
+      media.addEventListener('change', handler);
+    } else {
+      media.addListener(handler);
+    }
+    setIsMobile(media.matches);
+    return () => {
+      if (media.removeEventListener) {
+        media.removeEventListener('change', handler);
+      } else {
+        media.removeListener(handler);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isMobile && autoRefresh) {
+      setAutoRefresh(false);
+    }
+  }, [isMobile, autoRefresh]);
+
+  const editorToolbarControls = (
+    <>
+      <button
+        className="editor-control-btn"
+        onClick={refreshPreview}
+        title="Run preview"
+      >
+        <Play size={14} />
+        <span>play</span>
+      </button>
+      {!isMobile && (
+        <button
+          className={`editor-control-btn auto-refresh-toggle ${autoRefresh ? 'is-active' : ''}`.trim()}
+          onClick={() => handleAutoRefreshChange(!autoRefresh)}
+          title={autoRefresh ? 'Disable auto-refresh' : 'Enable auto-refresh'}
+        >
+          <RefreshCw size={14} />
+          <span>auto-refresh</span>
+        </button>
+      )}
+    </>
+  );
 
   const handleCreate = async () => {
     if (!tezosService.isConnected) {
@@ -197,13 +270,22 @@ for (let i = 0; i < 5; i++) {
           value={code}
           onChange={setCode}
           height="100%"
+          autoRefresh={autoRefresh}
+          enableManualShortcut={!isMobile}
+          toolbarControls={editorToolbarControls}
+          onManualRun={refreshPreview}
           className='show-on-mobile'
         />
         
         <div className="preview-panel">
           <div className="preview-header">
-            <span>Live Preview</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span className="preview-header-title">Live Preview</span>
+            <div className="preview-header-controls">
+              {!autoRefresh && !isMobile && (
+                <span className="preview-status paused">
+                  auto-refresh off
+                </span>
+              )}
               <span className="loading-indicator">updating...</span>
               <PreviewControls
                 seed={previewSeed}
@@ -213,6 +295,10 @@ for (let i = 0; i < 5; i++) {
                 onRefresh={refreshPreview}
                 showRefresh={true}
                 showPreviewMode={true}
+                hideIteration={isMobile}
+                hidePreviewToggle={isMobile}
+                hideSeedLabel={isMobile}
+                compactLabels={isMobile}
               />
               <button 
                 className="fullscreen-btn"
@@ -224,7 +310,7 @@ for (let i = 0; i < 5; i++) {
             </div>
           </div>
           <SVGPreview 
-            code={code}
+            code={previewCode}
             seed={previewSeed}
             renderCounter={renderCounter}
             iterationNumber={previewIterationNumber}
@@ -240,19 +326,19 @@ for (let i = 0; i < 5; i++) {
 
       <div className="actions" style={{ justifyContent: 'flex-end' }}>
         <div className="action-with-cost">
-        <button 
-          onClick={handleCreate}
-          disabled={isCreating || (() => {
-            if (!code.trim()) return false;
-            const nameBytes = getByteLength(name.trim());
-            const encodedCode = encodeURIComponent(code);
-            const codeBytes = getByteLength(encodedCode);
-            const cost = estimateCreateGenerator(nameBytes, codeBytes);
-            return cost.tez > 8;
-          })()}
-        >
-          {isCreating ? 'creating...' : 'create generator'}
-        </button>
+          <button 
+            onClick={handleCreate}
+            disabled={isCreating || (() => {
+              if (!code.trim()) return false;
+              const nameBytes = getByteLength(name.trim());
+              const encodedCode = encodeURIComponent(code);
+              const codeBytes = getByteLength(encodedCode);
+              const cost = estimateCreateGenerator(nameBytes, codeBytes);
+              return cost.tez > 8;
+            })()}
+          >
+            {isCreating ? 'creating...' : 'create generator'}
+          </button>
           {/* Storage Cost Display */}
           {code.trim() && (
             <div className="storage-cost">
@@ -282,7 +368,6 @@ for (let i = 0; i < 5; i++) {
         </div>
       </div>
 
-
       {/* Fullscreen Preview Modal */}
       {showFullscreenPreview && (
         <div className="fullscreen-modal" onClick={() => setShowFullscreenPreview(false)}>
@@ -290,6 +375,11 @@ for (let i = 0; i < 5; i++) {
             <div className="fullscreen-modal-header">
               <h2>{name || 'Untitled Generator'}</h2>
               <div className="fullscreen-controls">
+                {!autoRefresh && (
+                  <span className="preview-status paused">
+                    auto-refresh off
+                  </span>
+                )}
                 <PreviewControls
                   seed={previewSeed}
                   onSeedChange={setPreviewSeed}
@@ -310,12 +400,12 @@ for (let i = 0; i < 5; i++) {
             </div>
             <div className="fullscreen-preview">
               <SVGPreview 
-                code={code}
+                code={previewCode}
                 seed={previewSeed}
                 renderCounter={renderCounter}
                 iterationNumber={previewIterationNumber}
-                width={Math.min(window.innerWidth - 100, window.innerHeight - 150)}
-                height={Math.min(window.innerWidth - 100, window.innerHeight - 150)}
+                width={typeof window !== 'undefined' ? Math.min(window.innerWidth - 100, window.innerHeight - 150) : 400}
+                height={typeof window !== 'undefined' ? Math.min(window.innerWidth - 100, window.innerHeight - 150) : 400}
                 noPadding={true}
               />
             </div>
