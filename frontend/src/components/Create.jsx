@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Play, RefreshCw } from 'lucide-react';
+import { Play, RefreshCw, Maximize2, X } from 'lucide-react';
 import { tezosService } from '../services/tezos.js';
 import CodeEditor from './CodeEditor.jsx';
 import SVGPreview from './SVGPreview.jsx';
@@ -24,8 +24,23 @@ export default function Create() {
     if (typeof window === 'undefined') return false;
     return window.matchMedia('(max-width: 768px)').matches;
   });
+  const [showFullscreenPreview, setShowFullscreenPreview] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Handle escape key to close fullscreen
+  useEffect(() => {
+    const handleEscapeKey = (event) => {
+      if (event.key === 'Escape' && showFullscreenPreview) {
+        setShowFullscreenPreview(false);
+      }
+    };
+
+    if (showFullscreenPreview) {
+      document.addEventListener('keydown', handleEscapeKey);
+      return () => document.removeEventListener('keydown', handleEscapeKey);
+    }
+  }, [showFullscreenPreview]);
 
   // Handle navigation warning when user has made changes
   useEffect(() => {
@@ -285,6 +300,13 @@ for (let i = 0; i < 5; i++) {
                 hideSeedLabel={isMobile}
                 compactLabels={isMobile}
               />
+              <button 
+                className="fullscreen-btn"
+                onClick={() => setShowFullscreenPreview(true)}
+                title="View fullscreen"
+              >
+                <Maximize2 size={16} />
+              </button>
             </div>
           </div>
           <SVGPreview 
@@ -345,6 +367,51 @@ for (let i = 0; i < 5; i++) {
           )}
         </div>
       </div>
+
+      {/* Fullscreen Preview Modal */}
+      {showFullscreenPreview && (
+        <div className="fullscreen-modal" onClick={() => setShowFullscreenPreview(false)}>
+          <div className="fullscreen-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="fullscreen-modal-header">
+              <h2>{name || 'Untitled Generator'}</h2>
+              <div className="fullscreen-controls">
+                {!autoRefresh && (
+                  <span className="preview-status paused">
+                    auto-refresh off
+                  </span>
+                )}
+                <PreviewControls
+                  seed={previewSeed}
+                  onSeedChange={setPreviewSeed}
+                  iterationNumber={previewIterationNumber}
+                  onIterationNumberChange={setPreviewIterationNumber}
+                  onRefresh={refreshPreview}
+                  showRefresh={true}
+                  showPreviewMode={true}
+                />
+                <button 
+                  className="close-fullscreen-btn"
+                  onClick={() => setShowFullscreenPreview(false)}
+                  title="Close fullscreen"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+            <div className="fullscreen-preview">
+              <SVGPreview 
+                code={previewCode}
+                seed={previewSeed}
+                renderCounter={renderCounter}
+                iterationNumber={previewIterationNumber}
+                width={typeof window !== 'undefined' ? Math.min(window.innerWidth - 100, window.innerHeight - 150) : 400}
+                height={typeof window !== 'undefined' ? Math.min(window.innerWidth - 100, window.innerHeight - 150) : 400}
+                noPadding={true}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
