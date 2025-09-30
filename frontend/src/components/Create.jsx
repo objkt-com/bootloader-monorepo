@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Maximize2, X } from 'lucide-react';
+import { Maximize2, X, Play, RefreshCw } from 'lucide-react';
 import { tezosService } from '../services/tezos.js';
 import CodeEditor from './CodeEditor.jsx';
 import SVGPreview from './SVGPreview.jsx';
@@ -17,6 +17,8 @@ export default function Create() {
   const [success, setSuccess] = useState(null);
   const [previewSeed, setPreviewSeed] = useState(Math.floor(Math.random() * 1000000));
   const [renderCounter, setRenderCounter] = useState(0);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [previewCode, setPreviewCode] = useState('');
   const [previewIterationNumber, setPreviewIterationNumber] = useState(0);
   const [showFullscreenPreview, setShowFullscreenPreview] = useState(false);
   const navigate = useNavigate();
@@ -97,10 +99,13 @@ for (let i = 0; i < 5; i++) {
   useEffect(() => {
     // Check if we're forking from another generator
     if (location.state?.forkCode) {
-      setCode(location.state.forkCode);
+      const forkedCode = location.state.forkCode;
+      setCode(forkedCode);
+      setPreviewCode(forkedCode);
       setName(location.state.forkName || '');
     } else {
       setCode(defaultCode);
+      setPreviewCode(defaultCode);
     }
   }, [location.state]);
 
@@ -109,8 +114,45 @@ for (let i = 0; i < 5; i++) {
   useMetaTags(metaTags);
 
   const refreshPreview = () => {
+    setPreviewCode(code);
     setRenderCounter(prevCounter => prevCounter + 1);
   };
+
+  useEffect(() => {
+    if (!autoRefresh) return;
+    if (previewCode !== code) {
+      setPreviewCode(code);
+    }
+  }, [autoRefresh, code, previewCode]);
+
+  const handleAutoRefreshChange = (enabled) => {
+    setAutoRefresh(enabled);
+
+    if (enabled) {
+      refreshPreview();
+    }
+  };
+
+  const editorToolbarControls = (
+    <>
+      <button
+        className="editor-control-btn"
+        onClick={refreshPreview}
+        title="Run preview"
+      >
+        <Play size={14} />
+        <span>play</span>
+      </button>
+      <button
+        className={`editor-control-btn ${autoRefresh ? 'is-active' : ''}`.trim()}
+        onClick={() => handleAutoRefreshChange(!autoRefresh)}
+        title={autoRefresh ? 'Disable auto-refresh' : 'Enable auto-refresh'}
+      >
+        <RefreshCw size={14} />
+        <span>auto-refresh</span>
+      </button>
+    </>
+  );
 
   const handleCreate = async () => {
     if (!tezosService.isConnected) {
@@ -197,6 +239,9 @@ for (let i = 0; i < 5; i++) {
           value={code}
           onChange={setCode}
           height="100%"
+          autoRefresh={autoRefresh}
+          toolbarControls={editorToolbarControls}
+          onManualRun={refreshPreview}
           className='show-on-mobile'
         />
         
@@ -204,6 +249,11 @@ for (let i = 0; i < 5; i++) {
           <div className="preview-header">
             <span>Live Preview</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              {!autoRefresh && (
+                <span className="preview-status paused">
+                  auto-refresh off
+                </span>
+              )}
               <span className="loading-indicator">updating...</span>
               <PreviewControls
                 seed={previewSeed}
@@ -223,7 +273,7 @@ for (let i = 0; i < 5; i++) {
             </div>
           </div>
           <SVGPreview 
-            code={code}
+            code={previewCode}
             seed={previewSeed}
             renderCounter={renderCounter}
             iterationNumber={previewIterationNumber}
@@ -289,6 +339,11 @@ for (let i = 0; i < 5; i++) {
             <div className="fullscreen-modal-header">
               <h2>{name || 'Untitled Generator'}</h2>
               <div className="fullscreen-controls">
+                {!autoRefresh && (
+                  <span className="preview-status paused">
+                    auto-refresh off
+                  </span>
+                )}
                 <PreviewControls
                   seed={previewSeed}
                   onSeedChange={setPreviewSeed}
@@ -308,7 +363,7 @@ for (let i = 0; i < 5; i++) {
             </div>
             <div className="fullscreen-preview">
               <SVGPreview 
-                code={code}
+                code={previewCode}
                 seed={previewSeed}
                 renderCounter={renderCounter}
                 iterationNumber={previewIterationNumber}
