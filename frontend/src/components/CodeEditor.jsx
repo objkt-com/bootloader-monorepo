@@ -1,5 +1,4 @@
-import {useState, useEffect, useCallback} from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useCallback, useRef } from 'react';
 import Editor from '@monaco-editor/react';
 import { HelpCircle } from 'lucide-react';
 import { useTheme } from '../App.jsx';
@@ -47,10 +46,17 @@ export default function CodeEditor({
   readOnly = false, 
   height = '400px',
   forkButton = null,
-  className = ''
+  className = '',
+  toolbarControls = null,
+  onManualRun = null,
+  autoRefresh = true
 }) {
-  const navigate = useNavigate();
   const { theme } = useTheme();
+  const manualRunRef = useRef(onManualRun);
+
+  useEffect(() => {
+    manualRunRef.current = onManualRun;
+  }, [onManualRun]);
   
   const handleEditorChange = (newValue) => {
     onChange(newValue || '');
@@ -62,6 +68,17 @@ export default function CodeEditor({
       'ts:filename/globals.d.ts'
     );
   }, [])
+
+  const handleEditorMount = useCallback((editor, monaco) => {
+    editor.addCommand(
+      monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
+      () => {
+        if (manualRunRef.current) {
+          manualRunRef.current();
+        }
+      }
+    );
+  }, []);
 
   const editorOptions = {
     minimap: { enabled: false },
@@ -79,20 +96,33 @@ export default function CodeEditor({
   return (
     <div className={`editor-panel ${className}`.trim()}>
       <div className="editor-header">
-        <span>Generator Code</span>
-        <div className="editor-environment">
-          <button 
-            className="help-btn"
-            onClick={() => window.open('/help', '_blank')}
-            title="View help documentation"
-          >
-            <HelpCircle size={16} />
-          </button>
-          {forkButton}
+        <span>
+          Generator Code
+          {!autoRefresh && (
+            <span className="editor-shortcut-hint"> (ctrl+enter to run)</span>
+          )}
+        </span>
+        <div className="editor-header-actions">
+          {toolbarControls && (
+            <div className="editor-controls">
+              {toolbarControls}
+            </div>
+          )}
+          <div className="editor-environment">
+            <button 
+              className="help-btn"
+              onClick={() => window.open('/help', '_blank')}
+              title="View help documentation"
+            >
+              <HelpCircle size={16} />
+            </button>
+            {forkButton}
+          </div>
         </div>
       </div>
       <Editor
         beforeMount={handleEditorWillMount}
+        onMount={handleEditorMount}
         height={height}
         defaultLanguage="javascript"
         value={value || ''}
