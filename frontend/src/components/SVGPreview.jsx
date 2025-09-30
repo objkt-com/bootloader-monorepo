@@ -17,10 +17,16 @@ export default function SVGPreview({
   const [isReloading, setIsReloading] = useState(false);
   const debounceRef = useRef(null);
   const previousRenderCounter = useRef(renderCounter);
+  const previousSeed = useRef(seed);
+  const previousIterationNumber = useRef(iterationNumber);
 
   useEffect(() => {
     const manualTrigger = renderCounter !== previousRenderCounter.current;
+    const seedChanged = seed !== previousSeed.current;
+    const iterationChanged = iterationNumber !== previousIterationNumber.current;
     previousRenderCounter.current = renderCounter;
+    previousSeed.current = seed;
+    previousIterationNumber.current = iterationNumber;
 
     if (useObjktCDN && contractAddress && tokenId) {
       // Use objkt CDN for token previews with network-specific URL format
@@ -42,7 +48,7 @@ export default function SVGPreview({
       clearTimeout(debounceRef.current);
     }
 
-    if (manualTrigger) {
+    if (manualTrigger || seedChanged || iterationChanged) {
       setIsReloading(true);
       generatePreview();
       return;
