@@ -177,6 +177,187 @@
   font-size: 14px;
 }
 
+.token-download-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.token-download-btn {
+  gap: 6px;
+}
+
+.token-download-error {
+  font-size: 12px;
+  color: #d32f2f;
+}
+
+.token-download-toggle {
+  background: none !important;
+  border: none !important;
+  color: var(--color-gray-dark);
+  font-size: 12px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.token-download-toggle:hover {
+  color: var(--color-black);
+}
+
+.token-download-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  border: var(--border-width) solid var(--color-gray-medium);
+  border-radius: var(--border-radius);
+  background: var(--color-gray-light);
+}
+
+:root[data-theme="dark"] .token-download-options {
+  background: var(--color-white);
+}
+
+.token-download-option-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+}
+
+.token-download-option-row label {
+  font-size: 12px;
+  color: var(--color-gray-dark);
+  min-width: 70px;
+}
+
+.token-download-field {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.token-download-field input {
+  width: 100px;
+}
+
+.token-download-field select {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  border: var(--border-width) solid var(--color-black);
+  background: var(--color-white);
+  color: var(--color-black);
+  padding: 4px 6px;
+}
+
+.token-download-format-field select {
+  min-width: 140px;
+}
+
+:root[data-theme="dark"] .token-download-field select {
+  background: var(--color-white);
+  color: var(--color-black);
+}
+
+.token-download-field-suffix {
+  font-size: 12px;
+  color: var(--color-gray-dark);
+  display: inline-block;
+  min-width: 16px;
+  text-align: left;
+}
+
+.token-download-actions {
+  margin-top: var(--spacing-xs);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-xs);
+  position: relative;
+}
+
+.token-download-warning-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border: var(--border-width) solid var(--color-gray-medium);
+  border-radius: 4px;
+  background: var(--color-gray-light);
+  color: var(--color-gray-dark);
+  cursor: help;
+}
+
+.token-download-warning-icon:hover {
+  background: var(--color-white);
+}
+
+:root[data-theme="dark"] .token-download-warning-icon {
+  background: var(--color-white);
+  color: var(--color-gray-dark);
+  border-color: var(--color-gray-medium);
+}
+
+.token-download-warning-tooltip {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  max-width: 240px;
+  padding: 6px 8px;
+  border: var(--border-width) solid var(--color-gray-medium);
+  border-radius: 4px;
+  background: var(--color-gray-light);
+  color: var(--color-gray-dark);
+  font-size: 11px;
+  line-height: 1.4;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  z-index: 10;
+}
+
+:root[data-theme="dark"] .token-download-warning-tooltip {
+  background: var(--color-white);
+  color: var(--color-gray-dark);
+}
+
+.token-download-color-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.token-download-color-field input[type="color"] {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: var(--border-width) solid var(--color-gray-light);
+  background: transparent;
+  border-radius: 4px;
+}
+
+.token-download-color-text {
+  flex: 1;
+  font-size: 12px;
+  border: var(--border-width) solid var(--color-black);
+  background: var(--color-white);
+  color: var(--color-black);
+  padding: 4px 6px;
+}
+
+:root[data-theme="dark"] .token-download-color-field input[type="color"] {
+  border-color: var(--color-gray-dark);
+  background: var(--color-white);
+}
+
+:root[data-theme="dark"] .token-download-color-text {
+  background: var(--color-white);
+  color: var(--color-black);
+  border-color: var(--color-black);
+}
+
 .token-update-btn {
   background: #007bff !important;
   color: white !important;
