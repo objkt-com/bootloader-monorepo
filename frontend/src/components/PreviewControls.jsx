@@ -9,7 +9,11 @@ export default function PreviewControls({
   onRefresh = null,
   showRefresh = false,
   showPreviewMode = false,
-  maxIterationNumber = null
+  maxIterationNumber = null,
+  hideIteration = false,
+  hidePreviewToggle = false,
+  hideSeedLabel = false,
+  compactLabels = false,
 }) {
   const [isEditingSeed, setIsEditingSeed] = useState(false);
   const [seedEditValue, setSeedEditValue] = useState(seed.toString());
@@ -127,12 +131,23 @@ export default function PreviewControls({
     }
   };
 
+  const previewLabel = compactLabels ? 'preview' : 'preview mode';
+
   return (
     <div className="preview-controls">
-      {showPreviewMode && onIterationNumberChange && (
+      {showPreviewMode && !hidePreviewToggle && onIterationNumberChange && (
         <div className="seed-control">
           <label className="preview-checkbox">
-            <span className="seed-label">preview mode</span>
+            <span className="seed-label">
+              {compactLabels ? (
+                previewLabel
+              ) : (
+                <>
+                  <span className="seed-label-full">preview mode</span>
+                  <span className="seed-label-short">preview</span>
+                </>
+              )}
+            </span>
             <input
               type="checkbox"
               checked={isPreview}
@@ -143,11 +158,17 @@ export default function PreviewControls({
         </div>
       )}
 
-      {onIterationNumberChange && (
+      {onIterationNumberChange && !hideIteration && (
         <div className="seed-control">
           <span className="seed-label">
-            <span className="seed-label-full">iteration: </span>
-            <span className="seed-label-short">i: </span>
+            {compactLabels ? (
+              'iteration'
+            ) : (
+              <>
+                <span className="seed-label-full">iteration: </span>
+                <span className="seed-label-short">i: </span>
+              </>
+            )}
           </span>
           {isEditingIteration ? (
             <input
@@ -174,10 +195,18 @@ export default function PreviewControls({
       )}
 
       <div className="seed-control">
-        <span className="seed-label">
-          <span className="seed-label-full">seed: </span>
-          <span className="seed-label-short">s: </span>
-        </span>
+        {!hideSeedLabel && (
+          <span className="seed-label">
+            {compactLabels ? (
+              'seed'
+            ) : (
+              <>
+                <span className="seed-label-full">seed: </span>
+                <span className="seed-label-short">s: </span>
+              </>
+            )}
+          </span>
+        )}
         {isEditingSeed ? (
           <input
             type="number"
