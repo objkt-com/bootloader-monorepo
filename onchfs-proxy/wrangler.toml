@@ -1,0 +1,25 @@
+name = "onchfs-proxy"
+main = "src/index.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# Durable Object binding
+[[durable_objects.bindings]]
+name = "ONCHFS_SYNC"
+class_name = "OnchFSSyncObject"
+script_name = "onchfs-proxy"
+
+# Durable Object migration
+[[migrations]]
+tag = "v1"
+new_classes = ["OnchFSSyncObject"]
+
+# R2 bucket binding
+[[r2_buckets]]
+binding = "ONCHFS_BUCKET"
+bucket_name = "onchfs-cache"
+
+# Single route for all networks (network determined by path)
+[[routes]]
+pattern = "onchfs.bootloader.art/*"
+zone_name = "bootloader.art"

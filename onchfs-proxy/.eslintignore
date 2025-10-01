@@ -1,0 +1,5 @@
+node_modules
+.wrangler
+dist
+*.min.js
+src/lib/hpack-huffman-data.js
