@@ -16,6 +16,7 @@ const MIN_DOWNLOAD_RESOLUTION = 64;
 const MAX_DOWNLOAD_RESOLUTION = 16384;
 const SUPPORTED_DOWNLOAD_FORMATS = [
   { value: 'svg', label: 'SVG (vector)' },
+  { value: 'svg-original', label: 'SVG+js (original)' },
   { value: 'png', label: 'PNG (raster)' },
   { value: 'jpg', label: 'JPG (raster)' },
 ];
@@ -1241,6 +1242,49 @@ export default function TokenDetail() {
       return;
     }
 
+    // Handle SVG+js (original) format - download the data-uri content directly
+    if (downloadFormat === 'svg-original') {
+      try {
+        setDownloadError(null);
+        setIsPreparingDownload(true);
+
+        // Get the original content from the data-uri (or fetch if it's a URL)
+        let content;
+        if (isSvgDataUri(token.artifactUri)) {
+          content = decodeSvgDataUri(token.artifactUri);
+          if (!content) {
+            throw new Error('Failed to decode SVG data URI');
+          }
+        } else {
+          // If it's a URL, fetch the content
+          const response = await fetch(token.artifactUri, { mode: 'cors' });
+          if (!response.ok) {
+            throw new Error(`Failed to fetch content (${response.status})`);
+          }
+          content = await response.text();
+        }
+
+        const fileName = formatDownloadFileName(
+          token.name,
+          token.tokenId,
+          undefined,
+          undefined,
+          'svg',
+        );
+
+        const blob = new Blob([content], { type: 'image/svg+xml;charset=utf-8' });
+        triggerFileDownload(blob, fileName);
+
+        hasUserAdjustedDimensionsRef.current = true;
+      } catch (err) {
+        console.error('Failed to download original SVG+js:', err);
+        setDownloadError('Failed to download original content. Please try again.');
+      } finally {
+        setIsPreparingDownload(false);
+      }
+      return;
+    }
+
     const shouldResizeSvg = downloadFormat !== 'svg';
     if (countdownIntervalRef.current) {
       window.clearInterval(countdownIntervalRef.current);
@@ -1742,81 +1786,85 @@ export default function TokenDetail() {
                           </select>
                         </div>
                       </div>
-                      <div className="token-download-option-row">
-                        <label htmlFor="token-download-capture-delay">Capture Delay</label>
-                        <div className="token-download-field">
-                          <input
-                            id="token-download-capture-delay"
-                            type="number"
-                            min={0}
-                            max={MAX_CAPTURE_DELAY_S}
-                            value={captureDelayInput}
-                            onChange={(event) => {
-                              setCaptureDelayInput(event.target.value);
-                            }}
-                            inputMode="numeric"
-                          />
-                          <span className="token-download-field-suffix">s</span>
-                        </div>
-                      </div>
-                      {downloadFormat !== 'svg' && (
+                      {downloadFormat !== 'svg-original' && (
                         <>
                           <div className="token-download-option-row">
-                            <label htmlFor="token-download-width">Width</label>
+                            <label htmlFor="token-download-capture-delay">Capture Delay</label>
                             <div className="token-download-field">
                               <input
-                                id="token-download-width"
+                                id="token-download-capture-delay"
                                 type="number"
-                                min={MIN_DOWNLOAD_RESOLUTION}
-                                max={MAX_DOWNLOAD_RESOLUTION}
-                                value={downloadWidthInput}
-                                onChange={handleWidthInputChange}
-                                onBlur={handleWidthInputBlur}
+                                min={0}
+                                max={MAX_CAPTURE_DELAY_S}
+                                value={captureDelayInput}
+                                onChange={(event) => {
+                                  setCaptureDelayInput(event.target.value);
+                                }}
                                 inputMode="numeric"
                               />
-                              <span className="token-download-field-suffix">px</span>
+                              <span className="token-download-field-suffix">s</span>
                             </div>
                           </div>
-                          <div className="token-download-option-row">
-                            <label htmlFor="token-download-height">Height</label>
-                            <div className="token-download-field">
-                              <input
-                                id="token-download-height"
-                                type="number"
-                                min={MIN_DOWNLOAD_RESOLUTION}
-                                max={MAX_DOWNLOAD_RESOLUTION}
-                                value={downloadHeightInput}
-                                onChange={handleHeightInputChange}
-                                onBlur={handleHeightInputBlur}
-                                inputMode="numeric"
-                              />
-                              <span className="token-download-field-suffix">px</span>
+                          {downloadFormat !== 'svg' && (
+                            <>
+                              <div className="token-download-option-row">
+                                <label htmlFor="token-download-width">Width</label>
+                                <div className="token-download-field">
+                                  <input
+                                    id="token-download-width"
+                                    type="number"
+                                    min={MIN_DOWNLOAD_RESOLUTION}
+                                    max={MAX_DOWNLOAD_RESOLUTION}
+                                    value={downloadWidthInput}
+                                    onChange={handleWidthInputChange}
+                                    onBlur={handleWidthInputBlur}
+                                    inputMode="numeric"
+                                  />
+                                  <span className="token-download-field-suffix">px</span>
+                                </div>
+                              </div>
+                              <div className="token-download-option-row">
+                                <label htmlFor="token-download-height">Height</label>
+                                <div className="token-download-field">
+                                  <input
+                                    id="token-download-height"
+                                    type="number"
+                                    min={MIN_DOWNLOAD_RESOLUTION}
+                                    max={MAX_DOWNLOAD_RESOLUTION}
+                                    value={downloadHeightInput}
+                                    onChange={handleHeightInputChange}
+                                    onBlur={handleHeightInputBlur}
+                                    inputMode="numeric"
+                                  />
+                                  <span className="token-download-field-suffix">px</span>
+                                </div>
+                              </div>
+                            </>
+                          )}
+                          {downloadFormat === 'jpg' && (
+                            <div className="token-download-option-row">
+                              <label htmlFor="token-download-jpg-bg">Background</label>
+                              <div className="token-download-field token-download-color-field">
+                                <input
+                                  type="color"
+                                  id="token-download-jpg-bg"
+                                  value={normalizedJpgBackground}
+                                  onChange={(event) => {
+                                    setJpgBackgroundInput(event.target.value);
+                                  }}
+                                  title="JPEG background color"
+                                />
+                                <input
+                                  type="text"
+                                  value={jpgBackgroundInput}
+                                  onChange={(event) => setJpgBackgroundInput(event.target.value)}
+                                  className="token-download-color-text"
+                                  placeholder="#ffffff"
+                                />
+                              </div>
                             </div>
-                          </div>
+                          )}
                         </>
-                      )}
-                      {downloadFormat === 'jpg' && (
-                        <div className="token-download-option-row">
-                          <label htmlFor="token-download-jpg-bg">Background</label>
-                          <div className="token-download-field token-download-color-field">
-                            <input
-                              type="color"
-                              id="token-download-jpg-bg"
-                              value={normalizedJpgBackground}
-                              onChange={(event) => {
-                                setJpgBackgroundInput(event.target.value);
-                              }}
-                              title="JPEG background color"
-                            />
-                            <input
-                              type="text"
-                              value={jpgBackgroundInput}
-                              onChange={(event) => setJpgBackgroundInput(event.target.value)}
-                              className="token-download-color-text"
-                              placeholder="#ffffff"
-                            />
-                          </div>
-                        </div>
                       )}
                     </div>
                   )}
