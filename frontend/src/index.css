@@ -159,10 +159,39 @@ input:focus, textarea:focus {
   padding-top: var(--main-content-padding-top, 80px);
 }
 
+/* Announcement Banner */
+.announcement-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: var(--color-black);
+  color: var(--color-white);
+  z-index: 102;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+.announcement-banner:hover {
+  opacity: 0.85;
+}
+
+.announcement-banner-content {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+}
+
 /* Network Banner */
 .network-banner {
   position: fixed;
-  top: 0;
+  top: 24px;
   left: 0;
   right: 0;
   background: #0066cc;

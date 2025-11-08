@@ -50,13 +50,28 @@ function ThemeProvider({ children }) {
   );
 }
 
+function AnnouncementBanner() {
+  return (
+    <a
+      href="https://internetcafe.bootloader.art"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="announcement-banner"
+    >
+      <div className="announcement-banner-content">
+        ON VIEW NOW: GENARTCLUB X BOOTLOADER: NEW SESSION
+      </div>
+    </a>
+  );
+}
+
 function NetworkBanner() {
   const currentNetwork = CONFIG.network;
-  
+
   if (currentNetwork === 'mainnet') {
     return null;
   }
-  
+
   return (
     <div className="network-banner">
       <div className="network-banner-content">
@@ -69,19 +84,21 @@ function NetworkBanner() {
 // Add CSS custom property to body based on network
 function NetworkStyleProvider({ children }) {
   const currentNetwork = CONFIG.network;
-  
+  const announcementBannerHeight = 24; // Height of announcement banner
+
   React.useEffect(() => {
     if (currentNetwork === 'mainnet') {
       document.documentElement.style.setProperty('--network-banner-height', '0px');
-      document.documentElement.style.setProperty('--header-top', '0px');
-      document.documentElement.style.setProperty('--main-content-padding-top', '80px'); // Header height only
+      document.documentElement.style.setProperty('--header-top', `${announcementBannerHeight}px`);
+      document.documentElement.style.setProperty('--main-content-padding-top', `${80 + announcementBannerHeight}px`); // Header height + announcement banner
     } else {
+      const networkBannerHeight = 16;
       document.documentElement.style.setProperty('--network-banner-height', '16px');
-      document.documentElement.style.setProperty('--header-top', '16px');
-      document.documentElement.style.setProperty('--main-content-padding-top', '96px'); // Header height + banner height
+      document.documentElement.style.setProperty('--header-top', `${announcementBannerHeight + networkBannerHeight}px`);
+      document.documentElement.style.setProperty('--main-content-padding-top', `${80 + announcementBannerHeight + networkBannerHeight}px`); // Header height + both banners
     }
   }, [currentNetwork]);
-  
+
   return children;
 }
 
@@ -104,6 +121,7 @@ function Navigation() {
   
   return (
     <>
+      <AnnouncementBanner />
       <NetworkBanner />
       <header className="header">
         <div className="header-content">
@@ -113,28 +131,28 @@ function Navigation() {
               <span className="logo-mobile">bl:</span>
             </Link>
           </div>
-          
+
           <nav className="nav">
-            <Link 
-              to="/create" 
+            <Link
+              to="/create"
               className={location.pathname === '/create' ? 'active' : ''}
             >
               + create
             </Link>
-            <Link 
-              to="/activity" 
+            <Link
+              to="/activity"
               className={location.pathname === '/activity' ? 'active' : ''}
             >
               activity
             </Link>
-            <Link 
-              to="/help" 
+            <Link
+              to="/help"
               className={location.pathname === '/help' ? 'active' : ''}
             >
               docs
             </Link>
           </nav>
-          
+
           <WalletConnection />
         </div>
       </header>
