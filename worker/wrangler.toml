@@ -1,26 +1,138 @@
+# Base configuration (inherited by all environments)
 name = "bootloader-thumbnail-renderer"
-main = "src/index.js"
+main = "src/index.ts"
 compatibility_date = "2024-09-01"
 compatibility_flags = ["nodejs_compat"]
 
-[build]
-command = ""
+# Static assets from frontend build
+[assets]
+directory = "./public"
+binding = "ASSETS"
 
-[vars]
-ENVIRONMENT = "production"
+[observability]
+enabled = true
 
+[observability.logs]
+invocation_logs = true
+head_sampling_rate = 1
+
+# Thumbnail rendering R2 bucket
 [[r2_buckets]]
 binding = "R2_THUMBS"
 bucket_name = "bootloader-thumbs"
 
+# Sandbox/session R2 bucket (for uploaded projects and archives)
+[[r2_buckets]]
+binding = "R2_SANDBOX"
+bucket_name = "bootloader-sandbox"
+
+# D1 Database for users and session tracking
+[[d1_databases]]
+binding = "DB"
+database_name = "bootloader-db"
+database_id = "placeholder-will-be-set-after-creation"
+
+# Thumbnail render coordinator
 [[durable_objects.bindings]]
 name = "RENDO"
 class_name = "RenderCoordinator"
+
+# Sandbox session manager
+[[durable_objects.bindings]]
+name = "SESSIONS"
+class_name = "SessionDurableObject"
 
 [[migrations]]
 tag = "v1"
 new_classes = ["RenderCoordinator"]
 
-[[routes]]
+[[migrations]]
+tag = "v2"
+new_classes = ["SessionDurableObject"]
+
+# =============================================================================
+# PRODUCTION ENVIRONMENT (thumbnail rendering only)
+# =============================================================================
+[env.production]
+name = "bootloader-thumbnail-renderer"
+
+[env.production.vars]
+ENVIRONMENT = "production"
+WORKER_URL = "https://media.bootloader.art"
+
+[[env.production.r2_buckets]]
+binding = "R2_THUMBS"
+bucket_name = "bootloader-thumbs"
+
+[[env.production.r2_buckets]]
+binding = "R2_SANDBOX"
+bucket_name = "bootloader-sandbox"
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "bootloader-db"
+database_id = "placeholder-will-be-set-after-creation"
+
+[[env.production.durable_objects.bindings]]
+name = "RENDO"
+class_name = "RenderCoordinator"
+
+[[env.production.durable_objects.bindings]]
+name = "SESSIONS"
+class_name = "SessionDurableObject"
+
+[[env.production.routes]]
 pattern = "media.bootloader.art"
+custom_domain = true
+
+# =============================================================================
+# STAGING ENVIRONMENT (ghostnet + beta frontend)
+# =============================================================================
+[env.staging]
+name = "bootloader-thumbnail-renderer-staging"
+
+[env.staging.build]
+command = "cd ../apps/web && VITE_MEDIA_CDN_URL= npm run build:ghostnet && rm -rf ../../worker/public && cp -r dist ../../worker/public"
+
+[env.staging.vars]
+ENVIRONMENT = "staging"
+WORKER_URL = "https://beta.bootloader.art"
+AUTH_TOKEN_TTL_SECONDS = "604800"
+INDEXER_ENABLED = "true"
+INDEXER_TZKT_API = "https://api.ghostnet.tzkt.io"
+INDEXER_RPC_URL = "https://rpc.ghostnet.teztnets.com"
+INDEXER_GENERIC_WEB_CONTRACT = "KT19sQFrMxqqHB7oSNXnTehChqBnkggsaRMw"
+INDEXER_LIMIT = "10"
+INDEXER_SLEEP_MS = "0"
+INDEXER_OPERATION_BATCH_SIZE = "5"
+INDEXER_ATTRIBUTE_RETRIES = "4"
+INDEXER_ATTRIBUTE_RETRY_DELAY_MS = "750"
+INDEXER_CONFIRMATIONS = "1"
+
+[env.staging.triggers]
+crons = ["*/1 * * * *"]
+
+[[env.staging.r2_buckets]]
+binding = "R2_THUMBS"
+bucket_name = "bootloader-thumbs"
+
+[[env.staging.r2_buckets]]
+binding = "R2_SANDBOX"
+bucket_name = "bootloader-sandbox"
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "bootloader-staging-db"
+database_id = "fc4984a4-0534-411c-bd76-87549c090654"
+
+[[env.staging.durable_objects.bindings]]
+name = "RENDO"
+class_name = "RenderCoordinator"
+
+[[env.staging.durable_objects.bindings]]
+name = "SESSIONS"
+class_name = "SessionDurableObject"
+
+[[env.staging.routes]]
+pattern = "beta.bootloader.art"
 custom_domain = true

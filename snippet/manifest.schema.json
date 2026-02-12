@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bootloader.art/schemas/boot-web-1.0.0.json",
+  "title": "boot:web@1.0.0 Manifest",
+  "type": "object",
+  "required": ["spec", "entry"],
+  "additionalProperties": false,
+  "properties": {
+    "spec": {
+      "const": "boot:web@1.0.0",
+      "description": "Manifest identifier"
+    },
+    "entry": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Relative path to the project entry point (e.g. index.html)"
+    },
+    "capture": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Viewport sizing and capture hints",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["auto", "trigger"],
+          "default": "auto",
+          "description": "auto = capture after delayMs, trigger = wait for $bootloader.capture()"
+        },
+        "viewPortDimension": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["width", "height"],
+          "properties": {
+            "width": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 8192
+            },
+            "height": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 8192
+            }
+          },
+          "default": {
+            "width": 800,
+            "height": 800
+          }
+        },
+        "delayMs": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 5000,
+          "description": "Delay before capture (auto mode only)"
+        },
+        "target": {
+          "type": "string",
+          "enum": ["auto", "viewport"],
+          "default": "auto"
+        },
+        "selector": {
+          "type": "string",
+          "description": "Optional CSS selector for capture targeting"
+        }
+      }
+    },
+    "animation": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Animation capture settings (outputs GIF)",
+      "required": ["duration", "fps"],
+      "properties": {
+        "duration": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 30000,
+          "description": "Recording duration in milliseconds"
+        },
+        "fps": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 30,
+          "description": "Frames per second"
+        }
+      }
+    }
+  }
+}

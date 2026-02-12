@@ -1,0 +1,11 @@
+{
+  "spec": "boot:web@1.0.0",
+  "entry": "index.html",
+  "capture": {
+    "mode": "auto",
+    "viewPortDimension": {
+      "width": 800,
+      "height": 800
+    }
+  }
+}

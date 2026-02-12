@@ -48,3 +48,31 @@ GET /thumbnail/456?width=300&height=200&n=g
 
 - `CF_ACCOUNT_ID`: Cloudflare account ID
 - `CF_API_TOKEN`: Cloudflare API token with browser rendering permissions
+
+## Generic-Web Indexer (Ghostnet)
+
+The worker includes a cron-driven generic-web metadata indexer (staging only, ghostnet-only rollout).
+
+### Required secrets
+
+- `AUTH_TOKEN_SECRET` (required for wallet-authenticated API bearer tokens)
+- `INDEXER_PRIVATE_KEY` (Tezos key used to sign `set_offchain_metadata`)
+- `FILEBASE_ACCESS_KEY`
+- `FILEBASE_SECRET_KEY`
+- `FILEBASE_BUCKET`
+
+### Optional vars
+
+- `AUTH_TOKEN_TTL_SECONDS`
+- `INDEXER_GENERIC_WEB_CONTRACT`
+- `INDEXER_RPC_URL`
+- `INDEXER_TZKT_API`
+- `INDEXER_LIMIT`
+- `INDEXER_SLEEP_MS`
+- `INDEXER_ATTRIBUTE_RETRIES`
+- `INDEXER_ATTRIBUTE_RETRY_DELAY_MS`
+- `INDEXER_CONFIRMATIONS`
+- `INDEXER_DRY_RUN`
+
+Indexer execution is cron-driven via Wrangler triggers.
+Private upload/session endpoints expect `Authorization: Bearer <token>` from `/auth/verify`.

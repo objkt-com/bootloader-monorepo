@@ -1,0 +1,11 @@
+[project]
+name = "bootloader-monorepo"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "pytezos>=3.17.0",
+    "smartpy-tezos>=0.24.0",
+    "tzmerkle>=0.3.0",
+]

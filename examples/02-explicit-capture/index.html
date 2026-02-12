@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>02 - Explicit Capture Example</title>
+  <script src="./bootloader.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; }
+    body { background: #0a0a0a; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <script>
+    // Synchronous bootloader - works immediately!
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    // Use viewport dimensions (set by extractor from manifest)
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const random = $bootloader.rnd;
+
+    // Simulate complex generation process
+    function generateArtwork() {
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw layered composition
+      for (let layer = 0; layer < 5; layer++) {
+        const numShapes = 20 + random() * 30;
+
+        for (let i = 0; i < numShapes; i++) {
+          const x = random() * canvas.width;
+          const y = random() * canvas.height;
+          const size = random() * 100 + 20;
+          const hue = (layer * 72 + random() * 40) % 360;
+          const alpha = 0.1 + random() * 0.3;
+
+          ctx.fillStyle = `hsla(${hue}, 70%, 60%, ${alpha})`;
+
+          if (random() > 0.5) {
+            ctx.beginPath();
+            ctx.arc(x, y, size, 0, Math.PI * 2);
+            ctx.fill();
+          } else {
+            ctx.fillRect(x - size/2, y - size/2, size, size);
+          }
+        }
+      }
+
+      // Set features for metadata
+      $bootloader.setFeatures({
+        Layers: 5,
+        Style: random() > 0.5 ? 'Circular' : 'Mixed',
+        Density: random() > 0.5 ? 'High' : 'Medium'
+      });
+    }
+
+    // Generate and then explicitly capture
+    generateArtwork();
+
+    // Capture when in capture mode
+    if ($bootloader.isCapture) {
+      $bootloader.capture();
+    }
+  </script>
+</body>
+</html>

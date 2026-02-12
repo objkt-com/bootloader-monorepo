@@ -1,0 +1,16 @@
+{
+  "spec": "boot:web@1.0.0",
+  "entry": "index.html",
+  "capture": {
+    "mode": "trigger",
+    "viewPortDimension": {
+      "width": 800,
+      "height": 600
+    }
+  },
+  "animation": {
+    "mode": "auto",
+    "duration": 3000,
+    "fps": 24
+  }
+}

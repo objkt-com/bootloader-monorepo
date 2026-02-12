@@ -1,0 +1,11 @@
+{
+  "spec": "boot:web@1.0.0",
+  "entry": "index.html",
+  "capture": {
+    "mode": "trigger",
+    "viewPortDimension": {
+      "width": 1024,
+      "height": 1024
+    }
+  }
+}

@@ -1,0 +1,11 @@
+# Built frontend assets
+public/
+
+# Wrangler
+.wrangler/
+
+# Dependencies
+node_modules/
+
+# Local development secrets
+.dev.vars

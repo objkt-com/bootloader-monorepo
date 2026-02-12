@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="./bootloader.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    // Use the seeded RNG for deterministic color
+    const hue = $bootloader.rnd() * 360;
+    ctx.fillStyle = `hsl(${hue}, 70%, 50%)`;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Set features for metadata
+    $bootloader.setFeatures({
+      'Hue': Math.round(hue),
+      'Color Family': hue < 60 ? 'Red/Orange' : hue < 120 ? 'Yellow/Green' : hue < 180 ? 'Green/Cyan' : hue < 240 ? 'Cyan/Blue' : hue < 300 ? 'Blue/Purple' : 'Purple/Red'
+    });
+
+    // Capture when in capture mode
+    // Capture() without args lets the extractor decide how to snapshot
+    if ($bootloader.isCapture) {
+      $bootloader.capture();
+    }
+  </script>
+</body>
+</html>

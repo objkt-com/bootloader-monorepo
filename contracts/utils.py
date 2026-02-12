@@ -3,6 +3,45 @@ import smartpy as sp
 @sp.module
 def bytes_utils():
     # Map a single digit (0..9) to its ASCII byte
+    HEX_CHARS = {
+            sp.bytes("0x00"): sp.bytes("0x30"),
+            sp.bytes("0x01"): sp.bytes("0x31"),
+            sp.bytes("0x02"): sp.bytes("0x32"),
+            sp.bytes("0x03"): sp.bytes("0x33"),
+            sp.bytes("0x04"): sp.bytes("0x34"),
+            sp.bytes("0x05"): sp.bytes("0x35"),
+            sp.bytes("0x06"): sp.bytes("0x36"),
+            sp.bytes("0x07"): sp.bytes("0x37"),
+            sp.bytes("0x08"): sp.bytes("0x38"),
+            sp.bytes("0x09"): sp.bytes("0x39"),
+            sp.bytes("0x0a"): sp.bytes("0x61"),
+            sp.bytes("0x0b"): sp.bytes("0x62"),
+            sp.bytes("0x0c"): sp.bytes("0x63"),
+            sp.bytes("0x0d"): sp.bytes("0x64"),
+            sp.bytes("0x0e"): sp.bytes("0x65"),
+            sp.bytes("0x0f"): sp.bytes("0x66"),
+        }
+
+    def to_hex_ascii(b: sp.bytes) -> sp.bytes:
+        """Convert a byte string into its ASCII-encoded lowercase hex string.
+
+        Example:
+        to_hex_ascii(sp.bytes("0x1a2b")) == sp.bytes("0x31613262")
+        """
+        out = sp.bytes("0x")
+        n_bytes = sp.len(b)
+
+        _h = sp.bytes("0xf0")
+        _l = sp.bytes("0x0f")
+
+        for i in range(n_bytes):
+            byte = sp.slice(i, 1, b).unwrap_some()
+            high = sp.rshift_bytes(sp.and_bytes(byte, _h), 4)
+            low = sp.and_bytes(byte, _l)
+            out += HEX_CHARS[high] + HEX_CHARS[low]
+
+        return out
+    
     def _digit_to_byte(d):
         table = {
             0: sp.bytes("0x30"),

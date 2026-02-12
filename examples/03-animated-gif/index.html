@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>03 - Animated GIF Example</title>
+  <script src="./bootloader.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; position: fixed; }
+    body { background: #000; }
+    canvas { display: block; position: absolute; top: 0; left: 0; }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <script>
+    // Synchronous bootloader - works immediately!
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    // Set canvas dimensions to match viewport exactly
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const random = $bootloader.rnd;
+
+    // Initial clear
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Generate static elements
+    const particles = [];
+    for (let i = 0; i < 30; i++) {
+      particles.push({
+        x: random() * canvas.width,
+        y: random() * canvas.height,
+        vx: (random() - 0.5) * 4,
+        vy: (random() - 0.5) * 4,
+        r: random() * 15 + 5,
+        hue: random() * 360
+      });
+    }
+
+    function draw() {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      particles.forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+
+        if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+        if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+
+        ctx.fillStyle = `hsl(${p.hue}, 70%, 60%)`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    // Animation loop for live preview
+    let frameCount = 0;
+    function animate() {
+      draw();
+      frameCount++;
+      if ($bootloader.isCapture && frameCount === 1) {
+        $bootloader.setFeatures({
+          'Particles': particles.length,
+          'Motion': 'Bouncing'
+        });
+        $bootloader.capture();
+      }
+      if (!$bootloader.isCapture || frameCount < 1000) {
+        requestAnimationFrame(animate);
+      }
+    }
+
+    animate();
+  </script>
+</body>
+</html>

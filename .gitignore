@@ -281,3 +281,4 @@ logs
 # SmartPy specific
 .smartpy/
 smartpy_output/
+.wrangler/

@@ -1,0 +1,6 @@
+packages:
+  - 'apps/*'
+  - 'frontend'
+  - 'open-poc-code/frontend'
+  - 'worker'
+  - 'open-poc-code'

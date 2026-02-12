@@ -1,0 +1,21 @@
+{
+  "name": "bootloader-monorepo",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev:all",
+    "dev:web": "npm run dev --prefix apps/web",
+    "dev:worker": "npm run dev --prefix worker",
+    "dev:all": "concurrently -n web,worker -c blue,green \"npm run dev:web\" \"npm run dev:worker\"",
+    "build": "npm run build --prefix apps/web",
+    "build:web": "npm run build --prefix apps/web",
+    "build:ghostnet": "npm run build:ghostnet --prefix apps/web",
+    "preview": "npm run preview --prefix apps/web",
+    "install:all": "npm install && npm install --prefix apps/web && npm install --prefix worker",
+    "install:web": "npm install --prefix apps/web",
+    "install:worker": "npm install --prefix worker"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "typescript": "^5.6.2"
+  }
+}

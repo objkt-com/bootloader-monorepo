@@ -1,24 +1,39 @@
 {
-  "name": "thumbnail-renderer-worker",
+  "name": "bootloader-worker",
   "version": "1.0.0",
-  "description": "Cloudflare Worker for generating thumbnails using Puppeteer",
-  "main": "src/index.js",
+  "description": "Unified Cloudflare Worker for bootloader.art - thumbnails, sandbox sessions, IPFS proxy, and frontend",
+  "type": "module",
+  "main": "src/index.ts",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "build:frontend:mainnet": "cd ../apps/web && VITE_MEDIA_CDN_URL=https://media.bootloader.art npm run build && rm -rf ../../worker/public && cp -r dist ../../worker/public",
+    "build:frontend:ghostnet": "cd ../apps/web && VITE_MEDIA_CDN_URL=https://media.bootloader.art npm run build:ghostnet && rm -rf ../../worker/public && cp -r dist ../../worker/public",
+    "deploy:beta": "npm run build:frontend:ghostnet && wrangler deploy --env staging",
+    "deploy:thumbnails": "rm -rf public && mkdir -p public && wrangler deploy --env production"
   },
   "dependencies": {
-    "@cloudflare/puppeteer": "^0.0.5"
+    "@cloudflare/puppeteer": "^0.0.5",
+    "@taquito/signer": "^24.0.2",
+    "@taquito/taquito": "^24.0.2",
+    "@taquito/utils": "^24.0.2",
+    "hono": "^4.9.9",
+    "ipfs-car": "^3.0.0",
+    "ipfs-unixfs-importer": "^16.0.1",
+    "jszip": "^3.10.1",
+    "multiformats": "^13.4.1"
   },
   "devDependencies": {
-    "wrangler": "^4.34.0"
+    "@cloudflare/workers-types": "^4.20251004.0",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.42.0"
   },
   "keywords": [
     "cloudflare",
     "worker",
-    "puppeteer",
     "thumbnail",
-    "screenshot"
+    "sandbox",
+    "ipfs",
+    "frontend"
   ],
   "author": "",
   "license": "MIT"
