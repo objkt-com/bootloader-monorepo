@@ -123,7 +123,8 @@ export function GeneratorDetailPage() {
     bootloader: string;
     id: string;
   }>();
-  const { isConnected, tezos, address, authToken } = useWallet();
+  const { isConnected, isConnecting, connect, tezos, address, authToken } =
+    useWallet();
   const { effectiveTheme } = useTheme();
   const { isLarge: useLargeTokenCards } = useTokenCardSize();
   const navigate = useNavigate();
@@ -961,13 +962,24 @@ export function GeneratorDetailPage() {
                 <>
                   <Button
                     size="lg"
-                    disabled={!isConnected || isMinting}
-                    onClick={handleMint}
+                    disabled={isMinting || isConnecting}
+                    onClick={() => {
+                      if (!isConnected) {
+                        void connect();
+                        return;
+                      }
+                      void handleMint();
+                    }}
                   >
                     {isMinting ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Minting...
+                      </>
+                    ) : isConnecting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Connecting...
                       </>
                     ) : isConnected ? (
                       (generator.price ?? 0) > 0
