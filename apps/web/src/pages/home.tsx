@@ -154,6 +154,9 @@ export function HomePage() {
                 event.bootloaderId
               );
               const isMint = event.eventType === "mint";
+              const minterLabel = event.recipientAddress
+                ? event.recipientAlias || formatAddress(event.recipientAddress)
+                : event.creatorAlias || formatAddress(event.creatorAddress || "");
 
               return (
                 <Link
@@ -184,11 +187,7 @@ export function HomePage() {
                       {event.tokenName || `#${event.tokenId}`}
                     </p>
                     <p className="text-xs text-muted-foreground truncate">
-                      {event.recipientAlias ||
-                        event.creatorAlias ||
-                        formatAddress(
-                          event.recipientAddress || event.creatorAddress || ""
-                        )}
+                      {minterLabel}
                       {" · "}
                       {formatTimeAgo(event.timestamp)}
                     </p>

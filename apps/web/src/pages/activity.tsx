@@ -145,11 +145,11 @@ export function ActivityPage() {
                       className="hover:underline"
                     >
                       {isMint
-                        ? event.recipientAlias ||
-                          event.creatorAlias ||
-                          formatAddress(
-                            event.recipientAddress || event.creatorAddress || ""
-                          )
+                        ? event.recipientAddress
+                          ? event.recipientAlias ||
+                            formatAddress(event.recipientAddress)
+                          : event.creatorAlias ||
+                            formatAddress(event.creatorAddress || "")
                         : event.creatorAlias ||
                           formatAddress(event.creatorAddress || "")}
                     </Link>
