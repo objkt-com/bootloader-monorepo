@@ -40,13 +40,13 @@ def get_tezos_storage(**metadata):
 
 def load_lambda_from_name(name):
     # read the Michelson storage text (which should be just "{ ... }")
-    storage_path = glob.glob(f"{name}/*storage.tz")[0]
+    storage_path = glob.glob(f".smartpy/build/{name}/*storage.tz")[0]
     with open(storage_path) as f:
         return f.read().strip()
 
 class Network(StrEnum):
     localnet = 'http://localhost:20000'
-    ghostnet = 'https://ghostnet.tezos.ecadinfra.com'
+    shadownet = 'https://rpc.tzkt.io/shadownet'
     mainnet = 'https://rpc.tzkt.io/mainnet'
 
 class ContractDeployment:
@@ -93,8 +93,8 @@ class ContractDeployment:
             for _ in range(3):
                 time.sleep(1)
                 print(".", end='')
-        elif network == Network.ghostnet:
-            print("Switching to ghostnet")
+        elif network == Network.shadownet:
+            print("Switching to shadownet")
         self.client = self.client.using(network)
     
     def deploy(self):

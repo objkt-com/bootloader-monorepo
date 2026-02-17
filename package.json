@@ -8,7 +8,7 @@
     "dev:all": "concurrently -n web,worker -c blue,green \"npm run dev:web\" \"npm run dev:worker\"",
     "build": "npm run build --prefix apps/web",
     "build:web": "npm run build --prefix apps/web",
-    "build:ghostnet": "npm run build:ghostnet --prefix apps/web",
+    "build:shadownet": "npm run build:shadownet --prefix apps/web",
     "preview": "npm run preview --prefix apps/web",
     "install:all": "npm install && npm install --prefix apps/web && npm install --prefix worker",
     "install:web": "npm install --prefix apps/web",

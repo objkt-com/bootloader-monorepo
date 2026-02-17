@@ -26,7 +26,7 @@ interface WalletContextType {
   disconnect: () => Promise<void>
   tezos: TezosToolkit | null
   contractAddress: string
-  network: 'mainnet' | 'ghostnet'
+  network: 'mainnet' | 'shadownet'
 }
 
 const WalletContext = createContext<WalletContextType | null>(null)
@@ -39,7 +39,7 @@ function getWallet(): BeaconWallet {
       name: 'bootloader:',
       preferredNetwork: import.meta.env.VITE_NETWORK === 'mainnet'
         ? NetworkType.MAINNET
-        : NetworkType.GHOSTNET,
+        : NetworkType.SHADOWNET,
     })
   }
   return wallet
@@ -59,7 +59,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const latestAddressRef = useRef<string | null>(null)
   const latestUserRef = useRef<User | null>(null)
 
-  const network = (import.meta.env.VITE_NETWORK || 'ghostnet') as 'mainnet' | 'ghostnet'
+  const network = (import.meta.env.VITE_NETWORK || 'shadownet') as 'mainnet' | 'shadownet'
   const networkConfig = getNetworkConfig()
   const contractAddress = getContractAddress()
 

@@ -27,8 +27,8 @@ def test():
 
 @sp.add_test()
 def test():
-    scenario = sp.test_scenario(".smartpy/build/lambda_0_0_1_ghostnet")
-    scenario += svg_js.LambdaHelper(svg_js.v0_0_1_ghostnet)
+    scenario = sp.test_scenario(".smartpy/build/lambda_0_0_1_shadownet")
+    scenario += svg_js.LambdaHelper(svg_js.v0_0_1_shadownet)
 
 
 

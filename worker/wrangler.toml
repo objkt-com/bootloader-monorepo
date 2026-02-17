@@ -86,22 +86,22 @@ pattern = "media.bootloader.art"
 custom_domain = true
 
 # =============================================================================
-# STAGING ENVIRONMENT (ghostnet + beta frontend)
+# STAGING ENVIRONMENT (shadownet + beta frontend)
 # =============================================================================
 [env.staging]
 name = "bootloader-thumbnail-renderer-staging"
 
 [env.staging.build]
-command = "cd ../apps/web && VITE_MEDIA_CDN_URL= npm run build:ghostnet && rm -rf ../../worker/public && cp -r dist ../../worker/public"
+command = "cd ../apps/web && VITE_MEDIA_CDN_URL= npm run build:shadownet && rm -rf ../../worker/public && cp -r dist ../../worker/public"
 
 [env.staging.vars]
 ENVIRONMENT = "staging"
 WORKER_URL = "https://beta.bootloader.art"
 AUTH_TOKEN_TTL_SECONDS = "604800"
 INDEXER_ENABLED = "true"
-INDEXER_TZKT_API = "https://api.ghostnet.tzkt.io"
-INDEXER_RPC_URL = "https://rpc.ghostnet.teztnets.com"
-INDEXER_GENERIC_WEB_CONTRACT = "KT19sQFrMxqqHB7oSNXnTehChqBnkggsaRMw"
+INDEXER_TZKT_API = "https://api.shadownet.tzkt.io"
+INDEXER_RPC_URL = "https://rpc.shadownet.teztnets.com"
+INDEXER_GENERIC_WEB_CONTRACT = "KT1SskwiH2dSmeFH7scqvQ58YXTVt7DECuD5"
 INDEXER_LIMIT = "10"
 INDEXER_SLEEP_MS = "0"
 INDEXER_OPERATION_BATCH_SIZE = "5"

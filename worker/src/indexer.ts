@@ -2,12 +2,12 @@ import { GeneratorService, TokenService } from "./services";
 import { storeJsonToIpfs } from "./ipfs-json";
 import type { Bindings } from "./types";
 
-const GHOSTNET_NETWORK = "ghostnet" as const;
-const GHOSTNET_NETWORK_CODE = "g";
-const DEFAULT_GHOSTNET_TZKT_API = "https://api.ghostnet.tzkt.io";
-const DEFAULT_GHOSTNET_RPC_URL = "https://rpc.ghostnet.teztnets.com";
-const DEFAULT_GHOSTNET_GENERIC_WEB_CONTRACT =
-  "KT19sQFrMxqqHB7oSNXnTehChqBnkggsaRMw";
+const SHADOWNET_NETWORK = "shadownet" as const;
+const SHADOWNET_NETWORK_CODE = "g";
+const DEFAULT_SHADOWNET_TZKT_API = "https://api.shadownet.tzkt.io";
+const DEFAULT_SHADOWNET_RPC_URL = "https://rpc.shadownet.teztnets.com";
+const DEFAULT_SHADOWNET_GENERIC_WEB_CONTRACT =
+  "KT1SskwiH2dSmeFH7scqvQ58YXTVt7DECuD5";
 
 interface QueueRowValue {
   generator_id?: unknown;
@@ -59,7 +59,7 @@ export interface IndexerTokenOutcome {
 
 export interface IndexerRunSummary {
   source: "cron" | "manual";
-  network: "ghostnet";
+  network: "shadownet";
   dryRun: boolean;
   contract: string;
   queueSize: number;
@@ -91,7 +91,7 @@ export async function runGenericWebMetadataIndexer(
 
   const summary: IndexerRunSummary = {
     source,
-    network: GHOSTNET_NETWORK,
+    network: SHADOWNET_NETWORK,
     dryRun: config.dryRun,
     contract: config.contract,
     queueSize: 0,
@@ -236,14 +236,14 @@ export async function runGenericWebMetadataIndexer(
 
       const existingToken = await tokenService.getToken(
         tokenId,
-        GHOSTNET_NETWORK,
+        SHADOWNET_NETWORK,
         "generic-web"
       );
       if (!existingToken) {
         await tokenService.storeToken({
           id: tokenId,
           generatorId,
-          network: GHOSTNET_NETWORK,
+          network: SHADOWNET_NETWORK,
           bootloader: "generic-web",
           seed: rawSeed,
           iteration,
@@ -282,7 +282,7 @@ export async function runGenericWebMetadataIndexer(
       }
       const generatorMeta = await generatorService.getGenerator(
         generatorId,
-        GHOSTNET_NETWORK,
+        SHADOWNET_NETWORK,
         "generic-web"
       );
 
@@ -371,12 +371,12 @@ function loadConfig(env: Bindings, options: RunIndexerOptions): IndexerConfig {
   const workerBaseUrl = (env.INDEXER_WORKER_BASE_URL || env.WORKER_URL || "")
     .trim()
     .replace(/\/+$/, "");
-  const tzktBase = (env.INDEXER_TZKT_API || DEFAULT_GHOSTNET_TZKT_API)
+  const tzktBase = (env.INDEXER_TZKT_API || DEFAULT_SHADOWNET_TZKT_API)
     .trim()
     .replace(/\/+$/, "");
-  const rpcUrl = (env.INDEXER_RPC_URL || DEFAULT_GHOSTNET_RPC_URL).trim();
+  const rpcUrl = (env.INDEXER_RPC_URL || DEFAULT_SHADOWNET_RPC_URL).trim();
   const contract = (
-    env.INDEXER_GENERIC_WEB_CONTRACT || DEFAULT_GHOSTNET_GENERIC_WEB_CONTRACT
+    env.INDEXER_GENERIC_WEB_CONTRACT || DEFAULT_SHADOWNET_GENERIC_WEB_CONTRACT
   ).trim();
   const privateKey = (env.INDEXER_PRIVATE_KEY || "").trim();
 
@@ -596,7 +596,7 @@ async function triggerFeatureExtraction(
     `/generic-web/v1/thumbnail/${tokenId}`,
     config.workerBaseUrl
   );
-  url.searchParams.set("n", GHOSTNET_NETWORK_CODE);
+  url.searchParams.set("n", SHADOWNET_NETWORK_CODE);
   url.searchParams.set("v", String(version));
   url.searchParams.set("sync_features", "1");
 
@@ -621,7 +621,7 @@ async function pollTokenAttributes(
   for (let attempt = 0; attempt <= config.attributeRetries; attempt += 1) {
     const token = await tokenService.getTokenWithAttributes(
       tokenId,
-      GHOSTNET_NETWORK,
+      SHADOWNET_NETWORK,
       "generic-web"
     );
     const attrs = (token?.attributes || []).map((entry) => ({

@@ -64,7 +64,7 @@ function GenericWebDocs() {
           example, modify it, and upload.
         </p>
         <div className="mb-6 border border-yellow-500/40 bg-yellow-500/10 rounded-lg p-4 text-sm text-muted-foreground">
-          Generic-web is currently <strong className="text-foreground">Ghostnet-only</strong>.
+          Generic-web is currently <strong className="text-foreground">Shadownet-only</strong>.
           Zip uploads are capped at <strong className="text-foreground">50 MB</strong> for now,
           and parameter payloads are disabled in this rollout.
         </div>

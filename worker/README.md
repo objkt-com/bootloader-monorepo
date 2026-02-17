@@ -22,14 +22,13 @@ GET /{type}/{id}
 - `v` (optional): Version for cache busting (default: "v3")
 - `n` (optional): Network (default: "m")
   - `m`: Mainnet (bootloader.art)
-  - `g`: Ghostnet (ghostnet.bootloader.art)
   - `s`: Shadownet (shadownet.bootloader.art)
 
 #### Examples
 
 ```bash
 GET /generator-thumbnail/123
-GET /thumbnail/456?width=300&height=200&n=g
+GET /thumbnail/456?width=300&height=200&n=s
 ```
 
 ### Responses
@@ -49,9 +48,9 @@ GET /thumbnail/456?width=300&height=200&n=g
 - `CF_ACCOUNT_ID`: Cloudflare account ID
 - `CF_API_TOKEN`: Cloudflare API token with browser rendering permissions
 
-## Generic-Web Indexer (Ghostnet)
+## Generic-Web Indexer (Shadownet)
 
-The worker includes a cron-driven generic-web metadata indexer (staging only, ghostnet-only rollout).
+The worker includes a cron-driven generic-web metadata indexer (staging only, shadownet-only rollout).
 
 ### Required secrets
 

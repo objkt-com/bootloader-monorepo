@@ -64,8 +64,8 @@ export function ProfilePage() {
   };
 
   // Get objkt domain based on network
-  const objktDomain = config.tzktApi.includes("ghostnet")
-    ? "ghostnet.objkt.com"
+  const objktDomain = config.tzktApi.includes("shadownet")
+    ? "shadownet.objkt.com"
     : "objkt.com";
 
   useEffect(() => {

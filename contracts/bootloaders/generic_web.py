@@ -106,7 +106,7 @@ def generic_web():
                 ],
             )
             self.data.platform_fee_bps = sp.nat(1500)
-            self.data.network = sp.bytes("0x67")  # "g" for ghostnet, "m" for mainnet
+            self.data.network = sp.bytes("0x73")  # "s" for shadownet, "m" for mainnet
             self.data.rng_contracts = sp.cast(
                 sp.big_map({}), sp.big_map[sp.address, sp.unit]
             )

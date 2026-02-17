@@ -46,10 +46,10 @@ def deploy_svg_js(network: Network, use_cache: bool, clear_cache: bool, wallet: 
     # Load template fragments
     fragments = get_fragments_from_template("templates/v0.0.1")
 
-    # Try existing randomiser on ghostnet first
+    # Try existing randomiser on testnet first
     print("Deploying randomiser contract")
     randomiser_deployer = ContractDeployment.from_name("randomiser")
-    randomiser_deployer.update_storage({"testnet_mode": network == Network.ghostnet})
+    randomiser_deployer.update_storage({"testnet_mode": network == Network.shadownet})
     randomiser_deployer.set_pytezos_client(pt)
     randomiser_deployer.set_network(network)
 
@@ -65,7 +65,7 @@ def deploy_svg_js(network: Network, use_cache: bool, clear_cache: bool, wallet: 
         name="bootloader:",
         description="open experimental on-chain long-form generative art",
         imageUri="ipfs://bafkreic2zzpvkzfztgwrlavpit2psrip5xcgqfov4hq6ec4r5ds5didxim",
-        homepage=f"https://{'ghostnet.' if network == 'ghostnet' else ''}bootloader.art",
+        homepage=f"https://{'shadownet.' if network == 'shadownet' else ''}bootloader.art",
     )
 
     # Deploy bootloader contract
@@ -83,10 +83,10 @@ def deploy_svg_js(network: Network, use_cache: bool, clear_cache: bool, wallet: 
     nft_deployer.set_pytezos_client(pt)
     nft_deployer.set_network(network)
 
-    if args.use_cache:
+    if use_cache:
         nft_deployer.use_cache()
 
-    if args.clear_cache:
+    if clear_cache:
         nft_deployer.clear_cache()
 
     nft_address = nft_deployer.deploy()
@@ -96,8 +96,8 @@ def deploy_svg_js(network: Network, use_cache: bool, clear_cache: bool, wallet: 
 
     # Load the lambda function
     bootloader = load_lambda_from_name("lambda_0_0_1")
-    if network == "ghostnet":
-        bootloader = load_lambda_from_name("lambda_0_0_1_ghostnet")
+    if network == "shadownet":
+        bootloader = load_lambda_from_name("lambda_0_0_1_shadownet")
 
     # Add bootloader to contract
     operation_hash = (
@@ -136,10 +136,10 @@ def deploy_generic_web(
     # Initialize PyTezos client
     pt = pytezos.using(key=wallet.secret_key(), shell=network)
 
-    # Try existing randomiser on ghostnet first
+    # Try existing randomiser on shadownet first
     print("Deploying randomiser contract")
     randomiser_deployer = ContractDeployment.from_name("randomiser")
-    randomiser_deployer.update_storage({"testnet_mode": network == Network.ghostnet})
+    randomiser_deployer.update_storage({"testnet_mode": network == Network.shadownet})
     randomiser_deployer.set_pytezos_client(pt)
     randomiser_deployer.set_network(network)
 
@@ -155,7 +155,7 @@ def deploy_generic_web(
         name="bootloader: generic-web",
         description="open experimental on-chain long-form generative art",
         imageUri="ipfs://bafkreic2zzpvkzfztgwrlavpit2psrip5xcgqfov4hq6ec4r5ds5didxim",
-        homepage=f"https://{'ghostnet.' if network == 'ghostnet' else ''}bootloader.art",
+        homepage=f"https://{'shadownet.' if network == 'shadownet' else ''}bootloader.art",
     )
 
     # Deploy bootloader contract
@@ -170,6 +170,7 @@ def deploy_generic_web(
             "rng_contracts": {randomiser_address: None},
             "treasury": wallet.public_key_hash(),
             "platform_fee_bps": 2_000,
+            "network": b"s" if network == Network.shadownet else b"m",  # "s" for shadownet, "m" for mainnet
         }
     )
     bootloader_deployer.set_pytezos_client(pt)
@@ -211,9 +212,9 @@ def main():
     parser = argparse.ArgumentParser(description="Deploy bootloader contracts to Tezos")
     parser.add_argument(
         "--network",
-        choices=["ghostnet", "mainnet"],
+        choices=["shadownet", "mainnet"],
         required=True,
-        help="Network to deploy to (ghostnet or mainnet)",
+        help="Network to deploy to (shadownet or mainnet)",
     )
     parser.add_argument(
         "--use-cache",
@@ -256,10 +257,10 @@ def main():
     args = parser.parse_args()
 
     # Get network
-    if args.network == "ghostnet":
-        network = Network.ghostnet
-    elif args.network == "mainnet":
+    if args.network == "mainnet":
         network = Network.mainnet
+    elif args.network == 'shadownet':
+        network = Network.shadownet
 
     # Get wallet
     if args.test_wallet:

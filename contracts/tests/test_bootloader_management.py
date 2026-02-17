@@ -95,7 +95,7 @@ def test_add_bootloader():
     contract.add_bootloader(
         version=sp.bytes("0x76302e302e32"),  # "v0.0.2"
         fragments=test_fragments,
-        fun=bootloader.v0_0_1_ghostnet,
+        fun=bootloader.v0_0_1_shadownet,
         storage_limits=sp.record(code=40000, name=600, desc=10000, author=60),
         _sender=admin
     )
@@ -330,11 +330,11 @@ def test_multiple_bootloaders():
         _sender=admin
     )
 
-    # Add second bootloader (ghostnet version)
+    # Add second bootloader (shadownet version)
     contract.add_bootloader(
-        version=sp.bytes("0x76302e302e312d676e"),  # "v0.0.1-gn"
+        version=sp.bytes("0x76302e302e312d736e"),  # "v0.0.1-sn"
         fragments=test_fragments,
-        fun=bootloader.v0_0_1_ghostnet,
+        fun=bootloader.v0_0_1_shadownet,
         storage_limits=sp.record(code=40000, name=600, desc=10000, author=60),
         _sender=admin
     )
@@ -351,7 +351,7 @@ def test_multiple_bootloaders():
         _sender=alice
     )
 
-    # Generator with ghostnet bootloader
+    # Generator with shadownet bootloader
     contract.create_generator(
         name=sp.bytes("0x47686f73746e65742047656e"),
         description=sp.bytes("0x47686f73746e65742067656e657261746f72"),

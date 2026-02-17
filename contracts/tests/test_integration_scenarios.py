@@ -469,7 +469,7 @@ def test_platform_evolution_scenario():
     contract.add_bootloader(
         version=sp.bytes("0x76312e302e30"),  # v1.0.0
         fragments=test_fragments,
-        fun=bootloader.v0_0_1_ghostnet,
+        fun=bootloader.v0_0_1_shadownet,
         storage_limits=sp.record(code=30000, name=500, desc=8000, author=50),
         _sender=admin
     )

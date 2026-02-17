@@ -4,11 +4,11 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "vite --mode ghostnet",
-    "dev:ghostnet": "vite --mode ghostnet",
+    "dev": "vite --mode shadownet",
+    "dev:shadownet": "vite --mode shadownet",
     "dev:mainnet": "vite --mode mainnet",
     "build": "tsc && vite build --mode mainnet",
-    "build:ghostnet": "tsc && vite build --mode ghostnet",
+    "build:shadownet": "tsc && vite build --mode shadownet",
     "preview": "vite preview"
   },
   "dependencies": {

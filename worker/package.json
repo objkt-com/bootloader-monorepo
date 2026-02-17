@@ -7,8 +7,8 @@
   "scripts": {
     "dev": "wrangler dev",
     "build:frontend:mainnet": "cd ../apps/web && VITE_MEDIA_CDN_URL=https://media.bootloader.art npm run build && rm -rf ../../worker/public && cp -r dist ../../worker/public",
-    "build:frontend:ghostnet": "cd ../apps/web && VITE_MEDIA_CDN_URL=https://media.bootloader.art npm run build:ghostnet && rm -rf ../../worker/public && cp -r dist ../../worker/public",
-    "deploy:beta": "npm run build:frontend:ghostnet && wrangler deploy --env staging",
+    "build:frontend:shadownet": "cd ../apps/web && VITE_MEDIA_CDN_URL=https://media.bootloader.art npm run build:shadownet && rm -rf ../../worker/public && cp -r dist ../../worker/public",
+    "deploy:beta": "npm run build:frontend:shadownet && wrangler deploy --env staging",
     "deploy:thumbnails": "rm -rf public && mkdir -p public && wrangler deploy --env production"
   },
   "dependencies": {

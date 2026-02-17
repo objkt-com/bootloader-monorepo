@@ -297,14 +297,14 @@ export function GeneratorDetailPage() {
 
   const triggerIndexerForToken = async (tokenId: string) => {
     if (!authToken) return;
-    if (CONFIG.network !== "ghostnet") return;
+    if (CONFIG.network !== "shadownet") return;
 
     try {
       const baseUrl = CONFIG.sandboxWorkerUrl || "";
       const response = await fetch(
         `${baseUrl}/generic-web/v1/indexer/tokens/${encodeURIComponent(
           tokenId
-        )}/trigger?network=ghostnet`,
+        )}/trigger?network=shadownet`,
         {
           method: "POST",
           headers: {

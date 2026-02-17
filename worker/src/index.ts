@@ -297,9 +297,9 @@ app.patch("/auth/user/:userId", async (c) => {
 // Used by frontend immediately after mint to reduce lag before traits/metadata appear.
 app.post("/generic-web/v1/indexer/tokens/:id/trigger", async (c) => {
   const tokenId = Number(c.req.param("id"));
-  const network = (c.req.query("network") || "ghostnet") as
+  const network = (c.req.query("network") || "shadownet") as
     | "mainnet"
-    | "ghostnet";
+    | "shadownet";
   const wait = c.req.query("wait") === "1";
   const dryRun = c.req.query("dryRun") === "1";
 
@@ -307,8 +307,8 @@ app.post("/generic-web/v1/indexer/tokens/:id/trigger", async (c) => {
     return c.json({ error: "Invalid token ID" }, 400);
   }
 
-  if (network !== "ghostnet") {
-    return c.json({ error: "Indexer currently supports ghostnet only" }, 400);
+  if (network !== "shadownet") {
+    return c.json({ error: "Indexer currently supports shadownet only" }, 400);
   }
 
   try {
@@ -383,7 +383,7 @@ app.get("/:bootloader/v1/tokens/:id/attributes", async (c) => {
   const tokenId = Number(c.req.param("id"));
   const network = (c.req.query("network") || "mainnet") as
     | "mainnet"
-    | "ghostnet";
+    | "shadownet";
 
   if (!["svg-js", "generic-web"].includes(bootloader)) {
     return c.json({ error: "Invalid bootloader" }, 400);
@@ -421,7 +421,7 @@ app.get("/tokens/:id/attributes", async (c) => {
   const tokenId = Number(c.req.param("id"));
   const network = (c.req.query("network") || "mainnet") as
     | "mainnet"
-    | "ghostnet";
+    | "shadownet";
 
   if (Number.isNaN(tokenId)) {
     return c.json({ error: "Invalid token ID" }, 400);
@@ -455,7 +455,7 @@ app.get("/:bootloader/v1/generators/:id/attributes", async (c) => {
   const generatorId = Number(c.req.param("id"));
   const network = (c.req.query("network") || "mainnet") as
     | "mainnet"
-    | "ghostnet";
+    | "shadownet";
 
   if (!["svg-js", "generic-web"].includes(bootloader)) {
     return c.json({ error: "Invalid bootloader" }, 400);
@@ -492,7 +492,7 @@ app.get("/:bootloader/v1/generators/:id/attributes/:name/values", async (c) => {
   const attributeName = c.req.param("name");
   const network = (c.req.query("network") || "mainnet") as
     | "mainnet"
-    | "ghostnet";
+    | "shadownet";
 
   if (!["svg-js", "generic-web"].includes(bootloader)) {
     return c.json({ error: "Invalid bootloader" }, 400);
@@ -530,7 +530,7 @@ app.post("/:bootloader/v1/generators/:id/tokens/search", async (c) => {
   const generatorId = Number(c.req.param("id"));
   const network = (c.req.query("network") || "mainnet") as
     | "mainnet"
-    | "ghostnet";
+    | "shadownet";
   const limit = Math.min(Number(c.req.query("limit") || 100), 500);
   const offset = Number(c.req.query("offset") || 0);
 
@@ -594,7 +594,7 @@ app.get("/generators/:id/attributes", async (c) => {
   const generatorId = Number(c.req.param("id"));
   const network = (c.req.query("network") || "mainnet") as
     | "mainnet"
-    | "ghostnet";
+    | "shadownet";
 
   if (Number.isNaN(generatorId)) {
     return c.json({ error: "Invalid generator ID" }, 400);
@@ -619,7 +619,7 @@ app.get("/generators/:id/attributes/:name/values", async (c) => {
   const attributeName = c.req.param("name");
   const network = (c.req.query("network") || "mainnet") as
     | "mainnet"
-    | "ghostnet";
+    | "shadownet";
 
   if (Number.isNaN(generatorId)) {
     return c.json({ error: "Invalid generator ID" }, 400);
@@ -644,7 +644,7 @@ app.post("/generators/:id/tokens/search", async (c) => {
   const generatorId = Number(c.req.param("id"));
   const network = (c.req.query("network") || "mainnet") as
     | "mainnet"
-    | "ghostnet";
+    | "shadownet";
   const limit = Math.min(Number(c.req.query("limit") || 100), 500);
   const offset = Number(c.req.query("offset") || 0);
 
@@ -691,7 +691,7 @@ app.get("/:bootloader/v1/generators/:id/metadata", async (c) => {
   const generatorId = Number(c.req.param("id"));
   const network = (c.req.query("network") || "mainnet") as
     | "mainnet"
-    | "ghostnet";
+    | "shadownet";
 
   if (!["svg-js", "generic-web"].includes(bootloader)) {
     return c.json({ error: "Invalid bootloader" }, 400);
@@ -735,7 +735,7 @@ app.post("/:bootloader/v1/generators/:id/metadata", async (c) => {
   const generatorId = Number(c.req.param("id"));
   const network = (c.req.query("network") || "mainnet") as
     | "mainnet"
-    | "ghostnet";
+    | "shadownet";
 
   if (!["svg-js", "generic-web"].includes(bootloader)) {
     return c.json({ error: "Invalid bootloader" }, 400);
@@ -1378,22 +1378,22 @@ const TRANSPARENT_PNG = decodeBase64(
 
 type BootloaderType = "svg-js" | "generic-web";
 
-const TZKT_API_BY_NETWORK: Record<"mainnet" | "ghostnet", string> = {
+const TZKT_API_BY_NETWORK: Record<"mainnet" | "shadownet", string> = {
   mainnet: "https://api.tzkt.io",
-  ghostnet: "https://api.ghostnet.tzkt.io",
+  shadownet: "https://api.shadownet.tzkt.io",
 };
 
 const GENERIC_WEB_CONTRACT_BY_NETWORK: Record<
-  "mainnet" | "ghostnet",
+  "mainnet" | "shadownet",
   string | null
 > = {
   mainnet: null,
-  ghostnet: "KT19sQFrMxqqHB7oSNXnTehChqBnkggsaRMw",
+  shadownet: "KT1SskwiH2dSmeFH7scqvQ58YXTVt7DECuD5",
 };
 
 const GENERIC_WEB_BIGMAP_POINTERS_CACHE_TTL_MS = 60_000;
 const genericWebBigmapPointersCache = new Map<
-  "mainnet" | "ghostnet",
+  "mainnet" | "shadownet",
   { tokenExtraPtr: number; ledgerPtr: number | null; cachedAtMs: number }
 >();
 
@@ -1475,7 +1475,7 @@ async function handleThumbnailRequest(
   const requestedVersion = parseThumbnailVersion(url.searchParams.get("v"));
   let resolvedVersion = requestedVersion;
   const tokenIdNumber = Number(id);
-  const tokenNetwork = network === "g" ? "ghostnet" : "mainnet";
+  const tokenNetwork = network === "g" ? "shadownet" : "mainnet";
 
   if (
     resolvedVersion == null &&
@@ -1528,8 +1528,8 @@ async function handleThumbnailRequest(
 
   // Determine the base URL and whether to use new embed routes or legacy routes
   // - beta.bootloader.art (new frontend): has /embed/* routes, supports all bootloaders
-  // - bootloader.art, ghostnet.bootloader.art (old frontend): has /thumbnail/* and /generator-thumbnail/* routes, svg-js only
-  const usesNewFrontend = network === "g"; // Only beta (ghostnet routed to beta.bootloader.art) uses new frontend
+  // - bootloader.art, shadownet.bootloader.art (old frontend): has /thumbnail/* and /generator-thumbnail/* routes, svg-js only
+  const usesNewFrontend = network === "g"; // Only beta (shadownet routed to beta.bootloader.art) uses new frontend
 
   const baseUrl =
     network === "g"
@@ -1545,7 +1545,7 @@ async function handleThumbnailRequest(
   if (type === "generator-thumbnail" && bootloader === "generic-web") {
     try {
       const generatorService = new GeneratorService(c.env.DB);
-      const dbNetwork = network === "g" ? "ghostnet" : "mainnet";
+      const dbNetwork = network === "g" ? "shadownet" : "mainnet";
       const generator = await generatorService.getGenerator(
         Number(id),
         dbNetwork,
@@ -1859,7 +1859,7 @@ function extractBytesFromOption(value: unknown): string | null {
 }
 
 async function fetchGenericWebTokenQueueInfo(
-  network: "mainnet" | "ghostnet",
+  network: "mainnet" | "shadownet",
   tokenId: number,
   options?: { includeOwner?: boolean }
 ): Promise<{
@@ -1975,7 +1975,7 @@ async function storeTokenFeatures(
   env: Bindings,
   params: {
     tokenId: number;
-    network: "mainnet" | "ghostnet";
+    network: "mainnet" | "shadownet";
     bootloader: "svg-js" | "generic-web";
     featuresJson: string;
   }

@@ -104,7 +104,7 @@ export function WalletButton() {
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <a
-            href={`https://${network === 'mainnet' ? '' : 'ghostnet.'}tzkt.io/${address}`}
+            href={`https://${network === 'mainnet' ? '' : 'shadownet.'}tzkt.io/${address}`}
             target="_blank"
             rel="noopener noreferrer"
           >

@@ -7,7 +7,7 @@ import type { D1Database } from '@cloudflare/workers-types';
 
 export interface Generator {
   id: number;
-  network: 'mainnet' | 'ghostnet';
+  network: 'mainnet' | 'shadownet';
   bootloader: 'svg-js' | 'generic-web';
   name: string | null;
   artifactCid: string | null;
@@ -22,7 +22,7 @@ export interface Generator {
 
 export interface StoreGeneratorParams {
   id: number;
-  network: 'mainnet' | 'ghostnet';
+  network: 'mainnet' | 'shadownet';
   bootloader: 'svg-js' | 'generic-web';
   name?: string;
   artifactCid?: string;
@@ -90,7 +90,7 @@ export class GeneratorService {
    */
   async getGenerator(
     id: number,
-    network: 'mainnet' | 'ghostnet',
+    network: 'mainnet' | 'shadownet',
     bootloader: 'svg-js' | 'generic-web'
   ): Promise<Generator | null> {
     const result = await this.db
@@ -123,7 +123,7 @@ export class GeneratorService {
 
     return {
       id: result.id,
-      network: result.network as 'mainnet' | 'ghostnet',
+      network: result.network as 'mainnet' | 'shadownet',
       bootloader: result.bootloader as 'svg-js' | 'generic-web',
       name: result.name,
       artifactCid: result.artifact_cid,
@@ -142,7 +142,7 @@ export class GeneratorService {
    */
   async updateGenerator(
     id: number,
-    network: 'mainnet' | 'ghostnet',
+    network: 'mainnet' | 'shadownet',
     bootloader: 'svg-js' | 'generic-web',
     params: UpdateGeneratorParams
   ): Promise<void> {
@@ -197,7 +197,7 @@ export class GeneratorService {
    */
   async getGeneratorsByCreator(
     creatorAddress: string,
-    network: 'mainnet' | 'ghostnet'
+    network: 'mainnet' | 'shadownet'
   ): Promise<Generator[]> {
     const result = await this.db
       .prepare(
@@ -226,7 +226,7 @@ export class GeneratorService {
 
     return (result.results || []).map((row) => ({
       id: row.id,
-      network: row.network as 'mainnet' | 'ghostnet',
+      network: row.network as 'mainnet' | 'shadownet',
       bootloader: row.bootloader as 'svg-js' | 'generic-web',
       name: row.name,
       artifactCid: row.artifact_cid,

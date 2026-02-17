@@ -56,7 +56,7 @@ CREATE INDEX IF NOT EXISTS idx_auth_nonces_expires_at ON auth_nonces(expires_at)
 -- Generators table to store generator metadata
 CREATE TABLE IF NOT EXISTS generators (
   id INTEGER NOT NULL,                          -- On-chain generator ID
-  network TEXT NOT NULL DEFAULT 'mainnet',      -- 'mainnet' or 'ghostnet'
+  network TEXT NOT NULL DEFAULT 'mainnet',      -- 'mainnet' or 'shadownet'
   bootloader TEXT NOT NULL DEFAULT 'svg-js',    -- 'svg-js' or 'generic-web'
   name TEXT,                                    -- Generator name
   artifact_cid TEXT,                            -- IPFS CID of the project archive
@@ -79,7 +79,7 @@ CREATE INDEX IF NOT EXISTS idx_generators_creator ON generators(creator_address)
 CREATE TABLE IF NOT EXISTS tokens (
   id INTEGER PRIMARY KEY,                    -- On-chain token ID
   generator_id INTEGER NOT NULL,             -- Generator/collection this token belongs to
-  network TEXT NOT NULL DEFAULT 'mainnet',   -- 'mainnet' or 'ghostnet'
+  network TEXT NOT NULL DEFAULT 'mainnet',   -- 'mainnet' or 'shadownet'
   bootloader TEXT NOT NULL DEFAULT 'svg-js', -- 'svg-js' or 'generic-web'
   seed TEXT,                                 -- Seed used to generate the token
   iteration INTEGER,                         -- Iteration number

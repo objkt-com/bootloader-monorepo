@@ -7,35 +7,35 @@ export const NETWORKS = {
     tzktApi: "https://api.tzkt.io",
     objktApi: "https://data.objkt.com/v3/graphql",
   },
-  ghostnet: {
-    name: "Ghostnet",
-    rpcUrl: "https://rpc.ghostnet.teztnets.com",
-    tzktApi: "https://api.ghostnet.tzkt.io",
-    objktApi: "https://data.ghostnet.objkt.com/v3/graphql",
+  shadownet: {
+    name: "Shadownet",
+    rpcUrl: "https://rpc.shadownet.teztnets.com",
+    tzktApi: "https://api.shadownet.tzkt.io",
+    objktApi: "https://data.shadownet.objkt.com/v3/graphql",
   },
 } as const;
 
 export const CONFIG = {
-  // Network configuration - use environment variable or default to ghostnet
-  network: (import.meta.env.VITE_NETWORK || "ghostnet") as
+  // Network configuration - use environment variable or default to shadownet
+  network: (import.meta.env.VITE_NETWORK || "shadownet") as
     | "mainnet"
-    | "ghostnet",
+    | "shadownet",
 
   // Contract addresses for svg-js bootloader (also the main FA2 contract)
   contracts: {
-    ghostnet: "KT1Cn7CvFueX5ozjUx14BZeN6RxGzED2uR2x",
+    shadownet: "KT1M34LsFSPvBqCpE8DH3TVvf2PDqMbGhCfu",
     mainnet: "KT1CB4MYiAViCuXWBU961x7LjQXGeA8SnQwt",
   },
 
   // Contract addresses for generic-web bootloader (separate contract)
   genericWebContracts: {
-    ghostnet: "KT19sQFrMxqqHB7oSNXnTehChqBnkggsaRMw",
+    shadownet: "KT1SskwiH2dSmeFH7scqvQ58YXTVt7DECuD5",
     mainnet: "", // TODO: Deploy mainnet generic-web contract
   },
 
   // RNG contract addresses (used by generic-web bootloader)
   rngContracts: {
-    ghostnet: "KT1Vha91b4rvsmf7yRCkkuWVFNQgtSXon1V5",
+    shadownet: "KT1DceHLi4C1QipnTSUjUE5PD2MMr6qjFW3a",
     mainnet: "", // TODO: Deploy mainnet RNG contract
   },
 
@@ -76,7 +76,7 @@ export function getNetworkConfig() {
   const objktUrl =
     CONFIG.network === "mainnet"
       ? "https://objkt.com"
-      : "https://ghostnet.objkt.com";
+      : "https://shadownet.objkt.com";
 
   return {
     ...network,
@@ -88,7 +88,7 @@ export function getNetworkConfig() {
 /**
  * Get TzKT explorer base URL (non-API host), e.g.
  * - https://api.tzkt.io -> https://tzkt.io
- * - https://api.ghostnet.tzkt.io -> https://ghostnet.tzkt.io
+ * - https://api.shadownet.tzkt.io -> https://shadownet.tzkt.io
  */
 export function getTzktExplorerBaseUrl(): string {
   const { tzktApi } = getNetworkConfig();
@@ -128,10 +128,10 @@ export function getContractAddressForBootloader(
 
 /**
  * Get the network code for thumbnail URLs
- * m = mainnet, g = ghostnet
+ * m = mainnet, s = shadownet
  */
-export function getNetworkCode(): "m" | "g" {
-  return CONFIG.network === "mainnet" ? "m" : "g";
+export function getNetworkCode(): "m" | "s" {
+  return CONFIG.network === "mainnet" ? "m" : "s";
 }
 
 /**

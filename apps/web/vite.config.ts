@@ -21,7 +21,7 @@ export default defineConfig(({ mode }) => ({
     },
   },
   define: {
-    'import.meta.env.VITE_NETWORK': JSON.stringify(mode === 'mainnet' ? 'mainnet' : 'ghostnet'),
+    'import.meta.env.VITE_NETWORK': JSON.stringify(mode === 'mainnet' ? 'mainnet' : 'shadownet'),
   },
   server: {
     port: 5173,

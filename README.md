@@ -22,8 +22,8 @@ _getting_started:
     mov     %rax, TEZOS_PRIVATE_KEY  ; load private key from env
     test    %rax, %rax          ; check if key exists
     jz      key_error           ; jump if null
-    mov     %rsi, ghostnet      ; set network parameter
-    call    deploy_py           ; python deploy.py --network ghostnet
+    mov     %rsi, shadownet     ; set network parameter
+    call    deploy_py           ; python deploy.py --network shadownet
 
     ; run frontend
     lea     %rdi, [frontend]    ; load frontend directory
@@ -43,7 +43,7 @@ _objkt_labs:
     compile_py:     db "compile.py", 0
     deploy_py:      db "deploy.py", 0
     frontend:       db "frontend", 0
-    ghostnet:       db "ghostnet", 0
+    shadownet:      db "shadownet", 0
 
 .section .bss
     buffer:         resb 256    ; reserve buffer space

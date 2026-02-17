@@ -3,7 +3,7 @@ import type { D1Database } from '@cloudflare/workers-types';
 export interface Token {
   id: number;
   generatorId: number;
-  network: 'mainnet' | 'ghostnet';
+  network: 'mainnet' | 'shadownet';
   bootloader: 'svg-js' | 'generic-web';
   seed: string | null;
   iteration: number | null;
@@ -38,7 +38,7 @@ export interface TokenWithAttributes extends Token {
 export interface StoreTokenParams {
   id: number;
   generatorId: number;
-  network: 'mainnet' | 'ghostnet';
+  network: 'mainnet' | 'shadownet';
   bootloader: 'svg-js' | 'generic-web';
   seed?: string | null;
   iteration?: number | null;

@@ -405,7 +405,7 @@ export function useTokenFeatures(
     const primaryNetwork = CONFIG.network
 
     const fetchAttributes = async (
-      network: 'mainnet' | 'ghostnet'
+      network: 'mainnet' | 'shadownet'
     ): Promise<TokenAttribute[] | null> => {
       const url = `${base}/${bootloaderId}/v1/tokens/${tokenId}/attributes?network=${network}`
       const response = await fetch(url)
@@ -458,7 +458,7 @@ export function useTokenFeatures(
           let attributes = await fetchAttributes(primaryNetwork)
           // Temporary compatibility path:
           // some older feature writes may have been indexed under mainnet when `n` was missing.
-          if (!attributes && primaryNetwork === 'ghostnet') {
+          if (!attributes && primaryNetwork === 'shadownet') {
             attributes = await fetchAttributes('mainnet')
           }
 

@@ -51,7 +51,7 @@ export function EmbedGeneratorPage() {
       try {
         const networkConfig = CONFIG.network === 'mainnet'
           ? { tzktApi: 'https://api.tzkt.io' }
-          : { tzktApi: 'https://api.ghostnet.tzkt.io' }
+          : { tzktApi: 'https://api.shadownet.tzkt.io' }
 
         // Get contract address based on bootloader
         const contractAddress = bootloader === 'generic-web'

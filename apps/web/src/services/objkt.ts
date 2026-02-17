@@ -61,9 +61,9 @@ export interface OwnedToken {
  */
 function getObjktApiUrl(): string {
   const networkConfig = getNetworkConfig()
-  // Use ghostnet API for ghostnet, mainnet API for mainnet
-  return networkConfig.tzktApi.includes('ghostnet')
-    ? 'https://data.ghostnet.objkt.com/v3/graphql'
+  // Use shadownet API for shadownet, mainnet API for mainnet
+  return networkConfig.tzktApi.includes('shadownet')
+    ? 'https://data.shadownet.objkt.com/v3/graphql'
     : 'https://data.objkt.com/v3/graphql'
 }
 
