@@ -1475,7 +1475,9 @@ async function handleThumbnailRequest(
   const requestedVersion = parseThumbnailVersion(url.searchParams.get("v"));
   let resolvedVersion = requestedVersion;
   const tokenIdNumber = Number(id);
-  const tokenNetwork = network === "g" ? "shadownet" : "mainnet";
+  // Accept legacy "g" code for shadownet, but "s" is the canonical code.
+  const isShadownet = network === "s" || network === "g";
+  const tokenNetwork = isShadownet ? "shadownet" : "mainnet";
 
   if (
     resolvedVersion == null &&
@@ -1527,16 +1529,12 @@ async function handleThumbnailRequest(
   };
 
   // Determine the base URL and whether to use new embed routes or legacy routes
-  // - beta.bootloader.art (new frontend): has /embed/* routes, supports all bootloaders
-  // - bootloader.art, shadownet.bootloader.art (old frontend): has /thumbnail/* and /generator-thumbnail/* routes, svg-js only
-  const usesNewFrontend = network === "g"; // Only beta (shadownet routed to beta.bootloader.art) uses new frontend
-
-  const baseUrl =
-    network === "g"
-      ? "https://beta.bootloader.art"
-      : network === "s"
-      ? "https://shadownet.bootloader.art"
-      : "https://bootloader.art";
+  // - shadownet.bootloader.art (new frontend): has /embed/* routes, supports all bootloaders
+  // - bootloader.art (old frontend): has /thumbnail/* and /generator-thumbnail/* routes, svg-js only
+  const usesNewFrontend = isShadownet;
+  const baseUrl = usesNewFrontend
+    ? "https://shadownet.bootloader.art"
+    : "https://bootloader.art";
 
   let targetUrl: URL;
 
@@ -1545,7 +1543,7 @@ async function handleThumbnailRequest(
   if (type === "generator-thumbnail" && bootloader === "generic-web") {
     try {
       const generatorService = new GeneratorService(c.env.DB);
-      const dbNetwork = network === "g" ? "shadownet" : "mainnet";
+      const dbNetwork = tokenNetwork;
       const generator = await generatorService.getGenerator(
         Number(id),
         dbNetwork,

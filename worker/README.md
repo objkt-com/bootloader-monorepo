@@ -23,6 +23,7 @@ GET /{type}/{id}
 - `n` (optional): Network (default: "m")
   - `m`: Mainnet (bootloader.art)
   - `s`: Shadownet (shadownet.bootloader.art)
+  - `g`: Legacy shadownet alias (supported for backwards compatibility)
 
 #### Examples
 

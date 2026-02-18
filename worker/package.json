@@ -7,9 +7,11 @@
   "scripts": {
     "dev": "wrangler dev",
     "build:frontend:mainnet": "cd ../apps/web && VITE_MEDIA_CDN_URL=https://media.bootloader.art npm run build && rm -rf ../../worker/public && cp -r dist ../../worker/public",
-    "build:frontend:shadownet": "cd ../apps/web && VITE_MEDIA_CDN_URL=https://media.bootloader.art npm run build:shadownet && rm -rf ../../worker/public && cp -r dist ../../worker/public",
-    "deploy:beta": "npm run build:frontend:shadownet && wrangler deploy --env staging",
-    "deploy:thumbnails": "rm -rf public && mkdir -p public && wrangler deploy --env production"
+    "build:frontend:shadownet": "cd ../apps/web && VITE_MEDIA_CDN_URL=https://shadownet.bootloader.art npm run build:shadownet && rm -rf ../../worker/public && cp -r dist ../../worker/public",
+    "deploy:shadownet": "wrangler deploy --env staging",
+    "deploy:beta": "npm run deploy:shadownet",
+    "deploy:mainnet": "rm -rf public && mkdir -p public && wrangler deploy --env production",
+    "deploy:thumbnails": "npm run deploy:mainnet"
   },
   "dependencies": {
     "@cloudflare/puppeteer": "^0.0.5",

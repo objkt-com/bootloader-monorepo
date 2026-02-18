@@ -86,7 +86,7 @@ pattern = "media.bootloader.art"
 custom_domain = true
 
 # =============================================================================
-# STAGING ENVIRONMENT (shadownet + beta frontend)
+# STAGING ENVIRONMENT (shadownet)
 # =============================================================================
 [env.staging]
 name = "bootloader-thumbnail-renderer-staging"
@@ -96,7 +96,7 @@ command = "cd ../apps/web && VITE_MEDIA_CDN_URL= npm run build:shadownet && rm -
 
 [env.staging.vars]
 ENVIRONMENT = "staging"
-WORKER_URL = "https://beta.bootloader.art"
+WORKER_URL = "https://shadownet.bootloader.art"
 AUTH_TOKEN_TTL_SECONDS = "604800"
 INDEXER_ENABLED = "true"
 INDEXER_TZKT_API = "https://api.shadownet.tzkt.io"
@@ -134,5 +134,5 @@ name = "SESSIONS"
 class_name = "SessionDurableObject"
 
 [[env.staging.routes]]
-pattern = "beta.bootloader.art"
+pattern = "shadownet.bootloader.art"
 custom_domain = true

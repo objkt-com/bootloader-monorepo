@@ -3,7 +3,7 @@ import { storeJsonToIpfs } from "./ipfs-json";
 import type { Bindings } from "./types";
 
 const SHADOWNET_NETWORK = "shadownet" as const;
-const SHADOWNET_NETWORK_CODE = "g";
+const SHADOWNET_NETWORK_CODE = "s";
 const DEFAULT_SHADOWNET_TZKT_API = "https://api.shadownet.tzkt.io";
 const DEFAULT_SHADOWNET_RPC_URL = "https://rpc.shadownet.teztnets.com";
 const DEFAULT_SHADOWNET_GENERIC_WEB_CONTRACT =
