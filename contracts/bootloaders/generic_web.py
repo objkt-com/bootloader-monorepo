@@ -51,14 +51,13 @@ def generic_web():
         return artifact_uri
 
     def build_thumbnail_uri(
-        params: sp.record(token_id=sp.nat, version=sp.nat, network=sp.bytes),
+        params: sp.record(
+            token_id=sp.nat, version=sp.nat, network=sp.bytes, thumbnail_prefix=sp.bytes
+        ),
     ) -> sp.bytes:
-        # Format: https://media.bootloader.art/generic-web/v1/thumbnail/{token_id}?v={version}&n={network}
-        prefix = sp.bytes(
-            "0x68747470733A2F2F6D656469612E626F6F746C6F616465722E6172742F67656E657269632D7765622F76312F7468756D626E61696C2F"
-        )  # "https://media.bootloader.art/generic-web/v1/thumbnail/"
+        # Format: https://media.{shadownet}.bootloader.art/generic-web/v1/thumbnail/{token_id}?v={version}&n={network})
         return (
-            prefix
+            params.thumbnail_prefix
             + bytes_utils.from_nat(params.token_id)
             + _q
             + _v_eq
@@ -107,6 +106,9 @@ def generic_web():
             )
             self.data.platform_fee_bps = sp.nat(1500)
             self.data.network = sp.bytes("0x73")  # "s" for shadownet, "m" for mainnet
+            self.data.thumbnail_prefix = sp.bytes(
+                "0x68747470733a2f2f6d656469612e736861646f776e65742e626f6f746c6f616465722e6172742f67656e657269632d7765622f76312f7468756d626e61696c2f"
+            )  # "https://media.shadownet.bootloader.art/generic-web/v1/thumbnail/" <- drop shadownet for mainnet
             self.data.rng_contracts = sp.cast(
                 sp.big_map({}), sp.big_map[sp.address, sp.unit]
             )
@@ -331,6 +333,7 @@ def generic_web():
                             token_id=token_id,
                             version=generator.version,
                             network=self.data.network,
+                            thumbnail_prefix=self.data.thumbnail_prefix,
                         )
                     ),
                 },
@@ -525,6 +528,7 @@ def generic_web():
                             token_id=params.token_id,
                             version=1,
                             network=self.data.network,
+                            thumbnail_prefix=self.data.thumbnail_prefix,
                         )
                     ),
                 },

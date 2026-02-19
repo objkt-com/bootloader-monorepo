@@ -1388,7 +1388,7 @@ const GENERIC_WEB_CONTRACT_BY_NETWORK: Record<
   string | null
 > = {
   mainnet: null,
-  shadownet: "KT1SskwiH2dSmeFH7scqvQ58YXTVt7DECuD5",
+  shadownet: "KT1LWoNrsiFNdk1BQDnBmF9P1QPjhFFEiwYW",
 };
 
 const GENERIC_WEB_BIGMAP_POINTERS_CACHE_TTL_MS = 60_000;
@@ -1529,11 +1529,11 @@ async function handleThumbnailRequest(
   };
 
   // Determine the base URL and whether to use new embed routes or legacy routes
-  // - shadownet.bootloader.art (new frontend): has /embed/* routes, supports all bootloaders
+  // - media.shadownet.bootloader.art (new frontend for staging): has /embed/* routes, supports all bootloaders
   // - bootloader.art (old frontend): has /thumbnail/* and /generator-thumbnail/* routes, svg-js only
   const usesNewFrontend = isShadownet;
   const baseUrl = usesNewFrontend
-    ? "https://shadownet.bootloader.art"
+    ? "https://media.shadownet.bootloader.art"
     : "https://bootloader.art";
 
   let targetUrl: URL;

@@ -29,13 +29,13 @@ export const CONFIG = {
 
   // Contract addresses for generic-web bootloader (separate contract)
   genericWebContracts: {
-    shadownet: "KT1SskwiH2dSmeFH7scqvQ58YXTVt7DECuD5",
+    shadownet: "KT1LWoNrsiFNdk1BQDnBmF9P1QPjhFFEiwYW",
     mainnet: "", // TODO: Deploy mainnet generic-web contract
   },
 
   // RNG contract addresses (used by generic-web bootloader)
   rngContracts: {
-    shadownet: "KT1DceHLi4C1QipnTSUjUE5PD2MMr6qjFW3a",
+    shadownet: "KT19sumy4dTCPMCTD1bPfvF5mPkQPmnQVKfw",
     mainnet: "", // TODO: Deploy mainnet RNG contract
   },
 

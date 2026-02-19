@@ -92,16 +92,16 @@ custom_domain = true
 name = "bootloader-thumbnail-renderer-staging"
 
 [env.staging.build]
-command = "cd ../apps/web && VITE_MEDIA_CDN_URL= npm run build:shadownet && rm -rf ../../worker/public && cp -r dist ../../worker/public"
+command = "cd ../apps/web && VITE_MEDIA_CDN_URL=https://media.shadownet.bootloader.art VITE_SANDBOX_WORKER_URL=https://media.shadownet.bootloader.art npm run build:shadownet && rm -rf ../../worker/public && cp -r dist ../../worker/public"
 
 [env.staging.vars]
 ENVIRONMENT = "staging"
-WORKER_URL = "https://shadownet.bootloader.art"
+WORKER_URL = "https://media.shadownet.bootloader.art"
 AUTH_TOKEN_TTL_SECONDS = "604800"
 INDEXER_ENABLED = "true"
 INDEXER_TZKT_API = "https://api.shadownet.tzkt.io"
 INDEXER_RPC_URL = "https://rpc.shadownet.teztnets.com"
-INDEXER_GENERIC_WEB_CONTRACT = "KT1SskwiH2dSmeFH7scqvQ58YXTVt7DECuD5"
+INDEXER_GENERIC_WEB_CONTRACT = "KT1LWoNrsiFNdk1BQDnBmF9P1QPjhFFEiwYW"
 INDEXER_LIMIT = "10"
 INDEXER_SLEEP_MS = "0"
 INDEXER_OPERATION_BATCH_SIZE = "5"
@@ -135,4 +135,8 @@ class_name = "SessionDurableObject"
 
 [[env.staging.routes]]
 pattern = "shadownet.bootloader.art"
+custom_domain = true
+
+[[env.staging.routes]]
+pattern = "media.shadownet.bootloader.art"
 custom_domain = true

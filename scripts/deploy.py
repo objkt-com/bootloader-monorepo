@@ -169,8 +169,13 @@ def deploy_generic_web(
             "administrator": wallet.public_key_hash(),
             "rng_contracts": {randomiser_address: None},
             "treasury": wallet.public_key_hash(),
-            "platform_fee_bps": 2_000,
-            "network": b"s" if network == Network.shadownet else b"m",  # "s" for shadownet, "m" for mainnet
+            "platform_fee_bps": 1500,
+            "thumbnail_prefix": b"https://media.shadownet.bootloader.art/generic-web/v1/thumbnail/"
+            if network == Network.shadownet
+            else b"https://media.bootloader.art/generic-web/v1/thumbnail/",
+            "network": b"s"
+            if network == Network.shadownet
+            else b"m",  # "s" for shadownet, "m" for mainnet
         }
     )
     bootloader_deployer.set_pytezos_client(pt)
@@ -257,10 +262,9 @@ def main():
     args = parser.parse_args()
 
     # Get network
+    network = Network.shadownet
     if args.network == "mainnet":
         network = Network.mainnet
-    elif args.network == 'shadownet':
-        network = Network.shadownet
 
     # Get wallet
     if args.test_wallet:
