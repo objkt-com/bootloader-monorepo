@@ -55,7 +55,7 @@ export function TokenDetailPage() {
     token?.generatorId,
     bootloaderId
   );
-  const { address, tezos } = useWallet();
+  const { address, tezos, authToken } = useWallet();
   const { effectiveTheme } = useTheme();
   const [copied, setCopied] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
@@ -94,6 +94,39 @@ export function TokenDetailPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const triggerIndexerForToken = async (id: string) => {
+    if (!authToken) return;
+    if (CONFIG.network !== "shadownet") return;
+
+    try {
+      const baseUrl = CONFIG.sandboxWorkerUrl || "";
+      if (!baseUrl) return;
+
+      const response = await fetch(
+        `${baseUrl}/generic-web/v1/indexer/tokens/${encodeURIComponent(
+          id
+        )}/trigger?network=shadownet`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const body = await response.text().catch(() => "");
+        console.warn(
+          "[regenerate] failed to trigger manual indexer",
+          response.status,
+          body.slice(0, 200)
+        );
+      }
+    } catch (error) {
+      console.warn("[regenerate] failed to trigger manual indexer", error);
+    }
+  };
+
   const handleRegenerate = async () => {
     if (!tezos || !tokenId || !bootloaderId) return;
 
@@ -105,6 +138,15 @@ export function TokenDetailPage() {
           ? await regenerateGenericWebToken(tezos, tokenId)
           : await regenerateToken(tezos, tokenId);
       if (result.success) {
+        if (bootloaderId === "generic-web") {
+          await triggerIndexerForToken(tokenId);
+          setTimeout(() => {
+            void refetch();
+          }, 2500);
+          setTimeout(() => {
+            void refetch();
+          }, 7000);
+        }
         await refetch();
       } else {
         alert(result.error || "Failed to regenerate token");

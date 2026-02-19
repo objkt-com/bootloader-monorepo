@@ -340,6 +340,7 @@ def generic_web():
             )
 
             self.data.token_extra[token_id].generator_version = generator.version
+            self.data.token_extra[token_id].offchain_metadata_updated = False
 
         @sp.entrypoint
         def airdrop(

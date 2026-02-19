@@ -7,7 +7,7 @@ const SHADOWNET_NETWORK_CODE = "s";
 const DEFAULT_SHADOWNET_TZKT_API = "https://api.shadownet.tzkt.io";
 const DEFAULT_SHADOWNET_RPC_URL = "https://rpc.shadownet.teztnets.com";
 const DEFAULT_SHADOWNET_GENERIC_WEB_CONTRACT =
-  "KT1LWoNrsiFNdk1BQDnBmF9P1QPjhFFEiwYW";
+  "KT1MkVTbYNJ6hkJKWSukLBgPaXtkHFKugK6v";
 
 interface QueueRowValue {
   generator_id?: unknown;

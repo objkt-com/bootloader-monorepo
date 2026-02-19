@@ -1388,7 +1388,7 @@ const GENERIC_WEB_CONTRACT_BY_NETWORK: Record<
   string | null
 > = {
   mainnet: null,
-  shadownet: "KT1LWoNrsiFNdk1BQDnBmF9P1QPjhFFEiwYW",
+  shadownet: "KT1MkVTbYNJ6hkJKWSukLBgPaXtkHFKugK6v",
 };
 
 const GENERIC_WEB_BIGMAP_POINTERS_CACHE_TTL_MS = 60_000;
