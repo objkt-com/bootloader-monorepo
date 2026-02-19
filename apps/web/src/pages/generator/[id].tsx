@@ -492,7 +492,11 @@ export function GeneratorDetailPage() {
       setSalePrice(
         generator.price ? (generator.price / 1_000_000).toString() : "0"
       );
-      setSaleEditions(generator.maxSupply?.toString() || "0");
+      setSaleEditions(
+        generator.maxSupply !== undefined && generator.maxSupply !== null
+          ? generator.maxSupply.toString()
+          : "100"
+      );
       // Default to current state, but don't enable pause by default for new generators
       setSalePaused(
         generator.mintingOpen === false &&
