@@ -528,10 +528,20 @@ export function GeneratorDetailPage() {
       setSalePrice(
         generator.price ? (generator.price / 1_000_000).toString() : "0"
       );
+      const hasPositiveMaxSupply =
+        generator.maxSupply !== undefined &&
+        generator.maxSupply !== null &&
+        generator.maxSupply > 0;
+      const defaultEditions =
+        generator.bootloaderId === "generic-web"
+          ? hasPositiveMaxSupply
+            ? String(generator.maxSupply)
+            : "100"
+          : generator.maxSupply !== undefined && generator.maxSupply !== null
+            ? String(generator.maxSupply)
+            : "100";
       setSaleEditions(
-        generator.maxSupply !== undefined && generator.maxSupply !== null
-          ? generator.maxSupply.toString()
-          : "100"
+        defaultEditions
       );
       // Default to current state, but don't enable pause by default for new generators
       setSalePaused(

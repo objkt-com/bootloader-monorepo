@@ -3,7 +3,7 @@ import type { BootloaderId } from '@/types/bootloader'
 
 // Cache for user profiles to avoid repeated API calls
 const userProfileCache = new Map<string, UserProfile | null>()
-const tokenVersionCache = new Map<string, number | null>()
+const tokenVersionCache = new Map<string, number>()
 const tokenExtraPtrCache = new Map<string, number | null>()
 
 export interface UserProfile {
@@ -46,6 +46,7 @@ export interface OwnedToken {
   pk: string
   name: string
   description?: string
+  generatorVersion?: number
   artifactUri?: string
   displayUri?: string
   thumbnailUri?: string
@@ -75,7 +76,11 @@ async function getTokenExtraBigMapPtr(faContract: string): Promise<number | null
     const networkConfig = getNetworkConfig()
     const response = await fetch(`${networkConfig.tzktApi}/v1/contracts/${faContract}/bigmaps`)
     if (!response.ok) {
-      tokenExtraPtrCache.set(faContract, null)
+      // Cache only definitive "not found" responses.
+      // Transient backend/network failures should be retryable.
+      if (response.status === 404) {
+        tokenExtraPtrCache.set(faContract, null)
+      }
       return null
     }
 
@@ -85,7 +90,6 @@ async function getTokenExtraBigMapPtr(faContract: string): Promise<number | null
     tokenExtraPtrCache.set(faContract, ptr)
     return ptr
   } catch {
-    tokenExtraPtrCache.set(faContract, null)
     return null
   }
 }
@@ -97,7 +101,7 @@ async function fetchTokenGeneratorVersion(
   if (!faContract || !tokenId) return undefined
   const cacheKey = `${faContract}:${tokenId}`
   const cached = tokenVersionCache.get(cacheKey)
-  if (cached !== undefined) return cached ?? undefined
+  if (cached !== undefined) return cached
 
   const tokenExtraPtr = await getTokenExtraBigMapPtr(faContract)
   if (!tokenExtraPtr) return undefined
@@ -114,7 +118,6 @@ async function fetchTokenGeneratorVersion(
     }
     const parsed = Number(payload.value?.generator_version)
     if (!Number.isFinite(parsed) || parsed <= 0) {
-      tokenVersionCache.set(cacheKey, null)
       return undefined
     }
 
@@ -122,7 +125,6 @@ async function fetchTokenGeneratorVersion(
     tokenVersionCache.set(cacheKey, version)
     return version
   } catch {
-    tokenVersionCache.set(cacheKey, null)
     return undefined
   }
 }
@@ -133,8 +135,7 @@ function getCachedTokenGeneratorVersion(
 ): number | undefined {
   if (!faContract || !tokenId) return undefined
   const cacheKey = `${faContract}:${tokenId}`
-  const cached = tokenVersionCache.get(cacheKey)
-  return cached === null || cached === undefined ? undefined : cached
+  return tokenVersionCache.get(cacheKey)
 }
 
 function chunkArray<T>(items: T[], chunkSize: number): T[][] {
@@ -177,26 +178,15 @@ async function batchFetchTokenGeneratorVersions(
         key?: string | number
         value?: { generator_version?: string | number }
       }>
-      const found = new Set<string>()
 
       payload.forEach((entry) => {
         const key = String(entry.key ?? '')
         if (!key) return
-        found.add(key)
 
         const parsed = Number(entry.value?.generator_version)
         const cacheKey = `${faContract}:${key}`
         if (Number.isFinite(parsed) && parsed > 0) {
           tokenVersionCache.set(cacheKey, Math.trunc(parsed))
-        } else {
-          tokenVersionCache.set(cacheKey, null)
-        }
-      })
-
-      // Mark keys missing from batch response as absent to avoid refetch loops.
-      chunk.forEach((tokenId) => {
-        if (!found.has(tokenId)) {
-          tokenVersionCache.set(`${faContract}:${tokenId}`, null)
         }
       })
     })
@@ -204,16 +194,20 @@ async function batchFetchTokenGeneratorVersions(
 }
 
 async function primeTokenGeneratorVersions(
-  events: Array<{ fa_contract: string; token?: { token_id?: string } }>
+  events: Array<{
+    fa_contract?: string
+    token?: { token_id?: string; fa_contract?: string }
+  }>
 ): Promise<void> {
   const tokenIdsByContract = new Map<string, string[]>()
 
   events.forEach((event) => {
     const tokenId = event.token?.token_id
-    if (!tokenId || !event.fa_contract) return
-    const current = tokenIdsByContract.get(event.fa_contract) || []
+    const faContract = event.token?.fa_contract || event.fa_contract
+    if (!tokenId || !faContract) return
+    const current = tokenIdsByContract.get(faContract) || []
     current.push(tokenId)
-    tokenIdsByContract.set(event.fa_contract, current)
+    tokenIdsByContract.set(faContract, current)
   })
 
   await Promise.all(
@@ -223,6 +217,32 @@ async function primeTokenGeneratorVersions(
       } catch {
         // Batch may fail on unsupported params or transient backend issues.
         // We'll lazily fall back to per-token lookup during event mapping.
+      }
+    })
+  )
+}
+
+async function primeOwnedTokenGeneratorVersions(
+  holders: Array<{ token?: { token_id?: string; fa_contract?: string } }>
+): Promise<void> {
+  const tokenIdsByContract = new Map<string, string[]>()
+
+  holders.forEach((holder) => {
+    const tokenId = holder.token?.token_id
+    const faContract = holder.token?.fa_contract
+    if (!tokenId || !faContract) return
+    const current = tokenIdsByContract.get(faContract) || []
+    current.push(tokenId)
+    tokenIdsByContract.set(faContract, current)
+  })
+
+  await Promise.all(
+    Array.from(tokenIdsByContract.entries()).map(async ([faContract, tokenIds]) => {
+      try {
+        await batchFetchTokenGeneratorVersions(faContract, tokenIds)
+      } catch {
+        // Batch may fail on unsupported params or transient backend issues.
+        // We'll lazily fall back to per-token lookup during mapping.
       }
     })
   )
@@ -509,6 +529,7 @@ export async function fetchBootloaderActivity(
         token {
           pk
           token_id
+          fa_contract
           name
           description
           thumbnail_uri
@@ -556,6 +577,7 @@ export async function fetchBootloaderActivity(
         token?: {
           pk: string
           token_id: string
+          fa_contract?: string
           name?: string
           description?: string
           thumbnail_uri?: string
@@ -564,11 +586,12 @@ export async function fetchBootloaderActivity(
         }
       }): Promise<ActivityEvent> => {
         const isMint = event.event_type === 'mint'
-        const bootloaderId = getBootloaderIdForContract(event.fa_contract)
+        const eventFaContract = event.token?.fa_contract || event.fa_contract || ''
+        const bootloaderId = getBootloaderIdForContract(eventFaContract)
         const tokenId = event.token?.token_id || ''
         const generatorVersion =
-          getCachedTokenGeneratorVersion(event.fa_contract, tokenId) ??
-          (await fetchTokenGeneratorVersion(event.fa_contract, tokenId))
+          getCachedTokenGeneratorVersion(eventFaContract, tokenId) ??
+          (await fetchTokenGeneratorVersion(eventFaContract, tokenId))
 
         return {
           id: event.id,
@@ -580,7 +603,7 @@ export async function fetchBootloaderActivity(
           timestamp: event.timestamp,
           ophash: event.ophash,
           level: event.level,
-          faContract: event.fa_contract,
+          faContract: eventFaContract,
           bootloaderId,
           creatorAddress: event.creator?.address,
           creatorAlias: event.creator?.alias,
@@ -667,8 +690,10 @@ export async function fetchOwnedTokens(
     const data = await response.json()
     const holders = data.data?.token_holder || []
 
-    return holders.map(
-      (holder: {
+    await primeOwnedTokenGeneratorVersions(holders)
+
+    return Promise.all(
+      holders.map(async (holder: {
         quantity: string
         token: {
           pk: string
@@ -682,19 +707,28 @@ export async function fetchOwnedTokens(
           fa_contract: string
           creators?: Array<{ creator_address: string; verified?: boolean }>
         }
-      }): OwnedToken => ({
-        tokenId: parseInt(holder.token.token_id),
-        pk: holder.token.pk,
-        name: holder.token.name || `Token #${holder.token.token_id}`,
-        description: holder.token.description,
-        artifactUri: holder.token.artifact_uri,
-        displayUri: holder.token.display_uri,
-        thumbnailUri: holder.token.thumbnail_uri,
-        timestamp: holder.token.timestamp,
-        quantity: parseFloat(holder.quantity),
-        creators: holder.token.creators || [],
-        faContract: holder.token.fa_contract,
-        bootloaderId: getBootloaderIdForContract(holder.token.fa_contract),
+      }): Promise<OwnedToken> => {
+        const tokenId = holder.token.token_id
+        const faContract = holder.token.fa_contract
+        const generatorVersion =
+          getCachedTokenGeneratorVersion(faContract, tokenId) ??
+          (await fetchTokenGeneratorVersion(faContract, tokenId))
+
+        return {
+          tokenId: parseInt(tokenId),
+          pk: holder.token.pk,
+          name: holder.token.name || `Token #${tokenId}`,
+          description: holder.token.description,
+          generatorVersion,
+          artifactUri: holder.token.artifact_uri,
+          displayUri: holder.token.display_uri,
+          thumbnailUri: holder.token.thumbnail_uri,
+          timestamp: holder.token.timestamp,
+          quantity: parseFloat(holder.quantity),
+          creators: holder.token.creators || [],
+          faContract,
+          bootloaderId: getBootloaderIdForContract(faContract),
+        }
       })
     )
   } catch (err) {

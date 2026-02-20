@@ -324,7 +324,7 @@ export function ProfilePage() {
                   // Always use our thumbnail service for bootloader tokens
                   const thumbnailUrl = getTokenThumbnailUrl(
                     token.tokenId.toString(),
-                    undefined,
+                    token.generatorVersion,
                     token.bootloaderId
                   );
 
