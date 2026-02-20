@@ -1501,6 +1501,8 @@ async function handleThumbnailRequest(
   const storeFeaturesSync =
     url.searchParams.get("sync_features") === "1" ||
     url.searchParams.get("sf") === "1";
+  const forceFeatureRefresh =
+    isTokenThumbnail && storeFeaturesSync && bootloader === "generic-web";
 
   const persistFeatures = async (
     featuresJson: string | null,
@@ -1622,58 +1624,82 @@ async function handleThumbnailRequest(
 
   // Check edge cache
   const edgeCache = caches.default;
+  const readR2FeaturesPayload = async (): Promise<string | null> => {
+    const featuresObj = await c.env.R2_THUMBS.get(`${r2Key}.features.json`);
+    if (!featuresObj) return null;
+    return (await featuresObj.text().catch(() => null)) ?? null;
+  };
   const edgeHit = await edgeCache.match(cacheKey);
   if (edgeHit) {
-    if (isTokenThumbnail && storeFeaturesSync) {
+    let canServeEdgeHit = !forceFeatureRefresh;
+    if (forceFeatureRefresh) {
+      console.log(
+        "[Thumbnail Proxy] sync_features forcing edge cache bypass",
+        JSON.stringify({ tokenId: Number(id), network: tokenNetwork, r2Key })
+      );
+    }
+    if (canServeEdgeHit && isTokenThumbnail && storeFeaturesSync) {
       const edgeFeaturesHeader = edgeHit.headers.get("X-Token-Features");
-      await persistFeatures(edgeFeaturesHeader, "edge");
-      if (!edgeFeaturesHeader) {
-        const featuresObj = await c.env.R2_THUMBS.get(`${r2Key}.features.json`);
-        if (featuresObj) {
-          const featuresJson = await featuresObj.text().catch(() => null);
+      if (edgeFeaturesHeader != null) {
+        await persistFeatures(edgeFeaturesHeader, "edge");
+      } else {
+        const featuresJson = await readR2FeaturesPayload();
+        if (featuresJson != null) {
           await persistFeatures(featuresJson, "r2");
         }
       }
     }
-    const headers = new Headers(edgeHit.headers);
-    headers.delete("X-Token-Features");
-    headers.set("X-Worker-Cache", "EDGE_HIT");
-    headers.set("X-Worker-Key", cacheKeyUrl.toString());
-    if (request.method === "HEAD") {
+    if (!canServeEdgeHit) {
       await edgeHit.body?.cancel();
+    } else {
+      const headers = new Headers(edgeHit.headers);
+      headers.delete("X-Token-Features");
+      headers.set("X-Worker-Cache", "EDGE_HIT");
+      headers.set("X-Worker-Key", cacheKeyUrl.toString());
+      if (request.method === "HEAD") {
+        await edgeHit.body?.cancel();
+      }
+      return new Response(request.method === "HEAD" ? null : edgeHit.body, {
+        status: edgeHit.status,
+        headers,
+      });
     }
-    return new Response(request.method === "HEAD" ? null : edgeHit.body, {
-      status: edgeHit.status,
-      headers,
-    });
   }
 
   // Check R2
   const object = await c.env.R2_THUMBS.get(r2Key);
   if (object) {
-    if (isTokenThumbnail && storeFeaturesSync) {
-      const featuresObj = await c.env.R2_THUMBS.get(`${r2Key}.features.json`);
-      if (featuresObj) {
-        const featuresJson = await featuresObj.text().catch(() => null);
+    let canServeR2Hit = !forceFeatureRefresh;
+    if (forceFeatureRefresh) {
+      console.log(
+        "[Thumbnail Proxy] sync_features forcing R2 cache bypass",
+        JSON.stringify({ tokenId: Number(id), network: tokenNetwork, r2Key })
+      );
+    }
+    if (canServeR2Hit && isTokenThumbnail && storeFeaturesSync) {
+      const featuresJson = await readR2FeaturesPayload();
+      if (featuresJson != null) {
         await persistFeatures(featuresJson, "r2");
       }
     }
-    const r2Response = r2ToResponse(object, CACHE_CONTROL_HEADER);
-    c.executionCtx.waitUntil(edgeCache.put(cacheKey, r2Response.clone()));
-    const headers = new Headers(r2Response.headers);
-    headers.set("X-Worker-Cache", "R2_HIT");
-    headers.set("X-Worker-Key", cacheKeyUrl.toString());
-    if (request.method === "HEAD") {
-      await r2Response.body?.cancel();
-      return new Response(null, {
+    if (canServeR2Hit) {
+      const r2Response = r2ToResponse(object, CACHE_CONTROL_HEADER);
+      c.executionCtx.waitUntil(edgeCache.put(cacheKey, r2Response.clone()));
+      const headers = new Headers(r2Response.headers);
+      headers.set("X-Worker-Cache", "R2_HIT");
+      headers.set("X-Worker-Key", cacheKeyUrl.toString());
+      if (request.method === "HEAD") {
+        await r2Response.body?.cancel();
+        return new Response(null, {
+          status: r2Response.status,
+          headers,
+        });
+      }
+      return new Response(r2Response.body, {
         status: r2Response.status,
         headers,
       });
     }
-    return new Response(r2Response.body, {
-      status: r2Response.status,
-      headers,
-    });
   }
 
   // HEAD request with no cached content
@@ -1701,6 +1727,7 @@ async function handleThumbnailRequest(
       type,
       id,
       bootloader,
+      forceRender: forceFeatureRefresh,
     }),
   });
 
@@ -1979,10 +2006,11 @@ async function storeTokenFeatures(
   }
 ): Promise<void> {
   try {
-    const features = JSON.parse(params.featuresJson) as Record<string, unknown>;
-    if (!features || Object.keys(features).length === 0) {
-      return;
-    }
+    const parsed = JSON.parse(params.featuresJson) as unknown;
+    const features =
+      parsed && typeof parsed === "object" && !Array.isArray(parsed)
+        ? (parsed as Record<string, unknown>)
+        : {};
 
     const tokenService = new TokenService(env.DB);
     let generatorId = 0;
@@ -2016,9 +2044,7 @@ async function storeTokenFeatures(
     });
 
     console.log(
-      `[storeTokenFeatures] Stored ${
-        Object.keys(features).length
-      } features for token ${params.tokenId}`
+      `[storeTokenFeatures] Stored ${Object.keys(features).length} features for token ${params.tokenId}`
     );
   } catch (error) {
     console.error("[storeTokenFeatures] Failed to store features:", error);
@@ -2739,8 +2765,17 @@ export class RenderCoordinator {
       return textResponse("Bad JSON", 400);
     }
 
-    const { r2Key, target, width, height, cacheControl, type, id, bootloader } =
-      payload || {};
+    const {
+      r2Key,
+      target,
+      width,
+      height,
+      cacheControl,
+      type,
+      id,
+      bootloader,
+      forceRender,
+    } = payload || {};
     if (!r2Key || !target || !width || !height) {
       return textResponse("Missing fields", 400);
     }
@@ -2751,7 +2786,7 @@ export class RenderCoordinator {
 
     const task = (async () => {
       const existing = await this.env.R2_THUMBS.get(r2Key);
-      if (existing) {
+      if (existing && forceRender !== true) {
         // Check if we have stored features for this r2Key
         const featuresKey = `${r2Key}.features.json`;
         const featuresObj = await this.env.R2_THUMBS.get(featuresKey);
@@ -2766,6 +2801,12 @@ export class RenderCoordinator {
           });
         }
         return response;
+      }
+      if (existing && forceRender === true) {
+        console.log(
+          "[RenderCoordinator] force render requested, bypassing cached thumbnail",
+          JSON.stringify({ r2Key, type, bootloader })
+        );
       }
 
       // Use Screenshot One for all bootloader types
@@ -2858,14 +2899,17 @@ export class RenderCoordinator {
       });
 
       // Extract features from content URL (for generic-web tokens)
+      const isGenericWebTokenThumbnail =
+        type === "thumbnail" && bootloader === "generic-web";
       let features: Record<string, unknown> | null = null;
+      let featureExtractionReady = false;
       const contentUrl = json.content?.url ?? json.metadata?.content_url;
       console.log("[RenderCoordinator] Feature extraction check:", {
         contentUrl: !!contentUrl,
         type,
         bootloader,
       });
-      if (contentUrl && type === "thumbnail" && bootloader === "generic-web") {
+      if (contentUrl && isGenericWebTokenThumbnail) {
         try {
           console.log("[RenderCoordinator] Fetching content URL:", contentUrl);
           const contentResponse = await fetch(contentUrl);
@@ -2883,26 +2927,22 @@ export class RenderCoordinator {
               "[RenderCoordinator] Has data-features:",
               html.includes("data-features")
             );
-            features = extractFeatures(html);
+            features = extractFeatures(html) ?? {};
+            featureExtractionReady = true;
             console.log("[RenderCoordinator] Extracted features:", features);
-            // Store features alongside thumbnail in R2
-            if (features && Object.keys(features).length > 0) {
-              const featuresKey = `${r2Key}.features.json`;
-              await this.env.R2_THUMBS.put(
-                featuresKey,
-                JSON.stringify(features),
-                {
-                  httpMetadata: {
-                    contentType: "application/json",
-                    cacheControl,
-                  },
-                }
-              );
-              console.log(
-                "[RenderCoordinator] Stored features in R2:",
-                featuresKey
-              );
-            }
+            // Store feature payload alongside thumbnail in R2, including empty payloads.
+            // An empty object means "freshly extracted and no traits".
+            const featuresKey = `${r2Key}.features.json`;
+            await this.env.R2_THUMBS.put(featuresKey, JSON.stringify(features), {
+              httpMetadata: {
+                contentType: "application/json",
+                cacheControl,
+              },
+            });
+            console.log(
+              "[RenderCoordinator] Stored features in R2:",
+              featuresKey
+            );
           } else {
             console.warn(
               "[RenderCoordinator] Content fetch failed:",
@@ -2917,10 +2957,14 @@ export class RenderCoordinator {
         }
       }
 
+      if (forceRender === true && isGenericWebTokenThumbnail && !featureExtractionReady) {
+        return textResponse("Feature extraction not ready for forced sync", 503);
+      }
+
       const responseHeaders = new Headers(
         makeImageHeaders(cacheControl, type, id)
       );
-      if (features && Object.keys(features).length > 0) {
+      if (featureExtractionReady && features) {
         responseHeaders.set("X-Token-Features", JSON.stringify(features));
       }
 

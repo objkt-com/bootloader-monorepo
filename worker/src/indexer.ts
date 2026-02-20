@@ -8,6 +8,10 @@ const DEFAULT_SHADOWNET_TZKT_API = "https://api.shadownet.tzkt.io";
 const DEFAULT_SHADOWNET_RPC_URL = "https://rpc.shadownet.teztnets.com";
 const DEFAULT_SHADOWNET_GENERIC_WEB_CONTRACT =
   "KT1MkVTbYNJ6hkJKWSukLBgPaXtkHFKugK6v";
+const TOKEN_SCOPED_QUEUE_MIN_RETRIES = 24;
+const FEATURE_WARMUP_MAX_ATTEMPTS = 3;
+const ONCHAIN_SEND_MAX_ATTEMPTS = 4;
+const ONCHAIN_SEND_RETRY_BASE_DELAY_MS = 750;
 
 interface QueueRowValue {
   generator_id?: unknown;
@@ -25,6 +29,11 @@ interface QueueRow {
 interface PendingMetadataUpdate {
   tokenId: number;
   metadataCid: string;
+}
+
+interface ContractAccessor {
+  getContract: () => Promise<any>;
+  refreshContract: () => Promise<any>;
 }
 
 interface BigmapPointers {
@@ -167,8 +176,17 @@ export async function runGenericWebMetadataIndexer(
 
   const tokenService = new TokenService(env.DB);
   const generatorService = new GeneratorService(env.DB);
-  const contract = await loadContractIfNeeded(config);
+  const contractAccessor = createContractAccessor(config);
+  if (!config.dryRun) {
+    await contractAccessor.getContract();
+  }
   const pendingMetadataUpdates: PendingMetadataUpdate[] = [];
+  const perTokenRetryBudget =
+    typeof options.tokenId === "number" &&
+    Number.isFinite(options.tokenId) &&
+    options.tokenId >= 0
+      ? Math.max(config.attributeRetries, TOKEN_SCOPED_QUEUE_MIN_RETRIES)
+      : config.attributeRetries;
 
   for (const row of queueRows) {
     const tokenId = toNat(row.key);
@@ -190,7 +208,7 @@ export async function runGenericWebMetadataIndexer(
         generatorId,
         generatorVersion,
         hasSeed: Boolean(rawSeed),
-        offchainUpdated: Boolean(queueValue.offchain_metadata_updated),
+        offchainUpdated: queueValue.offchain_metadata_updated === true,
       })
     );
 
@@ -204,34 +222,23 @@ export async function runGenericWebMetadataIndexer(
     }
 
     try {
-      const tokenEntry = await fetchBigmapKey(
+      const readyTokenData = await waitForTokenMetadataToMatchGenerator(
         config,
         pointers.tokenMetadata,
-        tokenId
-      );
-      const generatorEntry = await fetchBigmapKey(
-        config,
         pointers.generators,
-        generatorId
+        tokenId,
+        generatorId,
+        perTokenRetryBudget
       );
-      if (!tokenEntry || !generatorEntry) {
-        markSkipped(summary, tokenId, "missing-bigmap-rows");
-        continue;
-      }
-
-      const tokenInfo = asRecord(asRecord(tokenEntry.value).token_info);
-      const generatorValue = asRecord(generatorEntry.value);
-
-      const artifactUri = decodeHexToText(
-        tokenInfo.artifact_uri ?? tokenInfo._artifact_uri
-      );
-      if (!artifactUri) {
+      if (!readyTokenData) {
         markSkipped(summary, tokenId, "artifact-uri-not-ready");
         continue;
       }
+
+      const { generatorValue, artifactUri } = readyTokenData;
       console.log(
-        "[indexer] token artifact uri found",
-        JSON.stringify({ tokenId, hasArtifactUri: true })
+        "[indexer] token artifact uri ready",
+        JSON.stringify({ tokenId, hasArtifactUri: true, artifactUri })
       );
 
       const existingToken = await tokenService.getToken(
@@ -254,6 +261,7 @@ export async function runGenericWebMetadataIndexer(
         );
       }
 
+      const attributesFreshAfterMs = Date.now();
       try {
         await triggerFeatureExtraction(config, tokenId, generatorVersion);
         console.log(
@@ -270,13 +278,19 @@ export async function runGenericWebMetadataIndexer(
       const attributes = await pollTokenAttributes(
         config,
         tokenService,
-        tokenId
+        tokenId,
+        attributesFreshAfterMs,
+        perTokenRetryBudget
       );
       console.log(
         "[indexer] attributes polled",
-        JSON.stringify({ tokenId, count: attributes.length })
+        JSON.stringify({
+          tokenId,
+          ready: attributes !== null,
+          count: attributes?.length ?? 0,
+        })
       );
-      if (attributes.length === 0) {
+      if (attributes === null) {
         markSkipped(summary, tokenId, "attributes-not-ready");
         continue;
       }
@@ -326,7 +340,7 @@ export async function runGenericWebMetadataIndexer(
             pendingMetadataUpdates.length
           );
           await flushPendingMetadataUpdates(
-            contract,
+            contractAccessor,
             updatesToFlush,
             config.confirmations,
             summary
@@ -353,7 +367,7 @@ export async function runGenericWebMetadataIndexer(
 
   if (!config.dryRun && pendingMetadataUpdates.length > 0) {
     await flushPendingMetadataUpdates(
-      contract,
+      contractAccessor,
       pendingMetadataUpdates,
       config.confirmations,
       summary
@@ -516,20 +530,71 @@ async function fetchPendingQueue(
   tokenId?: number
 ): Promise<QueueRow[]> {
   if (typeof tokenId === "number" && Number.isFinite(tokenId) && tokenId >= 0) {
-    const payload = await fetchBigmapKey(
-      config,
-      tokenExtraPtr,
-      Math.trunc(tokenId)
+    const scopedTokenId = Math.trunc(tokenId);
+    const queueRetries = Math.max(
+      config.attributeRetries,
+      TOKEN_SCOPED_QUEUE_MIN_RETRIES
     );
-    if (!payload) return [];
 
-    const value = asRecord(payload.value) as QueueRowValue;
-    return [
-      {
-        key: tokenId,
-        value,
-      },
-    ];
+    for (let attempt = 0; attempt <= queueRetries; attempt += 1) {
+      const payload = await fetchBigmapKey(config, tokenExtraPtr, scopedTokenId);
+      if (!payload) {
+        if (attempt === queueRetries) {
+          console.log(
+            "[indexer] token-scoped queue row missing after retries",
+            JSON.stringify({ tokenId: scopedTokenId, attempts: attempt + 1 })
+          );
+          return [];
+        }
+
+        console.log(
+          "[indexer] token-scoped queue row missing, retrying",
+          JSON.stringify({
+            tokenId: scopedTokenId,
+            attempt,
+            delayMs: config.attributeRetryDelayMs,
+          })
+        );
+        await sleep(config.attributeRetryDelayMs);
+        continue;
+      }
+
+      const value = asRecord(payload.value) as QueueRowValue;
+      const offchainUpdated = value.offchain_metadata_updated === true;
+      if (!offchainUpdated) {
+        return [
+          {
+            key: scopedTokenId,
+            value,
+          },
+        ];
+      }
+
+      if (attempt === queueRetries) {
+        console.log(
+          "[indexer] token-scoped queue row not pending after retries",
+          JSON.stringify({
+            tokenId: scopedTokenId,
+            attempts: attempt + 1,
+            offchainUpdated,
+          })
+        );
+        return [];
+      }
+
+      console.log(
+        "[indexer] token-scoped queue row not pending yet, retrying",
+        JSON.stringify({
+          tokenId: scopedTokenId,
+          attempt,
+          delayMs: config.attributeRetryDelayMs,
+          offchainUpdated,
+        })
+      );
+      await sleep(config.attributeRetryDelayMs);
+    }
+
+    return [];
   }
 
   const filteredQuery = new URLSearchParams({
@@ -563,9 +628,10 @@ async function fetchPendingQueue(
   }/v1/bigmaps/${tokenExtraPtr}/keys?${fallbackQuery.toString()}`;
   const fallbackRows = await fetchJson<QueueRow[]>(fallbackUrl);
   if (!Array.isArray(fallbackRows)) return [];
-  return fallbackRows.filter(
-    (row) => !Boolean(asRecord(row.value).offchain_metadata_updated)
-  );
+  return fallbackRows.filter((row) => {
+    const value = asRecord(row.value) as QueueRowValue;
+    return value.offchain_metadata_updated !== true;
+  });
 }
 
 async function fetchBigmapKey(
@@ -587,6 +653,95 @@ async function fetchBigmapKey(
     : null;
 }
 
+async function waitForTokenMetadataToMatchGenerator(
+  config: IndexerConfig,
+  tokenMetadataPtr: number,
+  generatorsPtr: number,
+  tokenId: number,
+  generatorId: number,
+  retries: number
+): Promise<{ generatorValue: Record<string, unknown>; artifactUri: string } | null> {
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    const [tokenEntry, generatorEntry] = await Promise.all([
+      fetchBigmapKey(config, tokenMetadataPtr, tokenId),
+      fetchBigmapKey(config, generatorsPtr, generatorId),
+    ]);
+    if (!tokenEntry || !generatorEntry) {
+      if (attempt === retries) {
+        console.log(
+          "[indexer] token/generator rows unavailable after retries",
+          JSON.stringify({
+            tokenId,
+            generatorId,
+            attempts: attempt + 1,
+            hasToken: Boolean(tokenEntry),
+            hasGenerator: Boolean(generatorEntry),
+          })
+        );
+        return null;
+      }
+
+      console.log(
+        "[indexer] token/generator rows unavailable, retrying",
+        JSON.stringify({
+          tokenId,
+          generatorId,
+          attempt,
+          delayMs: config.attributeRetryDelayMs,
+        })
+      );
+      await sleep(config.attributeRetryDelayMs);
+      continue;
+    }
+
+    const tokenInfo = asRecord(asRecord(tokenEntry.value).token_info);
+    const generatorValue = asRecord(generatorEntry.value);
+    const artifactUri = decodeHexToText(
+      tokenInfo.artifact_uri ?? tokenInfo._artifact_uri
+    );
+    const expectedArtifactCid = decodeHexToText(generatorValue.artifact_cid).trim();
+    const matchesGenerator =
+      Boolean(artifactUri) &&
+      Boolean(expectedArtifactCid) &&
+      artifactUri.includes(expectedArtifactCid);
+
+    if (matchesGenerator) {
+      return { generatorValue, artifactUri };
+    }
+
+    if (attempt === retries) {
+      console.log(
+        "[indexer] token metadata not synced with generator after retries",
+        JSON.stringify({
+          tokenId,
+          generatorId,
+          attempts: attempt + 1,
+          hasArtifactUri: Boolean(artifactUri),
+          expectedArtifactCid,
+          matchesGenerator,
+        })
+      );
+      return null;
+    }
+
+    console.log(
+      "[indexer] token metadata not synced with generator, retrying",
+      JSON.stringify({
+        tokenId,
+        generatorId,
+        attempt,
+        delayMs: config.attributeRetryDelayMs,
+        hasArtifactUri: Boolean(artifactUri),
+        expectedArtifactCid,
+        matchesGenerator,
+      })
+    );
+    await sleep(config.attributeRetryDelayMs);
+  }
+
+  return null;
+}
+
 async function triggerFeatureExtraction(
   config: IndexerConfig,
   tokenId: number,
@@ -599,31 +754,56 @@ async function triggerFeatureExtraction(
   url.searchParams.set("n", SHADOWNET_NETWORK_CODE);
   url.searchParams.set("v", String(version));
   url.searchParams.set("sync_features", "1");
+  let lastError: Error | null = null;
 
-  const response = await fetch(url.toString(), {
-    headers: { accept: "image/png" },
-  });
+  for (let attempt = 0; attempt < FEATURE_WARMUP_MAX_ATTEMPTS; attempt += 1) {
+    const response = await fetch(url.toString(), {
+      headers: { accept: "image/png" },
+    });
 
-  if (!response.ok) {
+    if (response.ok) {
+      // Drain the body so proxy/caching work completes before polling D1.
+      await response.arrayBuffer().catch(() => undefined);
+      return;
+    }
+
     const body = await response.text().catch(() => "");
-    throw new Error(`Thumbnail warmup failed (${response.status}): ${body}`);
+    lastError = new Error(`Thumbnail warmup failed (${response.status}): ${body}`);
+
+    if (attempt + 1 < FEATURE_WARMUP_MAX_ATTEMPTS) {
+      console.warn(
+        "[indexer] feature extraction warmup retrying",
+        JSON.stringify({
+          tokenId,
+          version,
+          attempt,
+          delayMs: config.attributeRetryDelayMs,
+          status: response.status,
+        })
+      );
+      await sleep(config.attributeRetryDelayMs);
+    }
   }
 
-  // Drain the body so proxy/caching work completes before polling D1.
-  await response.arrayBuffer().catch(() => undefined);
+  throw lastError ?? new Error("Thumbnail warmup failed");
 }
 
 async function pollTokenAttributes(
   config: IndexerConfig,
   tokenService: TokenService,
-  tokenId: number
-): Promise<Array<{ name: string; value: string | number | boolean }>> {
-  for (let attempt = 0; attempt <= config.attributeRetries; attempt += 1) {
+  tokenId: number,
+  minUpdatedAtMs: number,
+  retries: number
+): Promise<Array<{ name: string; value: string | number | boolean }> | null> {
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
     const token = await tokenService.getTokenWithAttributes(
       tokenId,
       SHADOWNET_NETWORK,
       "generic-web"
     );
+    const tokenUpdatedAtMs = token?.updatedAt ? Date.parse(token.updatedAt) : NaN;
+    const hasFreshTokenRow =
+      Number.isFinite(tokenUpdatedAtMs) && tokenUpdatedAtMs >= minUpdatedAtMs;
     const attrs = (token?.attributes || []).map((entry) => ({
       name: entry.name,
       value: (() => {
@@ -644,12 +824,33 @@ async function pollTokenAttributes(
       })(),
     }));
 
-    if (attrs.length > 0 || attempt === config.attributeRetries) {
+    if (hasFreshTokenRow) {
       console.log(
         "[indexer] poll attributes attempt",
-        JSON.stringify({ tokenId, attempt, count: attrs.length })
+        JSON.stringify({
+          tokenId,
+          attempt,
+          count: attrs.length,
+          hasFreshTokenRow,
+          tokenUpdatedAt: token?.updatedAt ?? null,
+        })
       );
       return attrs;
+    }
+
+    if (attempt === retries) {
+      console.log(
+        "[indexer] poll attributes attempt",
+        JSON.stringify({
+          tokenId,
+          attempt,
+          count: attrs.length,
+          hasFreshTokenRow,
+          tokenUpdatedAt: token?.updatedAt ?? null,
+          minUpdatedAt: new Date(minUpdatedAtMs).toISOString(),
+        })
+      );
+      return null;
     }
 
     console.log(
@@ -657,13 +858,17 @@ async function pollTokenAttributes(
       JSON.stringify({
         tokenId,
         attempt,
+        count: attrs.length,
+        hasFreshTokenRow,
+        tokenUpdatedAt: token?.updatedAt ?? null,
+        minUpdatedAt: new Date(minUpdatedAtMs).toISOString(),
         delayMs: config.attributeRetryDelayMs,
       })
     );
     await sleep(config.attributeRetryDelayMs);
   }
 
-  return [];
+  return null;
 }
 
 function buildMetadataPayload({
@@ -755,67 +960,153 @@ async function loadContractIfNeeded(
   return tezos.contract.at(config.contract);
 }
 
+function createContractAccessor(config: IndexerConfig): ContractAccessor {
+  let contractPromise: Promise<any> | null = null;
+  const loadContract = async (): Promise<any> => {
+    const loaded = await loadContractIfNeeded(config);
+    if (!loaded) {
+      throw new Error("Contract is unavailable for metadata updates");
+    }
+    return loaded;
+  };
+
+  return {
+    getContract: async () => {
+      if (!contractPromise) {
+        contractPromise = loadContract();
+      }
+      return contractPromise;
+    },
+    refreshContract: async () => {
+      contractPromise = loadContract();
+      return contractPromise;
+    },
+  };
+}
+
+function isCounterInThePastError(error: unknown): boolean {
+  const text = stringifyError(error).toLowerCase();
+  return (
+    text.includes("counter_in_the_past") ||
+    text.includes("counter in the past")
+  );
+}
+
 async function setOffchainMetadata(
-  contractPromise: Promise<any> | any,
+  contractAccessor: ContractAccessor,
   tokenId: number,
   metadataCid: string,
   confirmations: number
 ): Promise<string> {
-  const contract = await contractPromise;
   const metadataBytes = utf8ToBytesHex(metadataCid);
-  const method = contract.methodsObject?.set_offchain_metadata
-    ? contract.methodsObject.set_offchain_metadata({
-        token_id: tokenId,
-        metadata_cid: metadataBytes,
-      })
-    : contract.methods.set_offchain_metadata(tokenId, metadataBytes);
+  for (let attempt = 0; attempt < ONCHAIN_SEND_MAX_ATTEMPTS; attempt += 1) {
+    const contract =
+      attempt === 0
+        ? await contractAccessor.getContract()
+        : await contractAccessor.refreshContract();
+    try {
+      const method = contract.methodsObject?.set_offchain_metadata
+        ? contract.methodsObject.set_offchain_metadata({
+            token_id: tokenId,
+            metadata_cid: metadataBytes,
+          })
+        : contract.methods.set_offchain_metadata(tokenId, metadataBytes);
 
-  const operation = await method.send();
-  if (typeof operation.confirmation === "function") {
-    await operation.confirmation(confirmations);
+      const operation = await method.send();
+      if (typeof operation.confirmation === "function") {
+        await operation.confirmation(confirmations);
+      }
+
+      const hash = operation.hash || operation.opHash || "";
+      return typeof hash === "string" ? hash : "";
+    } catch (error) {
+      const canRetry =
+        isCounterInThePastError(error) && attempt + 1 < ONCHAIN_SEND_MAX_ATTEMPTS;
+      if (!canRetry) {
+        throw error;
+      }
+
+      const retryDelayMs = ONCHAIN_SEND_RETRY_BASE_DELAY_MS * (attempt + 1);
+      console.warn(
+        "[indexer] set_offchain_metadata counter conflict, retrying",
+        JSON.stringify({
+          tokenId,
+          attempt,
+          delayMs: retryDelayMs,
+          error: stringifyError(error),
+        })
+      );
+      await sleep(retryDelayMs);
+    }
   }
 
-  const hash = operation.hash || operation.opHash || "";
-  return typeof hash === "string" ? hash : "";
+  throw new Error("set_offchain_metadata retry loop exhausted unexpectedly");
 }
 
 async function setOffchainMetadataBatch(
-  contractPromise: Promise<any> | any,
+  contractAccessor: ContractAccessor,
   updates: PendingMetadataUpdate[],
   confirmations: number
 ): Promise<string> {
-  const contract = await contractPromise;
-  if (
-    !contract?.contractProvider?.batch ||
-    !contract?.methodsObject?.set_offchain_metadata
-  ) {
-    throw new Error(
-      "Contract batch API is unavailable for set_offchain_metadata"
-    );
+  for (let attempt = 0; attempt < ONCHAIN_SEND_MAX_ATTEMPTS; attempt += 1) {
+    const contract =
+      attempt === 0
+        ? await contractAccessor.getContract()
+        : await contractAccessor.refreshContract();
+    if (
+      !contract?.contractProvider?.batch ||
+      !contract?.methodsObject?.set_offchain_metadata
+    ) {
+      throw new Error(
+        "Contract batch API is unavailable for set_offchain_metadata"
+      );
+    }
+
+    try {
+      const batch = contract.contractProvider.batch();
+      for (const update of updates) {
+        const metadataBytes = utf8ToBytesHex(update.metadataCid);
+        batch.withContractCall(
+          contract.methodsObject.set_offchain_metadata({
+            token_id: update.tokenId,
+            metadata_cid: metadataBytes,
+          })
+        );
+      }
+
+      const operation = await batch.send();
+      if (typeof operation.confirmation === "function") {
+        await operation.confirmation(confirmations);
+      }
+
+      const hash = operation.hash || operation.opHash || "";
+      return typeof hash === "string" ? hash : "";
+    } catch (error) {
+      const canRetry =
+        isCounterInThePastError(error) && attempt + 1 < ONCHAIN_SEND_MAX_ATTEMPTS;
+      if (!canRetry) {
+        throw error;
+      }
+
+      const retryDelayMs = ONCHAIN_SEND_RETRY_BASE_DELAY_MS * (attempt + 1);
+      console.warn(
+        "[indexer] metadata batch counter conflict, retrying",
+        JSON.stringify({
+          tokenIds: updates.map((update) => update.tokenId),
+          attempt,
+          delayMs: retryDelayMs,
+          error: stringifyError(error),
+        })
+      );
+      await sleep(retryDelayMs);
+    }
   }
 
-  const batch = contract.contractProvider.batch();
-  for (const update of updates) {
-    const metadataBytes = utf8ToBytesHex(update.metadataCid);
-    batch.withContractCall(
-      contract.methodsObject.set_offchain_metadata({
-        token_id: update.tokenId,
-        metadata_cid: metadataBytes,
-      })
-    );
-  }
-
-  const operation = await batch.send();
-  if (typeof operation.confirmation === "function") {
-    await operation.confirmation(confirmations);
-  }
-
-  const hash = operation.hash || operation.opHash || "";
-  return typeof hash === "string" ? hash : "";
+  throw new Error("metadata batch retry loop exhausted unexpectedly");
 }
 
 async function flushPendingMetadataUpdates(
-  contractPromise: Promise<any> | any,
+  contractAccessor: ContractAccessor,
   updates: PendingMetadataUpdate[],
   confirmations: number,
   summary: IndexerRunSummary
@@ -825,7 +1116,7 @@ async function flushPendingMetadataUpdates(
   if (updates.length > 1) {
     try {
       const operationHash = await setOffchainMetadataBatch(
-        contractPromise,
+        contractAccessor,
         updates,
         confirmations
       );
@@ -863,7 +1154,7 @@ async function flushPendingMetadataUpdates(
   for (const update of updates) {
     try {
       const operationHash = await setOffchainMetadata(
-        contractPromise,
+        contractAccessor,
         update.tokenId,
         update.metadataCid,
         confirmations

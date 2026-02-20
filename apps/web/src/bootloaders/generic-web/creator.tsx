@@ -531,8 +531,14 @@ export function GenericWebCreator({ className }: GenericWebCreatorProps) {
           console.warn("Failed to store generator metadata in D1:", dbError);
         }
 
-        // Navigate to the newly created generator
-        navigate(`/generator/generic-web/${result.generatorId}`);
+        // Navigate to the newly created generator.
+        // Contract indexing can lag briefly, so mark this navigation as pending.
+        navigate(`/generator/generic-web/${result.generatorId}`, {
+          state: {
+            pendingCreate: true,
+            createdAt: Date.now(),
+          },
+        });
       } else {
         setPublishError(result.error || "Failed to create generator");
       }

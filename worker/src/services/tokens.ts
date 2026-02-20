@@ -105,8 +105,9 @@ export class TokenService {
         .run();
     }
 
-    // Store attributes if features provided
-    if (params.features && Object.keys(params.features).length > 0) {
+    // Replace attributes whenever a features payload is provided (including empty payloads).
+    // This prevents stale attributes from surviving when a token version no longer emits traits.
+    if (params.features) {
       await this.storeAttributes(params.id, params.generatorId, params.network, params.features);
     }
 

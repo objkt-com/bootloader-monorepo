@@ -1,5 +1,11 @@
 import { useState, useMemo, useEffect } from "react";
-import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
+import {
+  useParams,
+  Link,
+  useNavigate,
+  useSearchParams,
+  useLocation,
+} from "react-router-dom";
 import {
   ArrowLeft,
   Dices,
@@ -110,6 +116,8 @@ import {
 
 const FEATURE_FILTER_ALL = "__bl_filter_all__";
 const FEATURE_FILTER_EMPTY = "__bl_filter_empty__";
+const GENERATOR_PENDING_RETRY_MAX_ATTEMPTS = 10;
+const GENERATOR_PENDING_RETRY_DELAY_MS = 1500;
 
 function generateRandomSeed(): string {
   // Generate a 256-bit (64 char) hex seed like the on-chain format
@@ -128,7 +136,11 @@ export function GeneratorDetailPage() {
   const { effectiveTheme } = useTheme();
   const { isLarge: useLargeTokenCards } = useTokenCardSize();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
+  const isPendingCreateNavigation = Boolean(
+    (location.state as { pendingCreate?: boolean } | null)?.pendingCreate
+  );
 
   // Fetch generator from chain - pass bootloader ID from URL to query the right contract
   const bootloaderId = bootloaderParam as BootloaderId | undefined;
@@ -219,6 +231,30 @@ export function GeneratorDetailPage() {
   const [isRevealPreview, setIsRevealPreview] = useState(false);
   const [hasConsumedMockPurchaseParam, setHasConsumedMockPurchaseParam] =
     useState(false);
+  const [pendingRetryAttempt, setPendingRetryAttempt] = useState(0);
+
+  useEffect(() => {
+    setPendingRetryAttempt(0);
+  }, [id, bootloaderId]);
+
+  const shouldWaitForNewGenerator =
+    bootloaderId === "generic-web" &&
+    isPendingCreateNavigation &&
+    !generator &&
+    !error &&
+    !isLoading &&
+    pendingRetryAttempt < GENERATOR_PENDING_RETRY_MAX_ATTEMPTS;
+
+  useEffect(() => {
+    if (!shouldWaitForNewGenerator) return;
+
+    const timeoutId = window.setTimeout(() => {
+      setPendingRetryAttempt((prev) => prev + 1);
+      void refetch();
+    }, GENERATOR_PENDING_RETRY_DELAY_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [shouldWaitForNewGenerator, refetch]);
 
   useEffect(() => {
     if (generator?.bootloaderId !== "generic-web") {
@@ -584,6 +620,20 @@ export function GeneratorDetailPage() {
             </div>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  // Error or not found
+  if (shouldWaitForNewGenerator) {
+    return (
+      <div className="container py-16 text-center">
+        <Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground mb-4" />
+        <h1 className="text-2xl font-bold mb-4">Finalizing generator</h1>
+        <p className="text-muted-foreground mb-8">
+          The transaction is confirmed, but indexing can take a few seconds.
+          This page will refresh automatically.
+        </p>
       </div>
     );
   }
