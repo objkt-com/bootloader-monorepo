@@ -27,6 +27,9 @@ export function GeneratorCard({ generator, className }: GeneratorCardProps) {
       : priceMutez === 0
         ? "Free"
         : `${(priceMutez / 1_000_000).toFixed(2)} XTZ`;
+  const shouldShowPrice =
+    priceLabel !== null &&
+    (hasUpcomingDrop || generator.mintingOpen || (generator.supply ?? 0) > 0);
 
   // Use thumbnail from media CDN - generator thumbnails use /{bootloader}/v1/generator-thumbnail/{id}
   const thumbnailUrl =
@@ -96,7 +99,7 @@ export function GeneratorCard({ generator, className }: GeneratorCardProps) {
               <span className="font-mono font-medium">
                 {formatCountdownCompact(countdown)}
               </span>
-              {priceLabel && (
+              {shouldShowPrice && (
                 <span className="text-muted-foreground ml-auto">{priceLabel}</span>
               )}
             </div>
@@ -118,7 +121,7 @@ export function GeneratorCard({ generator, className }: GeneratorCardProps) {
               {/* Stats row - only show if there's something meaningful to display */}
               {(generator.supply ?? 0) > 0 ||
               (generator.maxSupply ?? 0) > 0 ||
-              priceLabel !== null ? (
+              shouldShowPrice ? (
                 <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">
                   {(generator.maxSupply ?? 0) > 0 ? (
                     <span>
@@ -127,7 +130,7 @@ export function GeneratorCard({ generator, className }: GeneratorCardProps) {
                   ) : (generator.supply ?? 0) > 0 ? (
                     <span>{generator.supply} minted</span>
                   ) : null}
-                  {priceLabel && <span>{priceLabel}</span>}
+                  {shouldShowPrice && <span>{priceLabel}</span>}
                 </div>
               ) : null}
             </>

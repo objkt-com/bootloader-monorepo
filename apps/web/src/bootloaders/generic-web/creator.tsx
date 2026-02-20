@@ -533,7 +533,7 @@ export function GenericWebCreator({ className }: GenericWebCreatorProps) {
 
         // Navigate to the newly created generator.
         // Contract indexing can lag briefly, so mark this navigation as pending.
-        navigate(`/generator/generic-web/${result.generatorId}`, {
+        navigate(`/generator/generic-web/${result.generatorId}?pendingCreate=1`, {
           state: {
             pendingCreate: true,
             createdAt: Date.now(),

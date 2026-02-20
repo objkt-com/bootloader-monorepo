@@ -1,4 +1,8 @@
-import { GeneratorService, TokenService } from "./services";
+import {
+  GeneratorService,
+  TokenService,
+  type TokenWithAttributes,
+} from "./services";
 import { storeJsonToIpfs } from "./ipfs-json";
 import type { Bindings } from "./types";
 
@@ -24,11 +28,20 @@ interface QueueRowValue {
 interface QueueRow {
   key?: unknown;
   value?: QueueRowValue;
+  lastLevel?: unknown;
+  timestamp?: unknown;
 }
 
 interface PendingMetadataUpdate {
   tokenId: number;
   metadataCid: string;
+}
+
+interface ExpectedTokenState {
+  generatorId: number;
+  iteration: number | null;
+  seed: string | null;
+  queueUpdatedAtMs: number | null;
 }
 
 interface ContractAccessor {
@@ -181,6 +194,7 @@ export async function runGenericWebMetadataIndexer(
     await contractAccessor.getContract();
   }
   const pendingMetadataUpdates: PendingMetadataUpdate[] = [];
+  const levelTimestampCache = new Map<number, number | null>();
   const perTokenRetryBudget =
     typeof options.tokenId === "number" &&
     Number.isFinite(options.tokenId) &&
@@ -236,9 +250,25 @@ export async function runGenericWebMetadataIndexer(
       }
 
       const { generatorValue, artifactUri } = readyTokenData;
+      const resolvedGeneratorVersion =
+        toNat(generatorValue.version) ?? generatorVersion;
+      const queueUpdatedAtMs = await resolveQueueUpdatedAtMs(
+        config,
+        row,
+        levelTimestampCache
+      );
       console.log(
         "[indexer] token artifact uri ready",
-        JSON.stringify({ tokenId, hasArtifactUri: true, artifactUri })
+        JSON.stringify({
+          tokenId,
+          hasArtifactUri: true,
+          artifactUri,
+          generatorVersion,
+          resolvedGeneratorVersion,
+          queueUpdatedAt: queueUpdatedAtMs
+            ? new Date(queueUpdatedAtMs).toISOString()
+            : null,
+        })
       );
 
       const existingToken = await tokenService.getToken(
@@ -261,12 +291,15 @@ export async function runGenericWebMetadataIndexer(
         );
       }
 
-      const attributesFreshAfterMs = Date.now();
+      const attributesFreshAfterMs = Math.max(
+        Date.now(),
+        queueUpdatedAtMs ?? 0
+      );
       try {
-        await triggerFeatureExtraction(config, tokenId, generatorVersion);
+        await triggerFeatureExtraction(config, tokenId, resolvedGeneratorVersion);
         console.log(
           "[indexer] feature extraction warmup completed",
-          JSON.stringify({ tokenId, generatorVersion })
+          JSON.stringify({ tokenId, generatorVersion: resolvedGeneratorVersion })
         );
       } catch (error) {
         console.warn("[indexer] feature extraction warmup failed", {
@@ -280,7 +313,13 @@ export async function runGenericWebMetadataIndexer(
         tokenService,
         tokenId,
         attributesFreshAfterMs,
-        perTokenRetryBudget
+        perTokenRetryBudget,
+        {
+          generatorId,
+          iteration: iteration ?? null,
+          seed: rawSeed,
+          queueUpdatedAtMs,
+        }
       );
       console.log(
         "[indexer] attributes polled",
@@ -294,6 +333,19 @@ export async function runGenericWebMetadataIndexer(
         markSkipped(summary, tokenId, "attributes-not-ready");
         continue;
       }
+
+      const queueStateStillMatches = await isQueueStateStillCurrent(
+        config,
+        pointers.tokenExtra,
+        tokenId,
+        generatorId,
+        generatorVersion
+      );
+      if (!queueStateStillMatches) {
+        markSkipped(summary, tokenId, "queue-state-changed");
+        continue;
+      }
+
       const generatorMeta = await generatorService.getGenerator(
         generatorId,
         SHADOWNET_NETWORK,
@@ -564,6 +616,7 @@ async function fetchPendingQueue(
       if (!offchainUpdated) {
         return [
           {
+            ...(payload as QueueRow),
             key: scopedTokenId,
             value,
           },
@@ -651,6 +704,48 @@ async function fetchBigmapKey(
   return payload && typeof payload === "object"
     ? (payload as Record<string, unknown>)
     : null;
+}
+
+async function resolveQueueUpdatedAtMs(
+  config: IndexerConfig,
+  queueRow: QueueRow,
+  cache: Map<number, number | null>
+): Promise<number | null> {
+  if (typeof queueRow.timestamp === "string") {
+    const directMs = Date.parse(queueRow.timestamp);
+    if (Number.isFinite(directMs)) return directMs;
+  }
+
+  const level = toNat(queueRow.lastLevel);
+  if (level == null) return null;
+
+  if (cache.has(level)) {
+    return cache.get(level) ?? null;
+  }
+
+  try {
+    const block = await fetchJson<Record<string, unknown>>(
+      `${config.tzktBase}/v1/blocks/${level}?select=timestamp`
+    );
+    const blockTimestamp =
+      typeof block === "string"
+        ? block
+        : typeof block.timestamp === "string"
+          ? block.timestamp
+          : null;
+    const parsedMs =
+      blockTimestamp != null ? Date.parse(blockTimestamp) : Number.NaN;
+    const resolvedMs = Number.isFinite(parsedMs) ? parsedMs : null;
+    cache.set(level, resolvedMs);
+    return resolvedMs;
+  } catch (error) {
+    console.warn("[indexer] failed to resolve queue row timestamp", {
+      level,
+      error: stringifyError(error),
+    });
+    cache.set(level, null);
+    return null;
+  }
 }
 
 async function waitForTokenMetadataToMatchGenerator(
@@ -793,8 +888,11 @@ async function pollTokenAttributes(
   tokenService: TokenService,
   tokenId: number,
   minUpdatedAtMs: number,
-  retries: number
+  retries: number,
+  expectedState: ExpectedTokenState
 ): Promise<Array<{ name: string; value: string | number | boolean }> | null> {
+  const settleDelayMs = Math.max(config.attributeRetryDelayMs, 500);
+
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     const token = await tokenService.getTokenWithAttributes(
       tokenId,
@@ -804,27 +902,29 @@ async function pollTokenAttributes(
     const tokenUpdatedAtMs = token?.updatedAt ? Date.parse(token.updatedAt) : NaN;
     const hasFreshTokenRow =
       Number.isFinite(tokenUpdatedAtMs) && tokenUpdatedAtMs >= minUpdatedAtMs;
-    const attrs = (token?.attributes || []).map((entry) => ({
-      name: entry.name,
-      value: (() => {
-        if (entry.type === "number") {
-          if (
-            entry.numericValue != null &&
-            Number.isFinite(entry.numericValue)
-          ) {
-            return entry.numericValue;
-          }
-          const parsed = Number(entry.value);
-          return Number.isFinite(parsed) ? parsed : entry.value;
-        }
-        if (entry.type === "boolean") {
-          return entry.value.toLowerCase() === "true";
-        }
-        return entry.value ?? "";
-      })(),
-    }));
+    const matchesExpectedState = matchesExpectedTokenState(token, expectedState);
+    const hasReadyTokenRow = hasFreshTokenRow || matchesExpectedState;
+    const attrs = mapAttributeEntries(token?.attributes || []);
 
-    if (hasFreshTokenRow) {
+    if (hasReadyTokenRow) {
+      if (attempt === retries) {
+        console.log(
+          "[indexer] poll attributes attempt",
+          JSON.stringify({
+            tokenId,
+            attempt,
+            count: attrs.length,
+            hasFreshTokenRow,
+            matchesExpectedState,
+            tokenUpdatedAt: token?.updatedAt ?? null,
+            minUpdatedAt: new Date(minUpdatedAtMs).toISOString(),
+            settled: false,
+            reason: "retry-budget-exhausted",
+          })
+        );
+        return null;
+      }
+
       console.log(
         "[indexer] poll attributes attempt",
         JSON.stringify({
@@ -832,10 +932,73 @@ async function pollTokenAttributes(
           attempt,
           count: attrs.length,
           hasFreshTokenRow,
+          matchesExpectedState,
           tokenUpdatedAt: token?.updatedAt ?? null,
+          settled: false,
+          settleDelayMs,
         })
       );
-      return attrs;
+
+      // A fresh row can still be an intermediate extraction state.
+      // Confirm there are no immediate follow-up writes before accepting it.
+      await sleep(settleDelayMs);
+      const settledToken = await tokenService.getTokenWithAttributes(
+        tokenId,
+        SHADOWNET_NETWORK,
+        "generic-web"
+      );
+      const settledAttrs = mapAttributeEntries(settledToken?.attributes || []);
+      const settledUpdatedAtMs = settledToken?.updatedAt
+        ? Date.parse(settledToken.updatedAt)
+        : NaN;
+      const hasSettledFreshTokenRow =
+        Number.isFinite(settledUpdatedAtMs) &&
+        settledUpdatedAtMs >= minUpdatedAtMs;
+      const settledMatchesExpectedState = matchesExpectedTokenState(
+        settledToken,
+        expectedState
+      );
+      const isStableSnapshot =
+        (hasSettledFreshTokenRow || settledMatchesExpectedState) &&
+        settledToken?.updatedAt === token?.updatedAt &&
+        settledToken?.iteration === token?.iteration &&
+        settledToken?.seed === token?.seed &&
+        settledToken?.generatorId === token?.generatorId &&
+        buildAttributeSignature(settledAttrs) === buildAttributeSignature(attrs);
+
+      if (isStableSnapshot) {
+        console.log(
+          "[indexer] poll attributes settled",
+          JSON.stringify({
+            tokenId,
+            attempt,
+            count: settledAttrs.length,
+            tokenUpdatedAt: settledToken?.updatedAt ?? null,
+            hasSettledFreshTokenRow,
+            settledMatchesExpectedState,
+            settleDelayMs,
+          })
+        );
+        return settledAttrs;
+      }
+
+      console.log(
+        "[indexer] poll attributes settling retry",
+        JSON.stringify({
+          tokenId,
+          attempt,
+          firstCount: attrs.length,
+          settledCount: settledAttrs.length,
+          firstUpdatedAt: token?.updatedAt ?? null,
+          settledUpdatedAt: settledToken?.updatedAt ?? null,
+          hasSettledFreshTokenRow,
+          settledMatchesExpectedState,
+          minUpdatedAt: new Date(minUpdatedAtMs).toISOString(),
+          delayMs: config.attributeRetryDelayMs,
+        })
+      );
+      await sleep(config.attributeRetryDelayMs);
+      continue;
     }
 
     if (attempt === retries) {
@@ -846,6 +1009,7 @@ async function pollTokenAttributes(
           attempt,
           count: attrs.length,
           hasFreshTokenRow,
+          matchesExpectedState,
           tokenUpdatedAt: token?.updatedAt ?? null,
           minUpdatedAt: new Date(minUpdatedAtMs).toISOString(),
         })
@@ -860,6 +1024,7 @@ async function pollTokenAttributes(
         attempt,
         count: attrs.length,
         hasFreshTokenRow,
+        matchesExpectedState,
         tokenUpdatedAt: token?.updatedAt ?? null,
         minUpdatedAt: new Date(minUpdatedAtMs).toISOString(),
         delayMs: config.attributeRetryDelayMs,
@@ -869,6 +1034,144 @@ async function pollTokenAttributes(
   }
 
   return null;
+}
+
+function normalizeSeed(value: string | null | undefined): string | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().toLowerCase().replace(/^0x/, "");
+  return normalized.length > 0 ? normalized : null;
+}
+
+function matchesExpectedTokenState(
+  token: TokenWithAttributes | null,
+  expectedState: ExpectedTokenState
+): boolean {
+  if (!token) return false;
+  if (token.generatorId !== expectedState.generatorId) return false;
+  if (expectedState.iteration != null && token.iteration !== expectedState.iteration) {
+    return false;
+  }
+
+  const expectedSeed = normalizeSeed(expectedState.seed);
+  if (expectedSeed != null && normalizeSeed(token.seed) !== expectedSeed) {
+    return false;
+  }
+
+  if (
+    expectedState.queueUpdatedAtMs != null &&
+    Number.isFinite(expectedState.queueUpdatedAtMs)
+  ) {
+    const tokenUpdatedAtMs = token.updatedAt ? Date.parse(token.updatedAt) : NaN;
+    if (
+      !Number.isFinite(tokenUpdatedAtMs) ||
+      tokenUpdatedAtMs < expectedState.queueUpdatedAtMs
+    ) {
+      return false;
+    }
+  }
+
+  // Ignore shell rows created before feature extraction stores a concrete payload.
+  return typeof token.featuresJson === "string";
+}
+
+function mapAttributeEntries(
+  entries: Array<{
+    name: string;
+    value: string;
+    type: "string" | "number" | "boolean";
+    numericValue: number | null;
+  }>
+): Array<{ name: string; value: string | number | boolean }> {
+  return entries.map((entry) => ({
+    name: entry.name,
+    value: normalizePolledAttributeValue(entry),
+  }));
+}
+
+function normalizePolledAttributeValue(entry: {
+  value: string;
+  type: "string" | "number" | "boolean";
+  numericValue: number | null;
+}): string | number | boolean {
+  if (entry.type === "number") {
+    if (entry.numericValue != null && Number.isFinite(entry.numericValue)) {
+      return entry.numericValue;
+    }
+    const parsed = Number(entry.value);
+    return Number.isFinite(parsed) ? parsed : entry.value;
+  }
+
+  if (entry.type === "boolean") {
+    if (entry.numericValue != null && Number.isFinite(entry.numericValue)) {
+      return entry.numericValue !== 0;
+    }
+
+    const normalized = entry.value.trim().toLowerCase();
+    if (normalized === "1") return true;
+    if (normalized === "0") return false;
+    if (normalized === "false") return false;
+    return normalized === "true";
+  }
+
+  return entry.value ?? "";
+}
+
+function buildAttributeSignature(
+  attributes: Array<{ name: string; value: string | number | boolean }>
+): string {
+  return JSON.stringify(
+    attributes.map((attribute) => [
+      attribute.name,
+      typeof attribute.value,
+      String(attribute.value),
+    ])
+  );
+}
+
+async function isQueueStateStillCurrent(
+  config: IndexerConfig,
+  tokenExtraPtr: number,
+  tokenId: number,
+  expectedGeneratorId: number,
+  expectedGeneratorVersion: number
+): Promise<boolean> {
+  const queueEntry = await fetchBigmapKey(config, tokenExtraPtr, tokenId);
+  if (!queueEntry) {
+    console.log(
+      "[indexer] queue row missing before metadata upload",
+      JSON.stringify({
+        tokenId,
+        expectedGeneratorId,
+        expectedGeneratorVersion,
+      })
+    );
+    return false;
+  }
+
+  const queueValue = asRecord(queueEntry.value) as QueueRowValue;
+  const latestGeneratorId = toNat(queueValue.generator_id);
+  const latestGeneratorVersion = toNat(queueValue.generator_version) ?? 1;
+  const offchainUpdated = queueValue.offchain_metadata_updated === true;
+  const matches =
+    !offchainUpdated &&
+    latestGeneratorId === expectedGeneratorId &&
+    latestGeneratorVersion === expectedGeneratorVersion;
+
+  if (!matches) {
+    console.log(
+      "[indexer] queue state changed before metadata upload",
+      JSON.stringify({
+        tokenId,
+        expectedGeneratorId,
+        expectedGeneratorVersion,
+        latestGeneratorId,
+        latestGeneratorVersion,
+        offchainUpdated,
+      })
+    );
+  }
+
+  return matches;
 }
 
 function buildMetadataPayload({

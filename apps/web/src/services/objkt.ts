@@ -3,7 +3,8 @@ import type { BootloaderId } from '@/types/bootloader'
 
 // Cache for user profiles to avoid repeated API calls
 const userProfileCache = new Map<string, UserProfile | null>()
-const tokenVersionCache = new Map<string, number>()
+const TOKEN_VERSION_CACHE_TTL_MS = 10_000
+const tokenVersionCache = new Map<string, { version: number; cachedAtMs: number }>()
 const tokenExtraPtrCache = new Map<string, number | null>()
 
 export interface UserProfile {
@@ -100,7 +101,7 @@ async function fetchTokenGeneratorVersion(
 ): Promise<number | undefined> {
   if (!faContract || !tokenId) return undefined
   const cacheKey = `${faContract}:${tokenId}`
-  const cached = tokenVersionCache.get(cacheKey)
+  const cached = getFreshTokenVersionCache(cacheKey)
   if (cached !== undefined) return cached
 
   const tokenExtraPtr = await getTokenExtraBigMapPtr(faContract)
@@ -122,7 +123,7 @@ async function fetchTokenGeneratorVersion(
     }
 
     const version = Math.trunc(parsed)
-    tokenVersionCache.set(cacheKey, version)
+    setTokenVersionCache(cacheKey, version)
     return version
   } catch {
     return undefined
@@ -135,7 +136,7 @@ function getCachedTokenGeneratorVersion(
 ): number | undefined {
   if (!faContract || !tokenId) return undefined
   const cacheKey = `${faContract}:${tokenId}`
-  return tokenVersionCache.get(cacheKey)
+  return getFreshTokenVersionCache(cacheKey)
 }
 
 function chunkArray<T>(items: T[], chunkSize: number): T[][] {
@@ -157,10 +158,9 @@ async function batchFetchTokenGeneratorVersions(
 
   const networkConfig = getNetworkConfig()
   const uniqueTokenIds = Array.from(new Set(tokenIds))
-  const uncachedTokenIds = uniqueTokenIds.filter((tokenId) => {
-    const cacheKey = `${faContract}:${tokenId}`
-    return !tokenVersionCache.has(cacheKey)
-  })
+  const uncachedTokenIds = uniqueTokenIds.filter(
+    (tokenId) => getFreshTokenVersionCache(`${faContract}:${tokenId}`) === undefined
+  )
   if (uncachedTokenIds.length === 0) return
 
   const chunks = chunkArray(uncachedTokenIds, 80)
@@ -186,11 +186,28 @@ async function batchFetchTokenGeneratorVersions(
         const parsed = Number(entry.value?.generator_version)
         const cacheKey = `${faContract}:${key}`
         if (Number.isFinite(parsed) && parsed > 0) {
-          tokenVersionCache.set(cacheKey, Math.trunc(parsed))
+          setTokenVersionCache(cacheKey, Math.trunc(parsed))
         }
       })
     })
   )
+}
+
+function getFreshTokenVersionCache(cacheKey: string): number | undefined {
+  const entry = tokenVersionCache.get(cacheKey)
+  if (!entry) return undefined
+  if (Date.now() - entry.cachedAtMs > TOKEN_VERSION_CACHE_TTL_MS) {
+    tokenVersionCache.delete(cacheKey)
+    return undefined
+  }
+  return entry.version
+}
+
+function setTokenVersionCache(cacheKey: string, version: number): void {
+  tokenVersionCache.set(cacheKey, {
+    version,
+    cachedAtMs: Date.now(),
+  })
 }
 
 async function primeTokenGeneratorVersions(
@@ -426,6 +443,13 @@ export function getDisplayName(
  */
 export function clearUserProfileCache(): void {
   userProfileCache.clear()
+}
+
+/**
+ * Clears cached token generator versions (used for thumbnail versioning).
+ */
+export function clearTokenVersionCache(): void {
+  tokenVersionCache.clear()
 }
 
 /**

@@ -138,9 +138,10 @@ export function GeneratorDetailPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  const pendingCreateFromQuery = searchParams.get("pendingCreate") === "1";
   const isPendingCreateNavigation = Boolean(
     (location.state as { pendingCreate?: boolean } | null)?.pendingCreate
-  );
+  ) || pendingCreateFromQuery;
 
   // Fetch generator from chain - pass bootloader ID from URL to query the right contract
   const bootloaderId = bootloaderParam as BootloaderId | undefined;
@@ -236,6 +237,17 @@ export function GeneratorDetailPage() {
   useEffect(() => {
     setPendingRetryAttempt(0);
   }, [id, bootloaderId]);
+
+  useEffect(() => {
+    if (!pendingCreateFromQuery) return;
+    if (!generator) return;
+    if (!id || !bootloaderId) return;
+
+    navigate(`/generator/${bootloaderId}/${id}`, {
+      replace: true,
+      state: null,
+    });
+  }, [pendingCreateFromQuery, generator, id, bootloaderId, navigate]);
 
   const shouldWaitForNewGenerator =
     bootloaderId === "generic-web" &&

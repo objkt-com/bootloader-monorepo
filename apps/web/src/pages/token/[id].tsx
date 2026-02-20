@@ -22,6 +22,7 @@ import type { BootloaderId } from "@/types/bootloader";
 import { useToken, useTokenFeatures } from "@/hooks/use-tokens";
 import { useGeneratorMetadata } from "@/hooks/use-generators";
 import { useWallet } from "@/hooks/use-wallet";
+import { clearTokenVersionCache } from "@/services/objkt";
 import {
   getNetworkConfig,
   getContractAddressForBootloader,
@@ -94,18 +95,27 @@ export function TokenDetailPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const triggerIndexerForToken = async (id: string) => {
+  const triggerIndexerForToken = async (
+    id: string,
+    waitForCompletion = false
+  ) => {
     if (!authToken) return;
     if (CONFIG.network !== "shadownet") return;
 
     try {
       const baseUrl = CONFIG.sandboxWorkerUrl || "";
       if (!baseUrl) return;
+      const query = new URLSearchParams({
+        network: "shadownet",
+      });
+      if (waitForCompletion) {
+        query.set("wait", "1");
+      }
 
       const response = await fetch(
         `${baseUrl}/generic-web/v1/indexer/tokens/${encodeURIComponent(
           id
-        )}/trigger?network=shadownet`,
+        )}/trigger?${query.toString()}`,
         {
           method: "POST",
           headers: {
@@ -138,14 +148,9 @@ export function TokenDetailPage() {
           ? await regenerateGenericWebToken(tezos, tokenId)
           : await regenerateToken(tezos, tokenId);
       if (result.success) {
+        clearTokenVersionCache();
         if (bootloaderId === "generic-web") {
-          await triggerIndexerForToken(tokenId);
-          setTimeout(() => {
-            void refetch();
-          }, 2500);
-          setTimeout(() => {
-            void refetch();
-          }, 7000);
+          await triggerIndexerForToken(tokenId, true);
         }
         await refetch();
       } else {
