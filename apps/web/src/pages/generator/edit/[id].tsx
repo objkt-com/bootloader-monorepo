@@ -24,14 +24,10 @@ import { updateGenericWebGenerator } from "@/services/tezos";
 import { CONFIG } from "@/config";
 import type { BootloaderManifest } from "@/types/bootloader";
 
-// Generate a random seed for preview
+// Generate a random seed for preview (16 bytes = 32 hex chars, matching worker format)
 function generateRandomSeed(): string {
-  const chars = "0123456789abcdef";
-  let seed = "";
-  for (let i = 0; i < 64; i++) {
-    seed += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return seed;
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 function normalizeArchivePath(path: string): string | null {
@@ -162,6 +158,7 @@ export function GeneratorEditPage() {
   // Render state
   const [renderJobs, setRenderJobs] = useState<Record<string, RenderJob>>({});
   const [renderCount, setRenderCount] = useState(1);
+  const [renderSpecificSeed, setRenderSpecificSeed] = useState(false);
   const [isRendering, setIsRendering] = useState(false);
   const [renderError, setRenderError] = useState<string | null>(null);
   const [selectedThumbnail, setSelectedThumbnail] = useState<string | null>(
@@ -188,7 +185,13 @@ export function GeneratorEditPage() {
       : generator?.manifest?.entry || "index.html";
     const baseUrl = CONFIG.sandboxWorkerUrl;
     return `${baseUrl}/ipfs/${cid}/${entry}?s=${previewSeed}&i=0`;
-  }, [newCid, defaultEntry, generator?.cid, generator?.manifest?.entry, previewSeed]);
+  }, [
+    newCid,
+    defaultEntry,
+    generator?.cid,
+    generator?.manifest?.entry,
+    previewSeed,
+  ]);
 
   // Initialize form with existing data
   useEffect(() => {
@@ -214,6 +217,51 @@ export function GeneratorEditPage() {
   // Check if current user is the creator
   const isCreator =
     address && generator?.creator && address === generator.creator;
+
+  // Initialize a render session from the existing CID (no new zip needed)
+  const [isInitializingSession, setIsInitializingSession] = useState(false);
+  const initSessionFromCid = useCallback(async () => {
+    const cid = generator?.cid;
+    if (!cid || !authToken || sessionId) return;
+
+    setIsInitializingSession(true);
+    setRenderError(null);
+    try {
+      const res = await fetch(`${CONFIG.sandboxWorkerUrl}/sessions/from-cid`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({ cid }),
+      });
+      if (!res.ok) {
+        const data = await res
+          .json()
+          .catch(() => ({ error: "Failed to initialize session" }));
+        throw new Error(
+          (data as { error?: string }).error || "Failed to initialize session"
+        );
+      }
+      const data = await res.json();
+      const d = data as {
+        sessionId: string;
+        cid: string;
+        defaultEntry: string;
+        fileCount: number;
+      };
+      setSessionId(d.sessionId);
+      setNewCid(d.cid);
+      setDefaultEntry(d.defaultEntry);
+      setFileCount(d.fileCount);
+    } catch (err) {
+      setRenderError(
+        err instanceof Error ? err.message : "Failed to initialize session"
+      );
+    } finally {
+      setIsInitializingSession(false);
+    }
+  }, [generator?.cid, authToken, sessionId]);
 
   const updateRenderJob = useCallback((jobId: string, job: RenderJob) => {
     setRenderJobs((prev) => ({ ...prev, [jobId]: { ...job, jobId } }));
@@ -263,12 +311,20 @@ export function GeneratorEditPage() {
   const handleRender = useCallback(async () => {
     if (!sessionId || !newCid || !authToken) return;
 
-    const count = Math.max(1, Math.min(renderCount, MAX_RENDER_BATCH));
+    // In specific-seed mode, always render exactly 1 with the current preview seed
+    const count = renderSpecificSeed
+      ? 1
+      : Math.max(1, Math.min(renderCount, MAX_RENDER_BATCH));
 
     try {
       setIsRendering(true);
       setRenderError(null);
       for (let i = 0; i < count; i++) {
+        const payload: { seed?: string } = {};
+        if (renderSpecificSeed) {
+          payload.seed = previewSeed;
+        }
+
         const res = await fetch(
           `${CONFIG.sandboxWorkerUrl}/sessions/${sessionId}/render`,
           {
@@ -277,7 +333,7 @@ export function GeneratorEditPage() {
               "content-type": "application/json",
               Authorization: `Bearer ${authToken}`,
             },
-            body: JSON.stringify({}),
+            body: JSON.stringify(payload),
           }
         );
         const data = await res.json();
@@ -301,7 +357,16 @@ export function GeneratorEditPage() {
     } finally {
       setIsRendering(false);
     }
-  }, [authToken, newCid, pollJob, renderCount, sessionId, updateRenderJob]);
+  }, [
+    authToken,
+    newCid,
+    pollJob,
+    renderCount,
+    renderSpecificSeed,
+    previewSeed,
+    sessionId,
+    updateRenderJob,
+  ]);
 
   const handleJobClick = useCallback((job: RenderJob) => {
     if (!job.seed) return;
@@ -361,9 +426,14 @@ export function GeneratorEditPage() {
           );
         }
 
-        const normalizedEntries: Array<{ path: string; entry: JSZip.JSZipObject }> = [];
+        const normalizedEntries: Array<{
+          path: string;
+          entry: JSZip.JSZipObject;
+        }> = [];
         for (const [rawPath, entry] of entries) {
-          const normalizedPath = normalizeArchivePath(rawPath.replace(/\\/g, "/"));
+          const normalizedPath = normalizeArchivePath(
+            rawPath.replace(/\\/g, "/")
+          );
           if (!normalizedPath) continue;
           normalizedEntries.push({ path: normalizedPath, entry });
         }
@@ -381,7 +451,9 @@ export function GeneratorEditPage() {
         }));
 
         if (!projectEntries.some((item) => item.path === "index.html")) {
-          throw new Error("Archive must include index.html at the project root");
+          throw new Error(
+            "Archive must include index.html at the project root"
+          );
         }
 
         const manifestEntry = projectEntries.find(
@@ -409,16 +481,13 @@ export function GeneratorEditPage() {
 
         const formData = new FormData();
         formData.append("file", file);
-        const res = await fetch(
-          `${CONFIG.sandboxWorkerUrl}/sessions`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${authToken}`,
-            },
-            body: formData,
-          }
-        );
+        const res = await fetch(`${CONFIG.sandboxWorkerUrl}/sessions`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: formData,
+        });
 
         if (!res.ok) {
           throw new Error(await res.text());
@@ -452,7 +521,8 @@ export function GeneratorEditPage() {
 
   // Handle save
   const handleSave = useCallback(async () => {
-    if (!tezos || !generator || !id || !name.trim() || !user?.id || !authToken) return;
+    if (!tezos || !generator || !id || !name.trim() || !user?.id || !authToken)
+      return;
 
     setIsSaving(true);
     setSaveError(null);
@@ -712,6 +782,7 @@ export function GeneratorEditPage() {
               <Label className="block mb-2">Preview Seed</Label>
               <Input
                 value={previewSeed}
+                maxLength={32}
                 onChange={(e) => setPreviewSeed(e.target.value)}
                 className="font-mono text-xs"
               />
@@ -760,6 +831,7 @@ export function GeneratorEditPage() {
               <div className="flex gap-2">
                 <Input
                   value={thumbnailSeed}
+                  maxLength={32}
                   onChange={(e) => setThumbnailSeed(e.target.value)}
                   placeholder="Seed used for generator thumbnail"
                   className="font-mono text-xs"
@@ -773,8 +845,33 @@ export function GeneratorEditPage() {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                This seed controls which output is used for the generator card thumbnail.
+                This seed controls which output is used for the generator card
+                thumbnail.
               </p>
+              {!sessionId && !newCid && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-2"
+                  onClick={initSessionFromCid}
+                  disabled={
+                    isInitializingSession || !generator?.cid || !authToken
+                  }
+                >
+                  {isInitializingSession ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    "Render new thumbnail"
+                  )}
+                </Button>
+              )}
+              {renderError && !sessionId && (
+                <p className="text-sm text-destructive mt-2">{renderError}</p>
+              )}
             </div>
 
             {/* Upload new project */}
@@ -854,138 +951,208 @@ export function GeneratorEditPage() {
               )}
             </div>
 
-            {/* Render previews */}
-            <div>
-              <Label className="block mb-2 flex items-center gap-2">
-                <Image className="h-4 w-4" />
-                Render Previews (optional)
-              </Label>
-              <p className="text-sm text-muted-foreground mb-3">
-                Render candidates and pick one as thumbnail seed.
-              </p>
-              <div className="flex items-center gap-2 mb-2">
-                <Input
-                  type="number"
-                  min="1"
-                  max={MAX_RENDER_BATCH}
-                  value={renderCount}
-                  onChange={(e) =>
-                    setRenderCount(
-                      Math.max(
-                        1,
-                        Math.min(
-                          Number.parseInt(e.target.value, 10) || 1,
-                          MAX_RENDER_BATCH
-                        )
-                      )
-                    )
-                  }
-                  className="w-20 h-8"
-                />
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={handleRender}
-                  disabled={
-                    !sessionId ||
-                    !newCid ||
-                    !authToken ||
-                    isRendering ||
-                    activeRenderCount >= MAX_RENDER_BATCH
-                  }
-                >
-                  {isRendering ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Rendering...
-                    </>
-                  ) : (
-                    "Render"
-                  )}
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground mb-3">
-                Max {MAX_RENDER_BATCH} submissions at once, {MAX_RENDER_PER_MINUTE} per minute.
-              </p>
-              {renderError && (
-                <p className="text-sm text-destructive mb-3">{renderError}</p>
-              )}
-              {!sessionId && (
-                <p className="text-xs text-muted-foreground mb-3">
-                  Upload a new zip in this edit session to enable render previews.
+            {/* Render previews - show when session is active */}
+            {sessionId && newCid && (
+              <div>
+                <Label className="block mb-2 flex items-center gap-2">
+                  <Image className="h-4 w-4" />
+                  Render Previews
+                </Label>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Render candidates and pick one as thumbnail seed.
                 </p>
-              )}
-              {renderList.length > 0 && sessionId && (
-                <div className="grid grid-cols-3 gap-2">
-                  {renderList.map((job) => (
-                    <div
-                      key={job.jobId}
-                      className={cn(
-                        "aspect-square border relative cursor-pointer overflow-hidden group",
-                        selectedThumbnail === job.jobId && "ring-2 ring-primary",
-                        job.state === "error" && "bg-destructive/10"
-                      )}
-                      onClick={() =>
-                        job.state === "complete" && handleJobClick(job)
+                <div className="flex rounded-md border mb-4 text-sm overflow-hidden">
+                  <button
+                    type="button"
+                    className={cn(
+                      "flex-1 py-1.5 px-3 text-center transition-colors",
+                      !renderSpecificSeed
+                        ? "bg-foreground text-background font-medium"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                    onClick={() => setRenderSpecificSeed(false)}
+                  >
+                    Random Seeds
+                  </button>
+                  <button
+                    type="button"
+                    className={cn(
+                      "flex-1 py-1.5 px-3 text-center transition-colors border-l",
+                      renderSpecificSeed
+                        ? "bg-foreground text-background font-medium"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                    onClick={() => setRenderSpecificSeed(true)}
+                  >
+                    Specific Seed
+                  </button>
+                </div>
+                {renderSpecificSeed ? (
+                  <div className="mb-3">
+                    <Input
+                      value={previewSeed}
+                      maxLength={32}
+                      onChange={(e) => setPreviewSeed(e.target.value)}
+                      placeholder="Seed to render"
+                      className="font-mono text-xs h-8 mb-2"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="w-full"
+                      onClick={handleRender}
+                      disabled={
+                        !sessionId ||
+                        !newCid ||
+                        !authToken ||
+                        isRendering ||
+                        activeRenderCount >= MAX_RENDER_BATCH ||
+                        !previewSeed.trim()
                       }
                     >
-                      {job.state === "processing" && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-background/80">
-                          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                        </div>
-                      )}
-                      {job.state === "complete" && job.result?.thumbnailKey && (
+                      {isRendering ? (
                         <>
-                          <img
-                            src={`${CONFIG.sandboxWorkerUrl}/sessions/${sessionId}/render/${job.jobId}/thumbnail?auth=${encodeURIComponent(
-                              authToken || ""
-                            )}`}
-                            alt=""
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="absolute inset-0 bg-black/60 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 p-1">
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="secondary"
-                              className="h-7 text-xs"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleSelectThumbnail(job.jobId);
-                              }}
-                            >
-                              {selectedThumbnail === job.jobId ? (
-                                <>
-                                  <Check className="h-3 w-3 mr-1" />
-                                  Selected
-                                </>
-                              ) : (
-                                "Use as thumbnail"
-                              )}
-                            </Button>
-                          </div>
-                          {selectedThumbnail === job.jobId && (
-                            <div className="absolute top-1 right-1 bg-primary rounded-full p-0.5">
-                              <Check className="h-3 w-3 text-primary-foreground" />
-                            </div>
-                          )}
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Rendering...
                         </>
+                      ) : (
+                        "Render This Seed"
                       )}
-                      {job.state === "error" && (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <X className="h-6 w-6 text-destructive" />
-                        </div>
-                      )}
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Input
+                        type="number"
+                        min="1"
+                        max={MAX_RENDER_BATCH}
+                        value={renderCount}
+                        onChange={(e) =>
+                          setRenderCount(
+                            Math.max(
+                              1,
+                              Math.min(
+                                Number.parseInt(e.target.value, 10) || 1,
+                                MAX_RENDER_BATCH
+                              )
+                            )
+                          )
+                        }
+                        className="w-20 h-8"
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleRender}
+                        disabled={
+                          !sessionId ||
+                          !newCid ||
+                          !authToken ||
+                          isRendering ||
+                          activeRenderCount >= MAX_RENDER_BATCH
+                        }
+                      >
+                        {isRendering ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Rendering...
+                          </>
+                        ) : (
+                          "Render"
+                        )}
+                      </Button>
                     </div>
-                  ))}
-                </div>
-              )}
-              {renderList.length === 0 && (
-                <p className="text-xs text-muted-foreground text-center py-3 border border-dashed">
-                  No renders yet.
-                </p>
-              )}
-            </div>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Max {MAX_RENDER_BATCH} at once, {MAX_RENDER_PER_MINUTE}
+                      /min.
+                    </p>
+                  </>
+                )}
+                {renderError && (
+                  <p className="text-sm text-destructive mb-3">{renderError}</p>
+                )}
+                {renderList.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2">
+                    {renderList.map((job) => (
+                      <div
+                        key={job.jobId}
+                        className={cn(
+                          "aspect-square border relative cursor-pointer overflow-hidden group",
+                          selectedThumbnail === job.jobId &&
+                            "ring-2 ring-primary",
+                          job.state === "error" && "bg-destructive/10"
+                        )}
+                        onClick={() =>
+                          job.state === "complete" && handleJobClick(job)
+                        }
+                      >
+                        {job.state === "processing" && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-background/80">
+                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                          </div>
+                        )}
+                        {job.state === "complete" &&
+                          job.result?.thumbnailKey && (
+                            <>
+                              <img
+                                src={`${
+                                  CONFIG.sandboxWorkerUrl
+                                }/sessions/${sessionId}/render/${
+                                  job.jobId
+                                }/thumbnail?auth=${encodeURIComponent(
+                                  authToken || ""
+                                )}`}
+                                alt=""
+                                className="w-full h-full object-cover"
+                              />
+                              <div className="absolute inset-0 bg-black/60 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 p-1">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="secondary"
+                                  className="h-7 text-xs"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSelectThumbnail(job.jobId);
+                                  }}
+                                >
+                                  {selectedThumbnail === job.jobId ? (
+                                    <>
+                                      <Check className="h-3 w-3 mr-1" />
+                                      Selected
+                                    </>
+                                  ) : (
+                                    "Use as thumbnail"
+                                  )}
+                                </Button>
+                              </div>
+                              {selectedThumbnail === job.jobId && (
+                                <div className="absolute top-1 right-1 bg-primary rounded-full p-0.5">
+                                  <Check className="h-3 w-3 text-primary-foreground" />
+                                </div>
+                              )}
+                            </>
+                          )}
+                        {job.state === "error" && (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <X className="h-6 w-6 text-destructive" />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {renderList.length === 0 && (
+                  <p className="text-xs text-muted-foreground text-center py-3 border border-dashed">
+                    No renders yet. Click "Render" to generate previews.
+                  </p>
+                )}
+                {renderError && (
+                  <p className="text-sm text-destructive mt-2">{renderError}</p>
+                )}
+              </div>
+            )}
 
             {/* Current CID info */}
             <div className="text-sm text-muted-foreground border-t pt-4">

@@ -1,97 +1,111 @@
-import { getNetworkConfig, getContractAddress, getGenericWebContractAddress } from '@/config'
-import type { BootloaderId } from '@/types/bootloader'
+import {
+  getNetworkConfig,
+  getContractAddress,
+  getGenericWebContractAddress,
+} from "@/config";
+import type { BootloaderId } from "@/types/bootloader";
 
 // Cache for user profiles to avoid repeated API calls
-const userProfileCache = new Map<string, UserProfile | null>()
-const TOKEN_VERSION_CACHE_TTL_MS = 10_000
-const tokenVersionCache = new Map<string, { version: number; cachedAtMs: number }>()
-const tokenExtraPtrCache = new Map<string, number | null>()
+const userProfileCache = new Map<string, UserProfile | null>();
+const TOKEN_VERSION_CACHE_TTL_MS = 10_000;
+const tokenVersionCache = new Map<
+  string,
+  { version: number; cachedAtMs: number }
+>();
+const tokenExtraPtrCache = new Map<string, number | null>();
 
 export interface UserProfile {
-  address: string
-  alias?: string
-  description?: string
-  twitter?: string
-  tzdomain?: string
-  logo?: string
+  address: string;
+  alias?: string;
+  description?: string;
+  twitter?: string;
+  tzdomain?: string;
+  logo?: string;
 }
 
 export interface ActivityEvent {
-  id: string
-  eventType: 'mint' | 'sale'
-  marketplaceEventType?: string
-  amount: number
-  price?: number
-  priceXtz?: number
-  timestamp: string
-  ophash?: string
-  level?: number
-  creatorAddress?: string
-  creatorAlias?: string
-  recipientAddress?: string
-  recipientAlias?: string
-  tokenId: string
-  tokenName?: string
-  tokenDescription?: string
-  tokenThumbnailUri?: string
-  tokenDisplayUri?: string
-  tokenArtifactUri?: string
-  generatorId?: string
-  generatorVersion?: number
-  faContract?: string
-  bootloaderId: BootloaderId
+  id: string;
+  eventType: "mint" | "sale";
+  marketplaceEventType?: string;
+  amount: number;
+  price?: number;
+  priceXtz?: number;
+  timestamp: string;
+  ophash?: string;
+  level?: number;
+  creatorAddress?: string;
+  creatorAlias?: string;
+  recipientAddress?: string;
+  recipientAlias?: string;
+  tokenId: string;
+  tokenName?: string;
+  tokenDescription?: string;
+  tokenThumbnailUri?: string;
+  tokenDisplayUri?: string;
+  tokenArtifactUri?: string;
+  generatorId?: string;
+  generatorVersion?: number;
+  faContract?: string;
+  bootloaderId: BootloaderId;
 }
 
 export interface OwnedToken {
-  tokenId: number
-  pk: string
-  name: string
-  description?: string
-  generatorVersion?: number
-  artifactUri?: string
-  displayUri?: string
-  thumbnailUri?: string
-  timestamp?: string
-  quantity: number
-  creators: Array<{ creator_address: string; verified?: boolean }>
-  faContract: string
-  bootloaderId: BootloaderId
+  tokenId: number;
+  pk: string;
+  name: string;
+  description?: string;
+  generatorVersion?: number;
+  artifactUri?: string;
+  displayUri?: string;
+  thumbnailUri?: string;
+  timestamp?: string;
+  quantity: number;
+  creators: Array<{ creator_address: string; verified?: boolean }>;
+  faContract: string;
+  bootloaderId: BootloaderId;
 }
 
 /**
  * Gets the correct objkt API URL based on network configuration
  */
 function getObjktApiUrl(): string {
-  const networkConfig = getNetworkConfig()
+  const networkConfig = getNetworkConfig();
   // Use shadownet API for shadownet, mainnet API for mainnet
-  return networkConfig.tzktApi.includes('shadownet')
-    ? 'https://data.shadownet.objkt.com/v3/graphql'
-    : 'https://data.objkt.com/v3/graphql'
+  return networkConfig.tzktApi.includes("shadownet")
+    ? "https://data.shadownet.objkt.com/v3/graphql"
+    : "https://data.objkt.com/v3/graphql";
 }
 
-async function getTokenExtraBigMapPtr(faContract: string): Promise<number | null> {
-  const cached = tokenExtraPtrCache.get(faContract)
-  if (cached !== undefined) return cached
+async function getTokenExtraBigMapPtr(
+  faContract: string
+): Promise<number | null> {
+  const cached = tokenExtraPtrCache.get(faContract);
+  if (cached !== undefined) return cached;
 
   try {
-    const networkConfig = getNetworkConfig()
-    const response = await fetch(`${networkConfig.tzktApi}/v1/contracts/${faContract}/bigmaps`)
+    const networkConfig = getNetworkConfig();
+    const response = await fetch(
+      `${networkConfig.tzktApi}/v1/contracts/${faContract}/bigmaps`
+    );
     if (!response.ok) {
       // Cache only definitive "not found" responses.
       // Transient backend/network failures should be retryable.
       if (response.status === 404) {
-        tokenExtraPtrCache.set(faContract, null)
+        tokenExtraPtrCache.set(faContract, null);
       }
-      return null
+      return null;
     }
 
-    const bigmaps = (await response.json()) as Array<{ path?: string; ptr?: number }>
-    const tokenExtra = bigmaps.find((entry) => entry.path === 'token_extra')
-    const ptr = typeof tokenExtra?.ptr === 'number' ? tokenExtra.ptr : null
-    tokenExtraPtrCache.set(faContract, ptr)
-    return ptr
+    const bigmaps = (await response.json()) as Array<{
+      path?: string;
+      ptr?: number;
+    }>;
+    const tokenExtra = bigmaps.find((entry) => entry.path === "token_extra");
+    const ptr = typeof tokenExtra?.ptr === "number" ? tokenExtra.ptr : null;
+    tokenExtraPtrCache.set(faContract, ptr);
+    return ptr;
   } catch {
-    return null
+    return null;
   }
 }
 
@@ -99,34 +113,36 @@ async function fetchTokenGeneratorVersion(
   faContract: string | undefined,
   tokenId: string | undefined
 ): Promise<number | undefined> {
-  if (!faContract || !tokenId) return undefined
-  const cacheKey = `${faContract}:${tokenId}`
-  const cached = getFreshTokenVersionCache(cacheKey)
-  if (cached !== undefined) return cached
+  if (!faContract || !tokenId) return undefined;
+  const cacheKey = `${faContract}:${tokenId}`;
+  const cached = getFreshTokenVersionCache(cacheKey);
+  if (cached !== undefined) return cached;
 
-  const tokenExtraPtr = await getTokenExtraBigMapPtr(faContract)
-  if (!tokenExtraPtr) return undefined
+  const tokenExtraPtr = await getTokenExtraBigMapPtr(faContract);
+  if (!tokenExtraPtr) return undefined;
 
   try {
-    const networkConfig = getNetworkConfig()
+    const networkConfig = getNetworkConfig();
     const response = await fetch(
-      `${networkConfig.tzktApi}/v1/bigmaps/${tokenExtraPtr}/keys/${encodeURIComponent(tokenId)}`
-    )
-    if (!response.ok) return undefined
+      `${
+        networkConfig.tzktApi
+      }/v1/bigmaps/${tokenExtraPtr}/keys/${encodeURIComponent(tokenId)}`
+    );
+    if (!response.ok) return undefined;
 
     const payload = (await response.json()) as {
-      value?: { generator_version?: string | number }
-    }
-    const parsed = Number(payload.value?.generator_version)
+      value?: { generator_version?: string | number };
+    };
+    const parsed = Number(payload.value?.generator_version);
     if (!Number.isFinite(parsed) || parsed <= 0) {
-      return undefined
+      return undefined;
     }
 
-    const version = Math.trunc(parsed)
-    setTokenVersionCache(cacheKey, version)
-    return version
+    const version = Math.trunc(parsed);
+    setTokenVersionCache(cacheKey, version);
+    return version;
   } catch {
-    return undefined
+    return undefined;
   }
 }
 
@@ -134,146 +150,155 @@ function getCachedTokenGeneratorVersion(
   faContract: string | undefined,
   tokenId: string | undefined
 ): number | undefined {
-  if (!faContract || !tokenId) return undefined
-  const cacheKey = `${faContract}:${tokenId}`
-  return getFreshTokenVersionCache(cacheKey)
+  if (!faContract || !tokenId) return undefined;
+  const cacheKey = `${faContract}:${tokenId}`;
+  return getFreshTokenVersionCache(cacheKey);
 }
 
 function chunkArray<T>(items: T[], chunkSize: number): T[][] {
-  const chunks: T[][] = []
+  const chunks: T[][] = [];
   for (let i = 0; i < items.length; i += chunkSize) {
-    chunks.push(items.slice(i, i + chunkSize))
+    chunks.push(items.slice(i, i + chunkSize));
   }
-  return chunks
+  return chunks;
 }
 
 async function batchFetchTokenGeneratorVersions(
   faContract: string,
   tokenIds: string[]
 ): Promise<void> {
-  if (tokenIds.length === 0) return
+  if (tokenIds.length === 0) return;
 
-  const tokenExtraPtr = await getTokenExtraBigMapPtr(faContract)
-  if (!tokenExtraPtr) return
+  const tokenExtraPtr = await getTokenExtraBigMapPtr(faContract);
+  if (!tokenExtraPtr) return;
 
-  const networkConfig = getNetworkConfig()
-  const uniqueTokenIds = Array.from(new Set(tokenIds))
+  const networkConfig = getNetworkConfig();
+  const uniqueTokenIds = Array.from(new Set(tokenIds));
   const uncachedTokenIds = uniqueTokenIds.filter(
-    (tokenId) => getFreshTokenVersionCache(`${faContract}:${tokenId}`) === undefined
-  )
-  if (uncachedTokenIds.length === 0) return
+    (tokenId) =>
+      getFreshTokenVersionCache(`${faContract}:${tokenId}`) === undefined
+  );
+  if (uncachedTokenIds.length === 0) return;
 
-  const chunks = chunkArray(uncachedTokenIds, 80)
+  const chunks = chunkArray(uncachedTokenIds, 80);
 
   await Promise.all(
     chunks.map(async (chunk) => {
-      const query = encodeURIComponent(chunk.join(','))
-      const url = `${networkConfig.tzktApi}/v1/bigmaps/${tokenExtraPtr}/keys?active=true&select=key,value.generator_version&key.in=${query}`
-      const response = await fetch(url)
+      const query = encodeURIComponent(chunk.join(","));
+      // TzKT key.in requires at least 2 items; use key= for single-item lookups
+      const filter = chunk.length === 1 ? `key=${query}` : `key.in=${query}`;
+      const url = `${networkConfig.tzktApi}/v1/bigmaps/${tokenExtraPtr}/keys?active=true&select=key,value.generator_version&${filter}`;
+      const response = await fetch(url);
       if (!response.ok) {
-        throw new Error(`Batch fetch failed with status ${response.status}`)
+        throw new Error(`Batch fetch failed with status ${response.status}`);
       }
 
       const payload = (await response.json()) as Array<{
-        key?: string | number
-        value?: { generator_version?: string | number }
-      }>
+        key?: string | number;
+        value?: { generator_version?: string | number };
+      }>;
 
       payload.forEach((entry) => {
-        const key = String(entry.key ?? '')
-        if (!key) return
+        const key = String(entry.key ?? "");
+        if (!key) return;
 
-        const parsed = Number(entry.value?.generator_version)
-        const cacheKey = `${faContract}:${key}`
+        const parsed = Number(entry.value?.generator_version);
+        const cacheKey = `${faContract}:${key}`;
         if (Number.isFinite(parsed) && parsed > 0) {
-          setTokenVersionCache(cacheKey, Math.trunc(parsed))
+          setTokenVersionCache(cacheKey, Math.trunc(parsed));
         }
-      })
+      });
     })
-  )
+  );
 }
 
 function getFreshTokenVersionCache(cacheKey: string): number | undefined {
-  const entry = tokenVersionCache.get(cacheKey)
-  if (!entry) return undefined
+  const entry = tokenVersionCache.get(cacheKey);
+  if (!entry) return undefined;
   if (Date.now() - entry.cachedAtMs > TOKEN_VERSION_CACHE_TTL_MS) {
-    tokenVersionCache.delete(cacheKey)
-    return undefined
+    tokenVersionCache.delete(cacheKey);
+    return undefined;
   }
-  return entry.version
+  return entry.version;
 }
 
 function setTokenVersionCache(cacheKey: string, version: number): void {
   tokenVersionCache.set(cacheKey, {
     version,
     cachedAtMs: Date.now(),
-  })
+  });
 }
 
 async function primeTokenGeneratorVersions(
   events: Array<{
-    fa_contract?: string
-    token?: { token_id?: string; fa_contract?: string }
+    fa_contract?: string;
+    token?: { token_id?: string; fa_contract?: string };
   }>
 ): Promise<void> {
-  const tokenIdsByContract = new Map<string, string[]>()
+  const tokenIdsByContract = new Map<string, string[]>();
 
   events.forEach((event) => {
-    const tokenId = event.token?.token_id
-    const faContract = event.token?.fa_contract || event.fa_contract
-    if (!tokenId || !faContract) return
-    const current = tokenIdsByContract.get(faContract) || []
-    current.push(tokenId)
-    tokenIdsByContract.set(faContract, current)
-  })
+    const tokenId = event.token?.token_id;
+    const faContract = event.token?.fa_contract || event.fa_contract;
+    if (!tokenId || !faContract) return;
+    const current = tokenIdsByContract.get(faContract) || [];
+    current.push(tokenId);
+    tokenIdsByContract.set(faContract, current);
+  });
 
   await Promise.all(
-    Array.from(tokenIdsByContract.entries()).map(async ([faContract, tokenIds]) => {
-      try {
-        await batchFetchTokenGeneratorVersions(faContract, tokenIds)
-      } catch {
-        // Batch may fail on unsupported params or transient backend issues.
-        // We'll lazily fall back to per-token lookup during event mapping.
+    Array.from(tokenIdsByContract.entries()).map(
+      async ([faContract, tokenIds]) => {
+        try {
+          await batchFetchTokenGeneratorVersions(faContract, tokenIds);
+        } catch {
+          // Batch may fail on unsupported params or transient backend issues.
+          // We'll lazily fall back to per-token lookup during event mapping.
+        }
       }
-    })
-  )
+    )
+  );
 }
 
 async function primeOwnedTokenGeneratorVersions(
   holders: Array<{ token?: { token_id?: string; fa_contract?: string } }>
 ): Promise<void> {
-  const tokenIdsByContract = new Map<string, string[]>()
+  const tokenIdsByContract = new Map<string, string[]>();
 
   holders.forEach((holder) => {
-    const tokenId = holder.token?.token_id
-    const faContract = holder.token?.fa_contract
-    if (!tokenId || !faContract) return
-    const current = tokenIdsByContract.get(faContract) || []
-    current.push(tokenId)
-    tokenIdsByContract.set(faContract, current)
-  })
+    const tokenId = holder.token?.token_id;
+    const faContract = holder.token?.fa_contract;
+    if (!tokenId || !faContract) return;
+    const current = tokenIdsByContract.get(faContract) || [];
+    current.push(tokenId);
+    tokenIdsByContract.set(faContract, current);
+  });
 
   await Promise.all(
-    Array.from(tokenIdsByContract.entries()).map(async ([faContract, tokenIds]) => {
-      try {
-        await batchFetchTokenGeneratorVersions(faContract, tokenIds)
-      } catch {
-        // Batch may fail on unsupported params or transient backend issues.
-        // We'll lazily fall back to per-token lookup during mapping.
+    Array.from(tokenIdsByContract.entries()).map(
+      async ([faContract, tokenIds]) => {
+        try {
+          await batchFetchTokenGeneratorVersions(faContract, tokenIds);
+        } catch {
+          // Batch may fail on unsupported params or transient backend issues.
+          // We'll lazily fall back to per-token lookup during mapping.
+        }
       }
-    })
-  )
+    )
+  );
 }
 
 /**
  * Fetches user profile from objkt API
  */
-export async function fetchUserProfile(address: string): Promise<UserProfile | null> {
-  if (!address) return null
+export async function fetchUserProfile(
+  address: string
+): Promise<UserProfile | null> {
+  if (!address) return null;
 
   // Check cache first
   if (userProfileCache.has(address)) {
-    return userProfileCache.get(address) ?? null
+    return userProfileCache.get(address) ?? null;
   }
 
   try {
@@ -288,34 +313,34 @@ export async function fetchUserProfile(address: string): Promise<UserProfile | n
           logo
         }
       }
-    `
+    `;
 
     const response = await fetch(getObjktApiUrl(), {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         query,
         variables: { address },
       }),
-    })
+    });
 
-    const data = await response.json()
-    const holder = data.data?.holder
+    const data = await response.json();
+    const holder = data.data?.holder;
 
     // Handle case where holder is an array (GraphQL returns array) or null/undefined
     const profile =
-      holder && Array.isArray(holder) && holder.length > 0 ? holder[0] : null
+      holder && Array.isArray(holder) && holder.length > 0 ? holder[0] : null;
 
     // Cache the result (even if null)
-    userProfileCache.set(address, profile)
+    userProfileCache.set(address, profile);
 
-    return profile
+    return profile;
   } catch (err) {
-    console.error('Failed to fetch user profile:', err)
-    userProfileCache.set(address, null)
-    return null
+    console.error("Failed to fetch user profile:", err);
+    userProfileCache.set(address, null);
+    return null;
   }
 }
 
@@ -326,25 +351,25 @@ export async function fetchUserProfilesBatch(
   addresses: string[]
 ): Promise<Map<string, UserProfile | null>> {
   if (!addresses || addresses.length === 0) {
-    return new Map()
+    return new Map();
   }
 
   // Filter out addresses that are already cached
   const uncachedAddresses = addresses.filter(
     (address) => !userProfileCache.has(address)
-  )
-  const results = new Map<string, UserProfile | null>()
+  );
+  const results = new Map<string, UserProfile | null>();
 
   // Add cached results first
   addresses.forEach((address) => {
     if (userProfileCache.has(address)) {
-      results.set(address, userProfileCache.get(address) ?? null)
+      results.set(address, userProfileCache.get(address) ?? null);
     }
-  })
+  });
 
   // If all addresses are cached, return early
   if (uncachedAddresses.length === 0) {
-    return results
+    return results;
   }
 
   try {
@@ -359,46 +384,46 @@ export async function fetchUserProfilesBatch(
           logo
         }
       }
-    `
+    `;
 
     const response = await fetch(getObjktApiUrl(), {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         query,
         variables: { addresses: uncachedAddresses },
       }),
-    })
+    });
 
-    const data = await response.json()
-    const holders = data.data?.holder || []
+    const data = await response.json();
+    const holders = data.data?.holder || [];
 
     // Create a map of found profiles
-    const foundProfiles = new Map<string, UserProfile>()
+    const foundProfiles = new Map<string, UserProfile>();
     holders.forEach((holder: UserProfile) => {
-      foundProfiles.set(holder.address, holder)
-    })
+      foundProfiles.set(holder.address, holder);
+    });
 
     // Process all uncached addresses
     uncachedAddresses.forEach((address) => {
-      const profile = foundProfiles.get(address) || null
-      userProfileCache.set(address, profile)
-      results.set(address, profile)
-    })
+      const profile = foundProfiles.get(address) || null;
+      userProfileCache.set(address, profile);
+      results.set(address, profile);
+    });
 
-    return results
+    return results;
   } catch (err) {
-    console.error('Failed to fetch user profiles batch:', err)
+    console.error("Failed to fetch user profiles batch:", err);
 
     // Cache null for all failed addresses to prevent repeated failures
     uncachedAddresses.forEach((address) => {
-      userProfileCache.set(address, null)
-      results.set(address, null)
-    })
+      userProfileCache.set(address, null);
+      results.set(address, null);
+    });
 
-    return results
+    return results;
   }
 }
 
@@ -406,8 +431,8 @@ export async function fetchUserProfilesBatch(
  * Formats an address to a shortened version
  */
 export function formatAddress(address: string): string {
-  if (!address) return ''
-  return `${address.slice(0, 6)}...${address.slice(-4)}`
+  if (!address) return "";
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
 /**
@@ -420,68 +445,74 @@ export function getDisplayName(
   profile: UserProfile | null,
   address?: string
 ): string {
-  if (!profile && !address) return ''
+  if (!profile && !address) return "";
 
   if (profile) {
     // Priority 1: alias
     if (profile.alias && profile.alias.trim()) {
-      return profile.alias.trim()
+      return profile.alias.trim();
     }
 
     // Priority 2: tzdomain
     if (profile.tzdomain && profile.tzdomain.trim()) {
-      return profile.tzdomain.trim()
+      return profile.tzdomain.trim();
     }
   }
 
   // Priority 3: shortened address
-  return formatAddress(address || profile?.address || '')
+  return formatAddress(address || profile?.address || "");
 }
 
 /**
  * Clears the user profile cache
  */
 export function clearUserProfileCache(): void {
-  userProfileCache.clear()
+  userProfileCache.clear();
 }
 
 /**
  * Clears cached token generator versions (used for thumbnail versioning).
  */
 export function clearTokenVersionCache(): void {
-  tokenVersionCache.clear()
+  tokenVersionCache.clear();
 }
 
 /**
  * Gets all bootloader contract addresses that are configured
  */
-function getAllContractAddresses(): Array<{ address: string; bootloaderId: BootloaderId }> {
-  const contracts: Array<{ address: string; bootloaderId: BootloaderId }> = []
+function getAllContractAddresses(): Array<{
+  address: string;
+  bootloaderId: BootloaderId;
+}> {
+  const contracts: Array<{ address: string; bootloaderId: BootloaderId }> = [];
 
-  const svgJsContract = getContractAddress()
+  const svgJsContract = getContractAddress();
   if (svgJsContract) {
-    contracts.push({ address: svgJsContract, bootloaderId: 'svg-js' })
+    contracts.push({ address: svgJsContract, bootloaderId: "svg-js" });
   }
 
-  const genericWebContract = getGenericWebContractAddress()
+  const genericWebContract = getGenericWebContractAddress();
   if (genericWebContract) {
-    contracts.push({ address: genericWebContract, bootloaderId: 'generic-web' })
+    contracts.push({
+      address: genericWebContract,
+      bootloaderId: "generic-web",
+    });
   }
 
-  return contracts
+  return contracts;
 }
 
 /**
  * Maps a contract address to its bootloader ID
  */
 function getBootloaderIdForContract(faContract: string): BootloaderId {
-  const genericWebContract = getGenericWebContractAddress()
+  const genericWebContract = getGenericWebContractAddress();
 
   if (faContract === genericWebContract) {
-    return 'generic-web'
+    return "generic-web";
   }
   // Default to svg-js for the main contract
-  return 'svg-js'
+  return "svg-js";
 }
 
 /**
@@ -491,38 +522,38 @@ export async function fetchBootloaderActivity(
   limit = 50,
   sinceTimestamp?: string
 ): Promise<ActivityEvent[]> {
-  const contracts = getAllContractAddresses()
+  const contracts = getAllContractAddresses();
 
   if (contracts.length === 0) {
-    throw new Error('No contract addresses configured for current network')
+    throw new Error("No contract addresses configured for current network");
   }
 
   // Get just the addresses for the query
-  const contractAddresses = contracts.map(c => c.address)
+  const contractAddresses = contracts.map((c) => c.address);
 
   // Build where clause for filtering - only mints and specific marketplace events
   // Query all bootloader contracts using _in operator
   const whereClause: Record<string, unknown> = {
     fa_contract: { _in: contractAddresses },
     _or: [
-      { event_type: { _eq: 'mint' } },
+      { event_type: { _eq: "mint" } },
       {
         marketplace_event_type: {
           _in: [
-            'dutch_auction_buy',
-            'offer_accept',
-            'offer_floor_accept',
-            'english_auction_settle',
-            'list_buy',
+            "dutch_auction_buy",
+            "offer_accept",
+            "offer_floor_accept",
+            "english_auction_settle",
+            "list_buy",
           ],
         },
       },
     ],
-  }
+  };
 
   // Add timestamp filter for polling new events
   if (sinceTimestamp) {
-    whereClause.timestamp = { _gt: sinceTimestamp }
+    whereClause.timestamp = { _gt: sinceTimestamp };
   }
 
   const query = `
@@ -562,90 +593,93 @@ export async function fetchBootloaderActivity(
         }
       }
     }
-  `
+  `;
 
   try {
     const response = await fetch(getObjktApiUrl(), {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         query,
         variables: { whereClause, limit },
       }),
-    })
+    });
 
-    const data = await response.json()
-    const events = data.data?.event || []
+    const data = await response.json();
+    const events = data.data?.event || [];
 
     // Prime token generator versions with batched bigmap key lookups.
     // This avoids one /keys/{tokenId} request per activity item.
-    await primeTokenGeneratorVersions(events)
+    await primeTokenGeneratorVersions(events);
 
     // Transform the data to match our expected format
-    return Promise.all(events.map(
-      async (event: {
-        id: string
-        event_type: string
-        marketplace_event_type?: string
-        amount?: number
-        price?: number
-        price_xtz?: number
-        timestamp: string
-        ophash?: string
-        level?: number
-        fa_contract: string
-        creator?: { address: string; alias?: string }
-        recipient?: { address: string; alias?: string }
-        token?: {
-          pk: string
-          token_id: string
-          fa_contract?: string
-          name?: string
-          description?: string
-          thumbnail_uri?: string
-          display_uri?: string
-          artifact_uri?: string
-        }
-      }): Promise<ActivityEvent> => {
-        const isMint = event.event_type === 'mint'
-        const eventFaContract = event.token?.fa_contract || event.fa_contract || ''
-        const bootloaderId = getBootloaderIdForContract(eventFaContract)
-        const tokenId = event.token?.token_id || ''
-        const generatorVersion =
-          getCachedTokenGeneratorVersion(eventFaContract, tokenId) ??
-          (await fetchTokenGeneratorVersion(eventFaContract, tokenId))
+    return Promise.all(
+      events.map(
+        async (event: {
+          id: string;
+          event_type: string;
+          marketplace_event_type?: string;
+          amount?: number;
+          price?: number;
+          price_xtz?: number;
+          timestamp: string;
+          ophash?: string;
+          level?: number;
+          fa_contract: string;
+          creator?: { address: string; alias?: string };
+          recipient?: { address: string; alias?: string };
+          token?: {
+            pk: string;
+            token_id: string;
+            fa_contract?: string;
+            name?: string;
+            description?: string;
+            thumbnail_uri?: string;
+            display_uri?: string;
+            artifact_uri?: string;
+          };
+        }): Promise<ActivityEvent> => {
+          const isMint = event.event_type === "mint";
+          const eventFaContract =
+            event.token?.fa_contract || event.fa_contract || "";
+          const bootloaderId = getBootloaderIdForContract(eventFaContract);
+          const tokenId = event.token?.token_id || "";
+          const generatorVersion =
+            getCachedTokenGeneratorVersion(eventFaContract, tokenId) ??
+            (await fetchTokenGeneratorVersion(eventFaContract, tokenId));
 
-        return {
-          id: event.id,
-          eventType: isMint ? 'mint' : 'sale',
-          marketplaceEventType: event.marketplace_event_type,
-          amount: event.amount || 1,
-          price: event.price,
-          priceXtz: event.price_xtz,
-          timestamp: event.timestamp,
-          ophash: event.ophash,
-          level: event.level,
-          faContract: eventFaContract,
-          bootloaderId,
-          creatorAddress: event.creator?.address,
-          creatorAlias: event.creator?.alias,
-          recipientAddress: event.recipient?.address,
-          recipientAlias: event.recipient?.alias,
-          tokenId,
-          generatorVersion,
-          tokenName: event.token?.name,
-          tokenDescription: event.token?.description,
-          tokenThumbnailUri: event.token?.thumbnail_uri,
-          tokenDisplayUri: event.token?.display_uri,
-          tokenArtifactUri: event.token?.artifact_uri,
+          return {
+            id: event.id,
+            eventType: isMint ? "mint" : "sale",
+            marketplaceEventType: event.marketplace_event_type,
+            amount: event.amount || 1,
+            price: event.price,
+            priceXtz: event.price_xtz,
+            timestamp: event.timestamp,
+            ophash: event.ophash,
+            level: event.level,
+            faContract: eventFaContract,
+            bootloaderId,
+            creatorAddress: event.creator?.address,
+            creatorAlias: event.creator?.alias,
+            recipientAddress: event.recipient?.address,
+            recipientAlias: event.recipient?.alias,
+            tokenId,
+            generatorVersion,
+            tokenName: event.token?.name,
+            tokenDescription: event.token?.description,
+            tokenThumbnailUri: event.token?.thumbnail_uri,
+            tokenDisplayUri: event.token?.display_uri,
+            tokenArtifactUri: event.token?.artifact_uri,
+          };
         }
-      }
-    ))
+      )
+    );
   } catch (err) {
-    console.error('Failed to fetch bootloader activity:', err)
-    throw err
+    console.error("Failed to fetch bootloader activity:", err);
+    throw err;
   }
 }
 
@@ -657,13 +691,13 @@ export async function fetchOwnedTokens(
   limit = 50,
   offset = 0
 ): Promise<OwnedToken[]> {
-  const contracts = getAllContractAddresses()
+  const contracts = getAllContractAddresses();
 
   if (contracts.length === 0) {
-    throw new Error('No contract addresses configured for current network')
+    throw new Error("No contract addresses configured for current network");
   }
 
-  const contractAddresses = contracts.map(c => c.address)
+  const contractAddresses = contracts.map((c) => c.address);
 
   const query = `
     query GetOwnedTokens($ownerAddress: String!, $contractAddresses: [String!]!, $limit: Int!, $offset: Int!) {
@@ -697,67 +731,69 @@ export async function fetchOwnedTokens(
         }
       }
     }
-  `
+  `;
 
   try {
     const response = await fetch(getObjktApiUrl(), {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         query,
         variables: { ownerAddress, contractAddresses, limit, offset },
       }),
-    })
+    });
 
-    const data = await response.json()
-    const holders = data.data?.token_holder || []
+    const data = await response.json();
+    const holders = data.data?.token_holder || [];
 
-    await primeOwnedTokenGeneratorVersions(holders)
+    await primeOwnedTokenGeneratorVersions(holders);
 
     return Promise.all(
-      holders.map(async (holder: {
-        quantity: string
-        token: {
-          pk: string
-          token_id: string
-          name?: string
-          description?: string
-          artifact_uri?: string
-          display_uri?: string
-          thumbnail_uri?: string
-          timestamp?: string
-          fa_contract: string
-          creators?: Array<{ creator_address: string; verified?: boolean }>
-        }
-      }): Promise<OwnedToken> => {
-        const tokenId = holder.token.token_id
-        const faContract = holder.token.fa_contract
-        const generatorVersion =
-          getCachedTokenGeneratorVersion(faContract, tokenId) ??
-          (await fetchTokenGeneratorVersion(faContract, tokenId))
+      holders.map(
+        async (holder: {
+          quantity: string;
+          token: {
+            pk: string;
+            token_id: string;
+            name?: string;
+            description?: string;
+            artifact_uri?: string;
+            display_uri?: string;
+            thumbnail_uri?: string;
+            timestamp?: string;
+            fa_contract: string;
+            creators?: Array<{ creator_address: string; verified?: boolean }>;
+          };
+        }): Promise<OwnedToken> => {
+          const tokenId = holder.token.token_id;
+          const faContract = holder.token.fa_contract;
+          const generatorVersion =
+            getCachedTokenGeneratorVersion(faContract, tokenId) ??
+            (await fetchTokenGeneratorVersion(faContract, tokenId));
 
-        return {
-          tokenId: parseInt(tokenId),
-          pk: holder.token.pk,
-          name: holder.token.name || `Token #${tokenId}`,
-          description: holder.token.description,
-          generatorVersion,
-          artifactUri: holder.token.artifact_uri,
-          displayUri: holder.token.display_uri,
-          thumbnailUri: holder.token.thumbnail_uri,
-          timestamp: holder.token.timestamp,
-          quantity: parseFloat(holder.quantity),
-          creators: holder.token.creators || [],
-          faContract,
-          bootloaderId: getBootloaderIdForContract(faContract),
+          return {
+            tokenId: parseInt(tokenId),
+            pk: holder.token.pk,
+            name: holder.token.name || `Token #${tokenId}`,
+            description: holder.token.description,
+            generatorVersion,
+            artifactUri: holder.token.artifact_uri,
+            displayUri: holder.token.display_uri,
+            thumbnailUri: holder.token.thumbnail_uri,
+            timestamp: holder.token.timestamp,
+            quantity: parseFloat(holder.quantity),
+            creators: holder.token.creators || [],
+            faContract,
+            bootloaderId: getBootloaderIdForContract(faContract),
+          };
         }
-      })
-    )
+      )
+    );
   } catch (err) {
-    console.error('Failed to fetch owned tokens:', err)
-    throw err
+    console.error("Failed to fetch owned tokens:", err);
+    throw err;
   }
 }
 
@@ -765,19 +801,21 @@ export async function fetchOwnedTokens(
  * Fetches the count of tokens owned by a specific address from all bootloader contracts
  * Uses pagination-based counting since objkt API doesn't support aggregate queries
  */
-export async function fetchOwnedTokensCount(ownerAddress: string): Promise<number> {
-  const contracts = getAllContractAddresses()
+export async function fetchOwnedTokensCount(
+  ownerAddress: string
+): Promise<number> {
+  const contracts = getAllContractAddresses();
 
   if (contracts.length === 0) {
-    return 0
+    return 0;
   }
 
-  const contractAddresses = contracts.map((c) => c.address)
+  const contractAddresses = contracts.map((c) => c.address);
 
-  let totalCount = 0
-  let offset = 0
-  const limit = 100 // Higher limit for faster counting
-  let hasMore = true
+  let totalCount = 0;
+  let offset = 0;
+  const limit = 100; // Higher limit for faster counting
+  let hasMore = true;
 
   const query = `
     query GetOwnedTokensPkOnly($ownerAddress: String!, $contractAddresses: [String!]!, $limit: Int!, $offset: Int!) {
@@ -798,32 +836,32 @@ export async function fetchOwnedTokensCount(ownerAddress: string): Promise<numbe
         }
       }
     }
-  `
+  `;
 
   try {
     while (hasMore) {
       const response = await fetch(getObjktApiUrl(), {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           query,
           variables: { ownerAddress, contractAddresses, limit, offset },
         }),
-      })
+      });
 
-      const data = await response.json()
-      const batch = data.data?.token_holder || []
+      const data = await response.json();
+      const batch = data.data?.token_holder || [];
 
-      totalCount += batch.length
-      hasMore = batch.length === limit
-      offset += limit
+      totalCount += batch.length;
+      hasMore = batch.length === limit;
+      offset += limit;
     }
 
-    return totalCount
+    return totalCount;
   } catch (err) {
-    console.error('Failed to fetch owned tokens count:', err)
-    return 0
+    console.error("Failed to fetch owned tokens count:", err);
+    return 0;
   }
 }

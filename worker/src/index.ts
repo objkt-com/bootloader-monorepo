@@ -931,6 +931,75 @@ app.post("/sessions", async (c) => {
   });
 });
 
+// Create a session from an existing CID (re-uses the archived zip from R2)
+app.post("/sessions/from-cid", async (c) => {
+  let authUser: User;
+  try {
+    authUser = await getAuthenticatedUser(c);
+  } catch (error) {
+    if (error instanceof HttpError) {
+      return c.json({ error: error.message }, error.status);
+    }
+    return c.json({ error: "Authentication required" }, 401);
+  }
+
+  const body = await c.req.json<{ cid?: string }>().catch(() => ({}));
+  const cid = body.cid?.trim();
+  if (!cid) {
+    return c.json({ error: "Missing cid" }, 400);
+  }
+
+  // Fetch the archived zip from R2
+  const archiveKey = `archives/${cid}.zip`;
+  const archiveObj = await c.env.R2_SANDBOX.get(archiveKey);
+  if (!archiveObj) {
+    return c.json({ error: "Archive not found for this CID" }, 404);
+  }
+  const archiveBuffer = await archiveObj.arrayBuffer();
+
+  // Create a new session DO and initialize it with the archive
+  const doId = c.env.SESSIONS.newUniqueId();
+  const sessionId = doId.toString();
+  const stub = c.env.SESSIONS.get(doId);
+
+  const response = await stub.fetch("https://session/init", {
+    method: "POST",
+    body: archiveBuffer,
+    headers: { "content-type": "application/octet-stream" },
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    return new Response(JSON.stringify({ error }), {
+      status: response.status,
+      headers: { "content-type": "application/json" },
+    });
+  }
+
+  const init = (await response.json()) as SessionInitResponse;
+  const seed = randomSeed();
+
+  try {
+    const sessionService = new SessionService(c.env.DB);
+    await sessionService.createSession({
+      id: sessionId,
+      userId: authUser.id,
+      cid: init.cid || null,
+    });
+  } catch (error) {
+    console.error("[sessions/from-cid] Failed to track session in DB:", error);
+  }
+
+  return c.json({
+    sessionId,
+    defaultEntry: init.defaultEntry,
+    fileCount: init.fileCount,
+    cid: init.cid,
+    upload: init.upload,
+    seed,
+  });
+});
+
 // Get sessions for a user
 app.get("/users/:userId/sessions", async (c) => {
   const userId = c.req.param("userId");
@@ -2044,7 +2113,9 @@ async function storeTokenFeatures(
     });
 
     console.log(
-      `[storeTokenFeatures] Stored ${Object.keys(features).length} features for token ${params.tokenId}`
+      `[storeTokenFeatures] Stored ${
+        Object.keys(features).length
+      } features for token ${params.tokenId}`
     );
   } catch (error) {
     console.error("[storeTokenFeatures] Failed to store features:", error);
@@ -2933,12 +3004,16 @@ export class RenderCoordinator {
             // Store feature payload alongside thumbnail in R2, including empty payloads.
             // An empty object means "freshly extracted and no traits".
             const featuresKey = `${r2Key}.features.json`;
-            await this.env.R2_THUMBS.put(featuresKey, JSON.stringify(features), {
-              httpMetadata: {
-                contentType: "application/json",
-                cacheControl,
-              },
-            });
+            await this.env.R2_THUMBS.put(
+              featuresKey,
+              JSON.stringify(features),
+              {
+                httpMetadata: {
+                  contentType: "application/json",
+                  cacheControl,
+                },
+              }
+            );
             console.log(
               "[RenderCoordinator] Stored features in R2:",
               featuresKey
@@ -2957,8 +3032,15 @@ export class RenderCoordinator {
         }
       }
 
-      if (forceRender === true && isGenericWebTokenThumbnail && !featureExtractionReady) {
-        return textResponse("Feature extraction not ready for forced sync", 503);
+      if (
+        forceRender === true &&
+        isGenericWebTokenThumbnail &&
+        !featureExtractionReady
+      ) {
+        return textResponse(
+          "Feature extraction not ready for forced sync",
+          503
+        );
       }
 
       const responseHeaders = new Headers(

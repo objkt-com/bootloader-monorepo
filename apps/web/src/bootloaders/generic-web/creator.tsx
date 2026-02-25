@@ -150,6 +150,7 @@ export function GenericWebCreator({ className }: GenericWebCreatorProps) {
   const [renderJobs, setRenderJobs] = useState<Record<string, RenderJob>>({});
   const [isRendering, setIsRendering] = useState(false);
   const [renderCount, setRenderCount] = useState(1);
+  const [renderSpecificSeed, setRenderSpecificSeed] = useState(false);
   const [selectedThumbnail, setSelectedThumbnail] = useState<string | null>(
     null
   );
@@ -241,13 +242,20 @@ export function GenericWebCreator({ className }: GenericWebCreatorProps) {
   const handleRender = useCallback(async () => {
     if (!sessionId || !cid || !authToken) return;
 
-    const count = Math.max(1, Math.min(renderCount, MAX_RENDER_BATCH));
+    // In specific-seed mode, always render exactly 1 with the current preview seed
+    const count = renderSpecificSeed
+      ? 1
+      : Math.max(1, Math.min(renderCount, MAX_RENDER_BATCH));
 
     try {
       setIsRendering(true);
-      const payload = {};
 
       for (let i = 0; i < count; i++) {
+        const payload: { seed?: string } = {};
+        if (renderSpecificSeed) {
+          payload.seed = seed;
+        }
+
         const res = await fetch(
           `${CONFIG.sandboxWorkerUrl}/sessions/${sessionId}/render`,
           {
@@ -278,128 +286,144 @@ export function GenericWebCreator({ className }: GenericWebCreatorProps) {
     } finally {
       setIsRendering(false);
     }
-  }, [authToken, sessionId, cid, renderCount, pollJob, updateRenderJob]);
+  }, [
+    authToken,
+    sessionId,
+    cid,
+    renderCount,
+    renderSpecificSeed,
+    seed,
+    pollJob,
+    updateRenderJob,
+  ]);
 
   // Handle file upload
-  const handleFile = useCallback(async (file: File) => {
-    try {
-      setError(null);
-      setIsUploading(true);
-      setRenderJobs({});
-      setSelectedThumbnail(null);
+  const handleFile = useCallback(
+    async (file: File) => {
+      try {
+        setError(null);
+        setIsUploading(true);
+        setRenderJobs({});
+        setSelectedThumbnail(null);
 
-      if (!file.name.toLowerCase().endsWith(".zip")) {
-        throw new Error("Please upload a .zip archive");
-      }
+        if (!file.name.toLowerCase().endsWith(".zip")) {
+          throw new Error("Please upload a .zip archive");
+        }
 
-      if (file.size > MAX_ARCHIVE_SIZE_BYTES) {
-        throw new Error(
-          `Archive is too large (${formatMegabytes(
-            file.size
-          )}). Max ${formatMegabytes(
-            MAX_ARCHIVE_SIZE_BYTES
-          )} per upload until direct uploads are enabled.`
-        );
-      }
-
-      const arrayBuffer = await file.arrayBuffer();
-      const zip = await JSZip.loadAsync(arrayBuffer);
-      const entries = Object.entries(zip.files).filter(
-        ([path, entry]) => !entry.dir && !path.startsWith("__MACOSX/")
-      );
-
-      if (entries.length === 0) {
-        throw new Error("Archive contains no files");
-      }
-
-      if (entries.length > MAX_FILES_PER_ARCHIVE) {
-        throw new Error(
-          `Archive has too many files (${entries.length}). Max ${MAX_FILES_PER_ARCHIVE} files per upload.`
-        );
-      }
-
-      const normalizedEntries: Array<{ path: string; entry: JSZip.JSZipObject }> = [];
-      for (const [rawPath, entry] of entries) {
-        const normalizedPath = normalizeArchivePath(rawPath.replace(/\\/g, "/"));
-        if (!normalizedPath) continue;
-        normalizedEntries.push({ path: normalizedPath, entry });
-      }
-
-      if (normalizedEntries.length === 0) {
-        throw new Error("Archive contains no valid files");
-      }
-
-      const rootPrefix = detectArchiveRootPrefix(
-        normalizedEntries.map((item) => item.path)
-      );
-      const projectEntries = normalizedEntries.map((item) => ({
-        path: stripArchivePrefix(item.path, rootPrefix),
-        entry: item.entry,
-      }));
-
-      if (!projectEntries.some((item) => item.path === "index.html")) {
-        throw new Error("Archive must include index.html at the project root");
-      }
-
-      const manifestEntry = projectEntries.find(
-        (item) => item.path === "manifest.json"
-      );
-      if (manifestEntry) {
-        const raw = JSON.parse(await manifestEntry.entry.async("text"));
-        validateManifest(raw);
-      }
-
-      let totalUncompressedBytes = 0;
-      for (const { entry } of normalizedEntries) {
-        const content = await entry.async("uint8array");
-        totalUncompressedBytes += content.length;
-        if (totalUncompressedBytes > MAX_TOTAL_UNCOMPRESSED_BYTES) {
+        if (file.size > MAX_ARCHIVE_SIZE_BYTES) {
           throw new Error(
-            `Archive expands to ${formatMegabytes(
-              totalUncompressedBytes
-            )}. Max ${formatMegabytes(
-              MAX_TOTAL_UNCOMPRESSED_BYTES
-            )} uncompressed content per upload.`
+            `Archive is too large (${formatMegabytes(
+              file.size
+            )}). Max ${formatMegabytes(
+              MAX_ARCHIVE_SIZE_BYTES
+            )} per upload until direct uploads are enabled.`
           );
         }
-      }
 
-      // Upload to sandbox worker (requires authentication)
-      if (!user?.id || !authToken) {
-        throw new Error("Please sign in to upload projects");
-      }
+        const arrayBuffer = await file.arrayBuffer();
+        const zip = await JSZip.loadAsync(arrayBuffer);
+        const entries = Object.entries(zip.files).filter(
+          ([path, entry]) => !entry.dir && !path.startsWith("__MACOSX/")
+        );
 
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await fetch(
-        `${CONFIG.sandboxWorkerUrl}/sessions`,
-        {
+        if (entries.length === 0) {
+          throw new Error("Archive contains no files");
+        }
+
+        if (entries.length > MAX_FILES_PER_ARCHIVE) {
+          throw new Error(
+            `Archive has too many files (${entries.length}). Max ${MAX_FILES_PER_ARCHIVE} files per upload.`
+          );
+        }
+
+        const normalizedEntries: Array<{
+          path: string;
+          entry: JSZip.JSZipObject;
+        }> = [];
+        for (const [rawPath, entry] of entries) {
+          const normalizedPath = normalizeArchivePath(
+            rawPath.replace(/\\/g, "/")
+          );
+          if (!normalizedPath) continue;
+          normalizedEntries.push({ path: normalizedPath, entry });
+        }
+
+        if (normalizedEntries.length === 0) {
+          throw new Error("Archive contains no valid files");
+        }
+
+        const rootPrefix = detectArchiveRootPrefix(
+          normalizedEntries.map((item) => item.path)
+        );
+        const projectEntries = normalizedEntries.map((item) => ({
+          path: stripArchivePrefix(item.path, rootPrefix),
+          entry: item.entry,
+        }));
+
+        if (!projectEntries.some((item) => item.path === "index.html")) {
+          throw new Error(
+            "Archive must include index.html at the project root"
+          );
+        }
+
+        const manifestEntry = projectEntries.find(
+          (item) => item.path === "manifest.json"
+        );
+        if (manifestEntry) {
+          const raw = JSON.parse(await manifestEntry.entry.async("text"));
+          validateManifest(raw);
+        }
+
+        let totalUncompressedBytes = 0;
+        for (const { entry } of normalizedEntries) {
+          const content = await entry.async("uint8array");
+          totalUncompressedBytes += content.length;
+          if (totalUncompressedBytes > MAX_TOTAL_UNCOMPRESSED_BYTES) {
+            throw new Error(
+              `Archive expands to ${formatMegabytes(
+                totalUncompressedBytes
+              )}. Max ${formatMegabytes(
+                MAX_TOTAL_UNCOMPRESSED_BYTES
+              )} uncompressed content per upload.`
+            );
+          }
+        }
+
+        // Upload to sandbox worker (requires authentication)
+        if (!user?.id || !authToken) {
+          throw new Error("Please sign in to upload projects");
+        }
+
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await fetch(`${CONFIG.sandboxWorkerUrl}/sessions`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${authToken}`,
           },
           body: formData,
+        });
+
+        if (!res.ok) {
+          throw new Error(await res.text());
         }
-      );
 
-      if (!res.ok) {
-        throw new Error(await res.text());
+        const data = await res.json();
+        setSessionId(data.sessionId);
+        setCid(data.cid);
+        setDefaultEntry(data.defaultEntry);
+        setFileCount(data.fileCount);
+
+        setPreviewNonce((n) => n + 1);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to upload");
+        console.error("Upload error:", err);
+      } finally {
+        setIsUploading(false);
       }
-
-      const data = await res.json();
-      setSessionId(data.sessionId);
-      setCid(data.cid);
-      setDefaultEntry(data.defaultEntry);
-      setFileCount(data.fileCount);
-
-      setPreviewNonce((n) => n + 1);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to upload");
-      console.error("Upload error:", err);
-    } finally {
-      setIsUploading(false);
-    }
-  }, [authToken, user]);
+    },
+    [authToken, user]
+  );
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -533,12 +557,15 @@ export function GenericWebCreator({ className }: GenericWebCreatorProps) {
 
         // Navigate to the newly created generator.
         // Contract indexing can lag briefly, so mark this navigation as pending.
-        navigate(`/generator/generic-web/${result.generatorId}?pendingCreate=1`, {
-          state: {
-            pendingCreate: true,
-            createdAt: Date.now(),
-          },
-        });
+        navigate(
+          `/generator/generic-web/${result.generatorId}?pendingCreate=1`,
+          {
+            state: {
+              pendingCreate: true,
+              createdAt: Date.now(),
+            },
+          }
+        );
       } else {
         setPublishError(result.error || "Failed to create generator");
       }
@@ -762,8 +789,8 @@ export function GenericWebCreator({ className }: GenericWebCreatorProps) {
                 )}
               </Button>
               <p className="text-xs text-muted-foreground">
-                Publishing creates your generator on-chain. You can configure
-                minting settings after publishing.
+                Publishing creates your generator on-chain. You'll be able to
+                set up pricing and editions right after.
               </p>
               <p className="text-xs text-muted-foreground">
                 Primary sale fee: {primarySaleFeePercent}% of each mint.
@@ -781,49 +808,114 @@ export function GenericWebCreator({ className }: GenericWebCreatorProps) {
               Generate renders to preview outputs and select a thumbnail for
               your generator.
             </p>
-            <div className="flex items-center gap-2 mb-4">
-              <Input
-                type="number"
-                min="1"
-                max={MAX_RENDER_BATCH}
-                value={renderCount}
-                onChange={(e) =>
-                  setRenderCount(
-                    Math.max(
-                      1,
-                      Math.min(
-                        Number.parseInt(e.target.value, 10) || 1,
-                        MAX_RENDER_BATCH
-                      )
-                    )
-                  )
-                }
-                className="w-20 h-8"
-              />
-              <Button
-                size="sm"
-                onClick={handleRender}
-                disabled={
-                  !sessionId ||
-                  !cid ||
-                  !authToken ||
-                  isRendering ||
-                  activeRenderCount >= MAX_RENDER_BATCH
-                }
-              >
-                {isRendering ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Rendering...
-                  </>
-                ) : (
-                  "Render"
+            <div className="flex rounded-md border mb-4 text-sm overflow-hidden">
+              <button
+                type="button"
+                className={cn(
+                  "flex-1 py-1.5 px-3 text-center transition-colors",
+                  !renderSpecificSeed
+                    ? "bg-foreground text-background font-medium"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
-              </Button>
+                onClick={() => setRenderSpecificSeed(false)}
+              >
+                Random Seeds
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  "flex-1 py-1.5 px-3 text-center transition-colors border-l",
+                  renderSpecificSeed
+                    ? "bg-foreground text-background font-medium"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+                onClick={() => setRenderSpecificSeed(true)}
+              >
+                Specific Seed
+              </button>
             </div>
-            <p className="text-xs text-muted-foreground mb-4">
-              Max {MAX_RENDER_BATCH} submissions at once, {MAX_RENDER_PER_MINUTE} per minute.
-            </p>
+            {renderSpecificSeed ? (
+              <div className="mb-4">
+                <Input
+                  value={seed}
+                  maxLength={32}
+                  onChange={(e) => {
+                    setSeed(e.target.value);
+                    setPreviewNonce((n) => n + 1);
+                  }}
+                  placeholder="Seed to render"
+                  className="font-mono text-xs h-8 mb-2"
+                />
+                <Button
+                  size="sm"
+                  className="w-full"
+                  onClick={handleRender}
+                  disabled={
+                    !sessionId ||
+                    !cid ||
+                    !authToken ||
+                    isRendering ||
+                    activeRenderCount >= MAX_RENDER_BATCH ||
+                    !seed.trim()
+                  }
+                >
+                  {isRendering ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Rendering...
+                    </>
+                  ) : (
+                    "Render This Seed"
+                  )}
+                </Button>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-2 mb-2">
+                  <Input
+                    type="number"
+                    min="1"
+                    max={MAX_RENDER_BATCH}
+                    value={renderCount}
+                    onChange={(e) =>
+                      setRenderCount(
+                        Math.max(
+                          1,
+                          Math.min(
+                            Number.parseInt(e.target.value, 10) || 1,
+                            MAX_RENDER_BATCH
+                          )
+                        )
+                      )
+                    }
+                    className="w-20 h-8"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={handleRender}
+                    disabled={
+                      !sessionId ||
+                      !cid ||
+                      !authToken ||
+                      isRendering ||
+                      activeRenderCount >= MAX_RENDER_BATCH
+                    }
+                  >
+                    {isRendering ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Rendering...
+                      </>
+                    ) : (
+                      "Render"
+                    )}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mb-4">
+                  Max {MAX_RENDER_BATCH} at once, {MAX_RENDER_PER_MINUTE}/min.
+                </p>
+              </>
+            )}
 
             {/* Render grid */}
             {renderList.length > 0 && (
@@ -848,7 +940,11 @@ export function GenericWebCreator({ className }: GenericWebCreatorProps) {
                     {job.state === "complete" && job.result?.thumbnailKey && (
                       <>
                         <img
-                          src={`${CONFIG.sandboxWorkerUrl}/sessions/${sessionId}/render/${job.jobId}/thumbnail?auth=${encodeURIComponent(
+                          src={`${
+                            CONFIG.sandboxWorkerUrl
+                          }/sessions/${sessionId}/render/${
+                            job.jobId
+                          }/thumbnail?auth=${encodeURIComponent(
                             authToken || ""
                           )}`}
                           alt=""
@@ -975,6 +1071,7 @@ export function GenericWebCreator({ className }: GenericWebCreatorProps) {
           <span className="text-xs text-muted-foreground">Seed:</span>
           <Input
             value={seed}
+            maxLength={32}
             onChange={(e) => {
               setSeed(e.target.value);
               setPreviewNonce((n) => n + 1);

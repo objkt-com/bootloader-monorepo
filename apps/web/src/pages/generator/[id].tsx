@@ -120,10 +120,8 @@ const GENERATOR_PENDING_RETRY_MAX_ATTEMPTS = 10;
 const GENERATOR_PENDING_RETRY_DELAY_MS = 1500;
 
 function generateRandomSeed(): string {
-  // Generate a 256-bit (64 char) hex seed like the on-chain format
-  const array = new Uint8Array(32);
-  crypto.getRandomValues(array);
-  return Array.from(array, (b) => b.toString(16).padStart(2, "0")).join("");
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 export function GeneratorDetailPage() {
@@ -139,9 +137,10 @@ export function GeneratorDetailPage() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const pendingCreateFromQuery = searchParams.get("pendingCreate") === "1";
-  const isPendingCreateNavigation = Boolean(
-    (location.state as { pendingCreate?: boolean } | null)?.pendingCreate
-  ) || pendingCreateFromQuery;
+  const isPendingCreateNavigation =
+    Boolean(
+      (location.state as { pendingCreate?: boolean } | null)?.pendingCreate
+    ) || pendingCreateFromQuery;
 
   // Fetch generator from chain - pass bootloader ID from URL to query the right contract
   const bootloaderId = bootloaderParam as BootloaderId | undefined;
@@ -206,6 +205,7 @@ export function GeneratorDetailPage() {
   const [saleStartTime, setSaleStartTime] = useState<string>("");
   const [isSettingSale, setIsSettingSale] = useState(false);
   const [saleError, setSaleError] = useState<string | null>(null);
+  const [hasAutoOpenedSaleDialog, setHasAutoOpenedSaleDialog] = useState(false);
 
   // Delete state
   const [isDeleting, setIsDeleting] = useState(false);
@@ -301,6 +301,26 @@ export function GeneratorDetailPage() {
   const isCreator =
     address && generator?.creator && address === generator.creator;
 
+  // Auto-open sale dialog for the creator when the generator has no sale yet.
+  // Uses localStorage to only prompt once per generator.
+  useEffect(() => {
+    if (hasAutoOpenedSaleDialog) return;
+    if (!generator) return;
+    if (!id) return;
+    if (!address || !generator.creator || address !== generator.creator) return;
+    // Only auto-open if no sale has been configured yet
+    const hasSale = generator.price !== undefined && generator.price > 0;
+    if (hasSale) return;
+    // Check localStorage so we only prompt once per generator
+    const storageKey = `bl:sale-dialog-shown:${id}`;
+    if (localStorage.getItem(storageKey)) return;
+
+    setHasAutoOpenedSaleDialog(true);
+    localStorage.setItem(storageKey, "1");
+    openSaleDialog();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [generator, address, id, hasAutoOpenedSaleDialog]);
+
   const mockPurchaseEnabled =
     searchParams.get("mockPurchase") === "1" ||
     searchParams.get("mockMint") === "1";
@@ -318,8 +338,7 @@ export function GeneratorDetailPage() {
   const bootloader = generator ? getBootloader(generator.bootloaderId) : null;
   const hasSvgCode = bootloader?.features.hasCodeEditor && generator?.code;
   const primarySaleFeePercent =
-    generator?.bootloaderId &&
-    getPrimarySaleFeePercent(generator.bootloaderId);
+    generator?.bootloaderId && getPrimarySaleFeePercent(generator.bootloaderId);
 
   // Calculate inscription fee for SVG-JS generators (must be called before early returns)
   const inscriptionFee = useMemo(() => {
@@ -463,15 +482,53 @@ export function GeneratorDetailPage() {
     seed,
   ]);
 
+  // Determine if this is a first-time sale setup vs updating existing config
+  const isFirstTimeSaleSetup = generator
+    ? !generator.maxSupply &&
+      (generator.price === undefined || generator.price === 0)
+    : true;
+
   const handleSetSale = async () => {
     if (!tezos || !id || !generator) return;
+
+    // Frontend validation matching chain rules
+    const editions = parseInt(saleEditions || "0");
+    const supply = generator.supply ?? 0;
+    const currentMaxSupply = generator.maxSupply ?? 0;
+
+    if (
+      editions > 0 &&
+      supply > 0 &&
+      currentMaxSupply > 0 &&
+      editions > currentMaxSupply
+    ) {
+      setSaleError(
+        `Cannot increase editions once a token has been minted. Current max is ${currentMaxSupply}, ${supply} already minted.`
+      );
+      return;
+    }
+
+    if (editions > 0 && editions < supply) {
+      setSaleError(
+        `Editions cannot be less than the ${supply} already minted.`
+      );
+      return;
+    }
+
+    // Validate start time is not in the past
+    if (saleStartTime) {
+      const startDate = new Date(saleStartTime);
+      if (startDate < new Date()) {
+        setSaleError("Start date cannot be in the past.");
+        return;
+      }
+    }
 
     setIsSettingSale(true);
     setSaleError(null);
 
     try {
       const priceInMutez = Math.floor(parseFloat(salePrice || "0") * 1_000_000);
-      const editions = parseInt(saleEditions || "0");
       // Convert local datetime to ISO string for the contract
       const startTimeIso = saleStartTime
         ? new Date(saleStartTime).toISOString()
@@ -501,10 +558,33 @@ export function GeneratorDetailPage() {
         setSaleDialogOpen(false);
         await refetch();
       } else {
-        setSaleError(result.error || "Failed to set sale");
+        // Map chain error codes to user-friendly messages
+        const errorMsg = result.error || "Failed to set sale";
+        if (errorMsg.includes("NO_ED_INCREMENT")) {
+          setSaleError(
+            "Cannot increase editions once a token has been minted."
+          );
+        } else if (errorMsg.includes("ED_LT_MINTED")) {
+          setSaleError(
+            `Editions cannot be less than the number already minted (${supply}).`
+          );
+        } else if (errorMsg.includes("ONLY_AUTHOR")) {
+          setSaleError("Only the generator creator can modify sale settings.");
+        } else {
+          setSaleError(errorMsg);
+        }
       }
     } catch (err) {
-      setSaleError(err instanceof Error ? err.message : "Unknown error");
+      const errorMsg = err instanceof Error ? err.message : "Unknown error";
+      if (errorMsg.includes("NO_ED_INCREMENT")) {
+        setSaleError("Cannot increase editions once a token has been minted.");
+      } else if (errorMsg.includes("ED_LT_MINTED")) {
+        setSaleError(
+          `Editions cannot be less than the number already minted (${supply}).`
+        );
+      } else {
+        setSaleError(errorMsg);
+      }
     } finally {
       setIsSettingSale(false);
     }
@@ -550,19 +630,31 @@ export function GeneratorDetailPage() {
             ? String(generator.maxSupply)
             : "100"
           : generator.maxSupply !== undefined && generator.maxSupply !== null
-            ? String(generator.maxSupply)
-            : "100";
-      setSaleEditions(
-        defaultEditions
-      );
+          ? String(generator.maxSupply)
+          : "100";
+      setSaleEditions(defaultEditions);
       // Default to current state, but don't enable pause by default for new generators
       setSalePaused(
         generator.mintingOpen === false &&
           generator.supply !== undefined &&
           generator.supply > 0
       );
-      // Initialize start time from existing value or empty
-      setSaleStartTime(generator.saleStartTime || "");
+      // Convert ISO start time to datetime-local format (YYYY-MM-DDTHH:MM)
+      let startTimeLocal = "";
+      if (generator.saleStartTime) {
+        try {
+          const d = new Date(generator.saleStartTime);
+          if (!isNaN(d.getTime())) {
+            const pad = (n: number) => String(n).padStart(2, "0");
+            startTimeLocal = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(
+              d.getDate()
+            )}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+          }
+        } catch {
+          // ignore invalid dates
+        }
+      }
+      setSaleStartTime(startTimeLocal);
       setSaleError(null);
     }
     setSaleDialogOpen(true);
@@ -894,6 +986,7 @@ export function GeneratorDetailPage() {
                     <Label className="text-xs">Seed</Label>
                     <Input
                       value={seed}
+                      maxLength={32}
                       onChange={(e) => setSeedValue(e.target.value)}
                       className="w-32 font-mono text-xs h-7"
                     />
@@ -939,6 +1032,7 @@ export function GeneratorDetailPage() {
                 <Label className="text-xs shrink-0">Seed</Label>
                 <Input
                   value={seed}
+                  maxLength={32}
                   onChange={(e) => setSeedValue(e.target.value)}
                   className="w-32 sm:w-40 font-mono text-xs h-8"
                 />
@@ -983,21 +1077,20 @@ export function GeneratorDetailPage() {
                       </p>
                     </div>
                   )}
-                  {(generator.maxSupply ?? 0) > 0 && (
-                    <div>
-                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
-                        Supply
-                      </p>
-                      <p className="text-2xl font-bold">
-                        {generator.maxSupply}
-                      </p>
-                    </div>
-                  )}
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                      Minted
+                    </p>
+                    <p className="text-2xl font-bold">
+                      {generator.supply ?? 0}
+                      {generator.maxSupply ? ` / ${generator.maxSupply}` : ""}
+                    </p>
+                  </div>
                 </>
               ) : (
                 <>
                   {/* Normal minting stats */}
-                  {generator.mintingOpen && generator.price !== undefined && (
+                  {generator.price !== undefined && generator.price > 0 && (
                     <div>
                       <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
                         Price
@@ -1058,9 +1151,13 @@ export function GeneratorDetailPage() {
                         Connecting...
                       </>
                     ) : isConnected ? (
-                      (generator.price ?? 0) > 0
-                        ? `Mint for ${(generator.price! / 1_000_000).toFixed(2)} ꜩ`
-                        : "Mint for Free"
+                      (generator.price ?? 0) > 0 ? (
+                        `Mint for ${(generator.price! / 1_000_000).toFixed(
+                          2
+                        )} ꜩ`
+                      ) : (
+                        "Mint for Free"
+                      )
                     ) : (
                       "Connect Wallet"
                     )}
@@ -1097,19 +1194,28 @@ export function GeneratorDetailPage() {
                   <DialogTrigger asChild>
                     <Button
                       variant="outline"
-                      size="icon"
+                      size={isFirstTimeSaleSetup ? "default" : "icon"}
                       onClick={openSaleDialog}
                     >
-                      <Settings className="h-4 w-4" />
+                      {isFirstTimeSaleSetup ? (
+                        <>
+                          <Settings className="mr-2 h-4 w-4" />
+                          Set Up Sale
+                        </>
+                      ) : (
+                        <Settings className="h-4 w-4" />
+                      )}
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                       <DialogTitle className="text-xl">
-                        Configure Sale
+                        {isFirstTimeSaleSetup ? "Publish Sale" : "Update Sale"}
                       </DialogTitle>
                       <DialogDescription>
-                        Set pricing, supply limits, and schedule your drop.
+                        {isFirstTimeSaleSetup
+                          ? "Set up pricing and editions to start selling. Minting will begin as soon as you publish."
+                          : "Update pricing, supply limits, or schedule for your drop."}
                       </DialogDescription>
                     </DialogHeader>
 
@@ -1139,6 +1245,11 @@ export function GeneratorDetailPage() {
                                 ꜩ
                               </span>
                             </div>
+                            {primarySaleFeePercent !== undefined && (
+                              <p className="text-xs text-muted-foreground">
+                                {primarySaleFeePercent}% platform fee per mint.
+                              </p>
+                            )}
                           </div>
                           <div className="space-y-2">
                             <Label htmlFor="saleEditions" className="text-sm">
@@ -1147,19 +1258,45 @@ export function GeneratorDetailPage() {
                             <Input
                               id="saleEditions"
                               type="number"
-                              min="0"
+                              min={
+                                !isFirstTimeSaleSetup &&
+                                (generator.supply ?? 0) > 0
+                                  ? String(generator.supply)
+                                  : "0"
+                              }
+                              max={
+                                !isFirstTimeSaleSetup &&
+                                (generator.supply ?? 0) > 0 &&
+                                (generator.maxSupply ?? 0) > 0
+                                  ? String(generator.maxSupply)
+                                  : undefined
+                              }
                               value={saleEditions}
                               onChange={(e) => setSaleEditions(e.target.value)}
                               placeholder="0 = unlimited"
                             />
+                            {isFirstTimeSaleSetup ? (
+                              <p className="text-xs text-muted-foreground">
+                                Maximum number of tokens that can be minted. You
+                                can reduce this later but not increase it once
+                                the first edition has been minted.
+                              </p>
+                            ) : (generator.supply ?? 0) > 0 ? (
+                              <p className="text-xs text-muted-foreground">
+                                {generator.supply} of {generator.maxSupply}{" "}
+                                minted.{" "}
+                                {(generator.maxSupply ?? 0) > 0
+                                  ? `You can reduce remaining supply (min ${generator.supply}, max ${generator.maxSupply}) but cannot increase editions once a token has been minted.`
+                                  : ""}
+                              </p>
+                            ) : (
+                              <p className="text-xs text-muted-foreground">
+                                No editions minted yet. You can freely adjust
+                                this value.
+                              </p>
+                            )}
                           </div>
                         </div>
-                        {primarySaleFeePercent !== undefined && (
-                          <p className="text-xs text-muted-foreground">
-                            Primary sale fee: {primarySaleFeePercent}% of each
-                            mint.
-                          </p>
-                        )}
                       </div>
 
                       {/* Schedule Section */}
@@ -1180,39 +1317,49 @@ export function GeneratorDetailPage() {
                               className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-70 [&::-webkit-calendar-picker-indicator]:hover:opacity-100 dark:[&::-webkit-calendar-picker-indicator]:invert"
                             />
                             <p className="text-xs text-muted-foreground">
-                              Leave empty to start immediately when unpaused.
+                              Leave empty to start immediately.
                             </p>
+                            {!isFirstTimeSaleSetup &&
+                              (generator.supply ?? 0) > 0 &&
+                              saleStartTime && (
+                                <p className="text-xs text-amber-500">
+                                  Setting a future start date will pause minting
+                                  until that time.
+                                </p>
+                              )}
                           </div>
                         </div>
                       </div>
 
-                      {/* Status Section */}
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                          Status
-                        </div>
-                        <label
-                          htmlFor="salePaused"
-                          className="flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors"
-                        >
-                          <input
-                            type="checkbox"
-                            id="salePaused"
-                            checked={salePaused}
-                            onChange={(e) => setSalePaused(e.target.checked)}
-                            className="h-4 w-4 border-input"
-                          />
-                          <div>
-                            <div className="font-medium text-sm">
-                              Pause Minting
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              Temporarily disable minting while keeping settings
-                              intact.
-                            </div>
+                      {/* Status Section - only show for updates, not first-time */}
+                      {!isFirstTimeSaleSetup && (
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide">
+                            Status
                           </div>
-                        </label>
-                      </div>
+                          <label
+                            htmlFor="salePaused"
+                            className="flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors"
+                          >
+                            <input
+                              type="checkbox"
+                              id="salePaused"
+                              checked={salePaused}
+                              onChange={(e) => setSalePaused(e.target.checked)}
+                              className="h-4 w-4 border-input"
+                            />
+                            <div>
+                              <div className="font-medium text-sm">
+                                Pause Minting
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                Temporarily disable minting while keeping
+                                settings intact.
+                              </div>
+                            </div>
+                          </label>
+                        </div>
+                      )}
 
                       {saleError && (
                         <div className="p-3 bg-destructive/10 border border-destructive/20">
@@ -1234,10 +1381,14 @@ export function GeneratorDetailPage() {
                         {isSettingSale ? (
                           <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Saving...
+                            {isFirstTimeSaleSetup
+                              ? "Publishing..."
+                              : "Updating..."}
                           </>
+                        ) : isFirstTimeSaleSetup ? (
+                          "Publish Sale"
                         ) : (
-                          "Save Changes"
+                          "Update Sale"
                         )}
                       </Button>
                     </DialogFooter>
@@ -1469,7 +1620,9 @@ export function GeneratorDetailPage() {
       {/* Mint Success Modal */}
       {generator && (
         <MintSuccessModal
-          isOpen={revealModalOpen && Boolean(mintedTokenId) && Boolean(mintedEntropy)}
+          isOpen={
+            revealModalOpen && Boolean(mintedTokenId) && Boolean(mintedEntropy)
+          }
           onClose={() => {
             setRevealModalOpen(false);
             setMintedTokenId(null);
