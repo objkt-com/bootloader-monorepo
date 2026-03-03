@@ -1375,56 +1375,6 @@ app.get("/viewer", (c) => {
   });
 });
 
-// Dedicated player route for social embeds (Twitter/X player cards).
-app.get("/player/:kind/:bootloader/:id", async (c) => {
-  const kind = c.req.param("kind");
-  const bootloader = c.req.param("bootloader") as BootloaderType;
-  const id = c.req.param("id");
-
-  if (!["token", "generator"].includes(kind)) {
-    return c.text("Invalid player kind", 400);
-  }
-  if (!["svg-js", "generic-web"].includes(bootloader)) {
-    return c.text("Invalid bootloader", 400);
-  }
-  if (!id || Number.isNaN(Number(id))) {
-    return c.text("Invalid ID. Must be a number.", 400);
-  }
-
-  const requestUrl = new URL(c.req.url);
-  const { network } = resolveNetworkFromRequest(requestUrl, c.env);
-  const playerSourceUrl = await resolvePlayerSourceUrl({
-    env: c.env,
-    requestUrl,
-    kind: kind as "token" | "generator",
-    bootloader,
-    id: Number(id),
-    network,
-  });
-
-  if (requestUrl.searchParams.get("raw") === "1") {
-    const redirectHtml = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head><body style="margin:0;background:#000"><script>location.replace(${JSON.stringify(
-      playerSourceUrl
-    )});</script></body></html>`;
-    return new Response(redirectHtml, {
-      headers: {
-        "content-type": "text/html; charset=utf-8",
-        "cache-control": "no-store",
-      },
-    });
-  }
-
-  const html = buildPlayerHtml(playerSourceUrl, {
-    allowRandomize: kind === "generator",
-  });
-  return new Response(html, {
-    headers: {
-      "content-type": "text/html; charset=utf-8",
-      "cache-control": "no-store",
-    },
-  });
-});
-
 // IPFS proxy - serve files from R2 by CID
 app.get("/ipfs/:cid/*", async (c) => {
   const cid = c.req.param("cid");
@@ -3211,47 +3161,9 @@ function decodeUrlEncodedHexToText(value: string): string {
   }
 }
 
-function normalizeSvgSeed(seed: string | number): string {
-  if (typeof seed === "string") {
-    if (/^[0-9a-fA-F]{64}$/.test(seed)) {
-      return `0x${seed}`;
-    }
-    if (seed.startsWith("0x")) {
-      return seed;
-    }
-    return seed;
-  }
-  return String(seed);
-}
-
-function generateSvgDataUrl(
-  code: string,
-  seed: string | number,
-  iterationNumber = 0
-): string {
-  const encodedCode = encodeURIComponent(code);
-  const normalizedSeed = normalizeSvgSeed(seed);
-
-  const frag1 =
-    "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cscript%3E%3C!%5BCDATA%5Bconst%20SEED%3D";
-  const frag2 =
-    "n%3Bfunction%20splitmix64(f)%7Blet%20n%3Df%3Breturn%20function()%7Blet%20f%3Dn%3Dn%2B0x9e3779b97f4a7c15n%260xffffffffffffffffn%3Breturn%20f%3D((f%3D(f%5Ef%3E%3E30n)*0xbf58476d1ce4e5b9n%260xffffffffffffffffn)%5Ef%3E%3E27n)*0x94d049bb133111ebn%260xffffffffffffffffn%2CNumber(4294967295n%26(f%5E%3Df%3E%3E31n))%3E%3E%3E0%7D%7Dfunction%20sfc32(f%2Cn%2C%24%2Ct)%7Breturn%20function()%7B%24%7C%3D0%3Blet%20e%3D((f%7C%3D0)%2B(n%7C%3D0)%7C0)%2B(t%7C%3D0)%7C0%3Breturn%20t%3Dt%2B1%7C0%2Cf%3Dn%5En%3E%3E%3E9%2Cn%3D%24%2B(%24%3C%3C3)%7C0%2C%24%3D(%24%3D%24%3C%3C21%7C%24%3E%3E%3E11)%2Be%7C0%2C(e%3E%3E%3E0)%2F4294967296%7D%7Dconst%20sm%3Dsplitmix64(SEED)%2Ca%3Dsm()%2Cb%3Dsm()%2Cc%3Dsm()%2Cd%3Dsm()%2Cn%3D";
-  const frag3 =
-    "%2CBTLDR%3D%7Brnd%3Asfc32(a%2Cb%2Cc%2Cd)%2Cseed%3ASEED%2CiterationNumber%3An%2CisPreview%3An%3D%3D%3D0%26%26SEED%3D%3D%3D0n%2Csvg%3Adocument.documentElement%2Cv%3A%27svg-js%3A0.0.1%27%7D%3B((BTLDR)%3D%3E%7B";
-  const frag4 = "%7D)(BTLDR)%3B%5D%5D%3E%3C%2Fscript%3E%3C%2Fsvg%3E";
-
-  return `${frag1}${normalizedSeed}${frag2}${iterationNumber}${frag3}${encodedCode}${frag4}`;
-}
-
 function stripIpfsPrefix(value: string): string {
   const withoutPrefix = value.replace(/^ipfs:\/\//i, "").replace(/^\/+/, "");
   return withoutPrefix.split("?")[0].split("/")[0];
-}
-
-function normalizeEntryPath(value: string | null | undefined): string {
-  const raw = (value || "").trim().replace(/^\/+/, "");
-  if (!raw || raw.includes("..")) return "index.html";
-  return raw;
 }
 
 function getConfiguredNetwork(env: Bindings): "mainnet" | "shadownet" {
@@ -3277,12 +3189,6 @@ function resolveNetworkFromRequest(_url: URL, env: Bindings): {
 } {
   const network = getConfiguredNetwork(env);
   return { network, networkCode: networkToCode(network) };
-}
-
-function buildUnavailablePlayerDataUrl(message: string): string {
-  const safe = escapeHtml(message);
-  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><style>html,body{margin:0;width:100%;height:100%;background:#000;color:#fff;font:14px/1.4 monospace;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;text-align:center}</style></head><body>${safe}</body></html>`;
-  return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
 }
 
 function parseShareRoute(pathname: string): {
@@ -3626,7 +3532,7 @@ function injectTitleAndDescription(
   if (/<title\b[^>]*>[\s\S]*?<\/title>/i.test(out)) {
     out = out.replace(
       /<title\b[^>]*>[\s\S]*?<\/title>/i,
-      `<title>${safeTitle}</title>`
+      () => `<title>${safeTitle}</title>`
     );
   } else {
     out = injectTagsIntoHead(out, `<title>${safeTitle}</title>`);
@@ -3635,7 +3541,7 @@ function injectTitleAndDescription(
   if (/<meta\s+name=["']description["'][^>]*>/i.test(out)) {
     out = out.replace(
       /<meta\s+name=["']description["'][^>]*>/i,
-      `<meta name="description" content="${safeDescription}" />`
+      () => `<meta name="description" content="${safeDescription}" />`
     );
   } else {
     out = injectTagsIntoHead(
@@ -3645,293 +3551,6 @@ function injectTitleAndDescription(
   }
 
   return out;
-}
-
-function buildPlayerHtml(
-  iframeSrc: string,
-  options?: { allowRandomize?: boolean }
-): string {
-  const safeSrc = escapeHtml(iframeSrc);
-  const allowRandomize = options?.allowRandomize === true;
-  const randomizeButton = allowRandomize
-    ? `<button id="seed-randomizer" type="button" aria-label="Randomize seed" title="Randomize seed">
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <rect x="4.5" y="4.5" width="15" height="15"></rect>
-        <circle cx="8" cy="8" r="1.2"></circle>
-        <circle cx="16" cy="8" r="1.2"></circle>
-        <circle cx="12" cy="12" r="1.2"></circle>
-        <circle cx="8" cy="16" r="1.2"></circle>
-        <circle cx="16" cy="16" r="1.2"></circle>
-      </svg>
-    </button>`
-    : "";
-  const randomizeScript = allowRandomize
-    ? `<script>
-      (function () {
-        const button = document.getElementById("seed-randomizer");
-        const frame = document.getElementById("player-frame");
-        if (!button) return;
-        function randomHex(bytes) {
-          const arr = new Uint8Array(bytes);
-          crypto.getRandomValues(arr);
-          let out = "";
-          for (const b of arr) {
-            out += b.toString(16).padStart(2, "0");
-          }
-          return out;
-        }
-        button.addEventListener("click", function () {
-          const seed = randomHex(32);
-          const pageUrl = new URL(window.location.href);
-          pageUrl.searchParams.set("s", seed);
-          pageUrl.searchParams.set("i", "0");
-          history.replaceState(null, "", pageUrl.toString());
-          if (!(frame instanceof HTMLIFrameElement)) return;
-
-          // Keep generic-web generators on direct IPFS URLs when randomizing.
-          let nextFrameSrc = "";
-          try {
-            const currentFrameUrl = new URL(frame.src, window.location.href);
-            const isIpfsFrame = currentFrameUrl.pathname.indexOf("/ipfs/") >= 0;
-            if (isIpfsFrame) {
-              currentFrameUrl.searchParams.set("s", seed);
-              currentFrameUrl.searchParams.set("i", "0");
-              nextFrameSrc = currentFrameUrl.toString();
-            }
-          } catch (_) {}
-
-          if (!nextFrameSrc) {
-            const frameUrl = new URL(pageUrl.toString());
-            frameUrl.searchParams.set("raw", "1");
-            nextFrameSrc = frameUrl.toString();
-          }
-          frame.src = nextFrameSrc;
-        });
-      })();
-    </script>`
-    : "";
-  return `<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="robots" content="noindex, nofollow" />
-    <title>bootloader: player</title>
-    <style>
-      html,
-      body {
-        margin: 0;
-        padding: 0;
-        width: 100%;
-        height: 100%;
-        overflow: hidden;
-        background: #000;
-      }
-      iframe {
-        width: 100%;
-        height: 100%;
-        border: 0;
-        display: block;
-        background: #000;
-      }
-      #seed-randomizer {
-        position: fixed;
-        right: 14px;
-        bottom: 14px;
-        width: 44px;
-        height: 44px;
-        border-radius: 0;
-        border: 1px solid #fff;
-        background: #000;
-        color: #fff;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        z-index: 9999;
-        padding: 0;
-      }
-      #seed-randomizer:hover {
-        background: #fff;
-        color: #000;
-      }
-      #seed-randomizer svg {
-        width: 24px;
-        height: 24px;
-        fill: none;
-        stroke: currentColor;
-        stroke-width: 1.6;
-        stroke-linecap: round;
-        stroke-linejoin: round;
-      }
-      #seed-randomizer svg circle {
-        fill: currentColor;
-        stroke: none;
-      }
-    </style>
-  </head>
-  <body>
-    <iframe id="player-frame" src="${safeSrc}" allow="autoplay; fullscreen" allowfullscreen></iframe>
-    ${randomizeButton}
-    ${randomizeScript}
-  </body>
-</html>`;
-}
-
-async function resolveManifestEntryPath(
-  env: Bindings,
-  cid: string
-): Promise<string> {
-  const manifest = await loadManifest(env, cid, "index.html");
-  return normalizeEntryPath(manifest?.entry);
-}
-
-function buildGenericWebIpfsUrlFromArtifactUri(
-  baseUrl: string,
-  artifactUri: string,
-  overrides?: { seed?: string | null; iteration?: number | null }
-): string | null {
-  if (!/^ipfs:\/\//i.test(artifactUri)) return null;
-  const withoutPrefix = artifactUri.replace(/^ipfs:\/\//i, "");
-  if (!withoutPrefix) return null;
-
-  const queryIndex = withoutPrefix.indexOf("?");
-  const pathPart =
-    queryIndex >= 0 ? withoutPrefix.slice(0, queryIndex) : withoutPrefix;
-  const queryPart = queryIndex >= 0 ? withoutPrefix.slice(queryIndex + 1) : "";
-  const segments = pathPart.split("/").filter(Boolean);
-  const cid = segments.shift();
-  if (!cid) return null;
-  const entryPath = normalizeEntryPath(segments.join("/") || "index.html");
-  const url = new URL(`/ipfs/${cid}/${entryPath}`, baseUrl);
-
-  if (queryPart) {
-    const params = new URLSearchParams(queryPart);
-    for (const [key, value] of params.entries()) {
-      url.searchParams.set(key, value);
-    }
-  }
-
-  const overrideSeed = overrides?.seed;
-  if (overrideSeed && overrideSeed.trim()) {
-    url.searchParams.set("s", overrideSeed.trim());
-  }
-  if (overrides?.iteration != null && Number.isFinite(overrides.iteration)) {
-    url.searchParams.set("i", String(Math.max(0, overrides.iteration)));
-  }
-
-  return url.toString();
-}
-
-async function buildGenericWebGeneratorIpfsUrl(opts: {
-  env: Bindings;
-  baseUrl: string;
-  network: "mainnet" | "shadownet";
-  generatorId: number;
-  seedOverride?: string | null;
-  iterationOverride?: number | null;
-}): Promise<string | null> {
-  const cid = await fetchGenericWebGeneratorArtifactCid(
-    opts.network,
-    opts.generatorId
-  );
-  if (!cid) return null;
-  const entryPath = await resolveManifestEntryPath(opts.env, cid);
-  const url = new URL(`/ipfs/${cid}/${entryPath}`, opts.baseUrl);
-
-  const seed = opts.seedOverride ?? null;
-  const iteration = opts.iterationOverride ?? 0;
-  if (seed && seed.trim()) {
-    url.searchParams.set("s", seed.trim());
-  }
-  url.searchParams.set("i", String(iteration));
-  return url.toString();
-}
-
-async function buildGenericWebTokenIpfsUrlFromQueue(opts: {
-  env: Bindings;
-  baseUrl: string;
-  network: "mainnet" | "shadownet";
-  tokenId: number;
-}): Promise<string | null> {
-  const tokenInfo = await fetchGenericWebTokenQueueInfo(opts.network, opts.tokenId);
-  if (tokenInfo?.generatorId == null) return null;
-
-  return buildGenericWebGeneratorIpfsUrl({
-    env: opts.env,
-    baseUrl: opts.baseUrl,
-    network: opts.network,
-    generatorId: tokenInfo.generatorId,
-    seedOverride: tokenInfo.seed,
-    iterationOverride: tokenInfo.iteration ?? 0,
-  });
-}
-
-async function resolvePlayerSourceUrl(opts: {
-  env: Bindings;
-  requestUrl: URL;
-  kind: "token" | "generator";
-  bootloader: BootloaderType;
-  id: number;
-  network: "mainnet" | "shadownet";
-}): Promise<string> {
-  const baseUrl = opts.requestUrl.origin;
-  const network = opts.network;
-  const requestedSeed = opts.requestUrl.searchParams.get("s");
-  const requestedIterationRaw = opts.requestUrl.searchParams.get("i");
-  const requestedIteration = Number.isFinite(Number(requestedIterationRaw))
-    ? Math.max(0, Number(requestedIterationRaw))
-    : null;
-
-  if (opts.bootloader === "svg-js") {
-    if (opts.kind === "token") {
-      const artifactUri = await fetchSvgJsTokenArtifactUri(network, opts.id);
-      if (artifactUri) {
-        return artifactUri;
-      }
-    } else {
-      const code = await fetchSvgJsGeneratorCode(network, opts.id);
-      if (code) {
-        const seed = requestedSeed ?? "0";
-        const iteration = requestedIteration ?? 0;
-        return generateSvgDataUrl(code, seed, iteration);
-      }
-    }
-
-    return buildUnavailablePlayerDataUrl(
-      `Unable to resolve svg-js ${opts.kind} #${opts.id}.`
-    );
-  }
-
-  if (opts.kind === "token") {
-    const artifactUri = await fetchGenericWebTokenArtifactUri(network, opts.id);
-    if (artifactUri) {
-      const artifactUrl = buildGenericWebIpfsUrlFromArtifactUri(baseUrl, artifactUri);
-      if (artifactUrl) return artifactUrl;
-    }
-
-    const queueUrl = await buildGenericWebTokenIpfsUrlFromQueue({
-      env: opts.env,
-      baseUrl,
-      network,
-      tokenId: opts.id,
-    });
-    if (queueUrl) return queueUrl;
-  } else {
-    const generatorUrl = await buildGenericWebGeneratorIpfsUrl({
-      env: opts.env,
-      baseUrl,
-      network,
-      generatorId: opts.id,
-      seedOverride: requestedSeed,
-      iterationOverride: requestedIteration,
-    });
-    if (generatorUrl) return generatorUrl;
-  }
-
-  return buildUnavailablePlayerDataUrl(
-    `Unable to resolve generic-web ${opts.kind} #${opts.id}.`
-  );
 }
 
 function buildViewerHtml(iframeSrc: string): string {

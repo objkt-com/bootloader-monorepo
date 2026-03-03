@@ -9,20 +9,26 @@ export function generateSvgDataUrl(
 ): string {
   const encodedCode = encodeURIComponent(code)
 
-  // Normalize the seed: ensure hex strings have 0x prefix for BigInt literal
+  // Normalize the seed into a valid BigInt literal payload for `const SEED=<seed>n`.
   let normalizedSeed: string
-  if (typeof seed === 'string') {
-    // If it's a hex string (64 chars, all hex), add 0x prefix if missing
-    if (/^[0-9a-fA-F]{64}$/.test(seed)) {
-      normalizedSeed = '0x' + seed
-    } else if (seed.startsWith('0x')) {
-      normalizedSeed = seed
-    } else {
-      // Treat as decimal number
-      normalizedSeed = seed
-    }
+  if (typeof seed === 'number') {
+    normalizedSeed = Number.isFinite(seed) ? String(Math.max(0, Math.trunc(seed))) : '0'
   } else {
-    normalizedSeed = String(seed)
+    const raw = seed.trim()
+    const withoutBigIntSuffix = raw.endsWith('n') ? raw.slice(0, -1) : raw
+
+    if (!withoutBigIntSuffix) {
+      normalizedSeed = '0'
+    } else if (/^0x[0-9a-fA-F]+$/.test(withoutBigIntSuffix)) {
+      normalizedSeed = withoutBigIntSuffix
+    } else if (/^[0-9]+$/.test(withoutBigIntSuffix)) {
+      normalizedSeed = withoutBigIntSuffix
+    } else if (/^[0-9a-fA-F]+$/.test(withoutBigIntSuffix)) {
+      // Accept plain hex seeds of any length (e.g. 32-char) by adding 0x prefix.
+      normalizedSeed = '0x' + withoutBigIntSuffix
+    } else {
+      normalizedSeed = '0'
+    }
   }
 
   // Fragment 1: SVG header and seed initialization

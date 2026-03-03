@@ -14,6 +14,7 @@ import { ProfilePage } from '@/pages/profile/[id]'
 import { ResourcesPage } from '@/pages/resources'
 import { EmbedGeneratorPage } from '@/pages/embed/generator'
 import { EmbedTokenPage } from '@/pages/embed/token'
+import { PlayerPage } from '@/pages/player'
 import { WalletProvider } from '@/hooks/use-wallet'
 
 export default function App() {
@@ -23,6 +24,7 @@ export default function App() {
         {/* Embed routes - no layout, full-screen for Screenshot One */}
         <Route path="/embed/generator/:bootloader/:id" element={<EmbedGeneratorPage />} />
         <Route path="/embed/token/:bootloader/:tokenId" element={<EmbedTokenPage />} />
+        <Route path="/player/:kind/:bootloader/:id" element={<PlayerPage />} />
 
         {/* Routes with standard layout */}
         <Route element={<RootLayout />}>
