@@ -48,6 +48,7 @@ GET /thumbnail/456?width=300&height=200&n=s
 
 - `CF_ACCOUNT_ID`: Cloudflare account ID
 - `CF_API_TOKEN`: Cloudflare API token with browser rendering permissions
+- `WORKER_NETWORK` (optional): `mainnet` or `shadownet`; when set, worker routes resolve against this configured network
 
 ## Generic-Web Indexer (Shadownet)
 

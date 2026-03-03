@@ -244,6 +244,7 @@ export interface Bindings {
   ASSETS: Fetcher;
   // Environment variables
   ENVIRONMENT?: string;
+  WORKER_NETWORK?: string;
   CF_ACCOUNT_ID?: string;
   CF_API_TOKEN?: string;
   SO_ACCESS_KEY?: string;

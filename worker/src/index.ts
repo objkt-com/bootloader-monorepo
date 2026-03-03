@@ -1375,6 +1375,56 @@ app.get("/viewer", (c) => {
   });
 });
 
+// Dedicated player route for social embeds (Twitter/X player cards).
+app.get("/player/:kind/:bootloader/:id", async (c) => {
+  const kind = c.req.param("kind");
+  const bootloader = c.req.param("bootloader") as BootloaderType;
+  const id = c.req.param("id");
+
+  if (!["token", "generator"].includes(kind)) {
+    return c.text("Invalid player kind", 400);
+  }
+  if (!["svg-js", "generic-web"].includes(bootloader)) {
+    return c.text("Invalid bootloader", 400);
+  }
+  if (!id || Number.isNaN(Number(id))) {
+    return c.text("Invalid ID. Must be a number.", 400);
+  }
+
+  const requestUrl = new URL(c.req.url);
+  const { network } = resolveNetworkFromRequest(requestUrl, c.env);
+  const playerSourceUrl = await resolvePlayerSourceUrl({
+    env: c.env,
+    requestUrl,
+    kind: kind as "token" | "generator",
+    bootloader,
+    id: Number(id),
+    network,
+  });
+
+  if (requestUrl.searchParams.get("raw") === "1") {
+    const redirectHtml = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head><body style="margin:0;background:#000"><script>location.replace(${JSON.stringify(
+      playerSourceUrl
+    )});</script></body></html>`;
+    return new Response(redirectHtml, {
+      headers: {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "no-store",
+      },
+    });
+  }
+
+  const html = buildPlayerHtml(playerSourceUrl, {
+    allowRandomize: kind === "generator",
+  });
+  return new Response(html, {
+    headers: {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store",
+    },
+  });
+});
+
 // IPFS proxy - serve files from R2 by CID
 app.get("/ipfs/:cid/*", async (c) => {
   const cid = c.req.param("cid");
@@ -1452,6 +1502,11 @@ const TZKT_API_BY_NETWORK: Record<"mainnet" | "shadownet", string> = {
   shadownet: "https://api.shadownet.tzkt.io",
 };
 
+const SVG_JS_CONTRACT_BY_NETWORK: Record<"mainnet" | "shadownet", string> = {
+  mainnet: "KT1CB4MYiAViCuXWBU961x7LjQXGeA8SnQwt",
+  shadownet: "KT1M34LsFSPvBqCpE8DH3TVvf2PDqMbGhCfu",
+};
+
 const GENERIC_WEB_CONTRACT_BY_NETWORK: Record<
   "mainnet" | "shadownet",
   string | null
@@ -1460,10 +1515,42 @@ const GENERIC_WEB_CONTRACT_BY_NETWORK: Record<
   shadownet: "KT1MkVTbYNJ6hkJKWSukLBgPaXtkHFKugK6v",
 };
 
+const SVG_JS_BIGMAP_POINTERS_CACHE_TTL_MS = 60_000;
+const svgJsBigmapPointersCache = new Map<
+  "mainnet" | "shadownet",
+  { tokenMetadataPtr: number | null; generatorsPtr: number | null; cachedAtMs: number }
+>();
+
 const GENERIC_WEB_BIGMAP_POINTERS_CACHE_TTL_MS = 60_000;
 const genericWebBigmapPointersCache = new Map<
   "mainnet" | "shadownet",
-  { tokenExtraPtr: number; ledgerPtr: number | null; cachedAtMs: number }
+  {
+    tokenExtraPtr: number;
+    generatorsPtr: number | null;
+    tokenMetadataPtr: number | null;
+    ledgerPtr: number | null;
+    cachedAtMs: number;
+  }
+>();
+
+const SHARE_META_CACHE_TTL_MS = 300_000;
+const shareMetaCache = new Map<
+  string,
+  {
+    title: string;
+    description: string;
+    cachedAtMs: number;
+  }
+>();
+
+const GENERATOR_METADATA_JSON_CACHE_TTL_MS = 300_000;
+const generatorMetadataJsonCache = new Map<
+  string,
+  {
+    generatorDescription: string | null;
+    tokenDescription: string | null;
+    cachedAtMs: number;
+  }
 >();
 
 // =============================================================================
@@ -1525,27 +1612,16 @@ async function handleThumbnailRequest(
     return textResponse("Invalid ID. Must be a number.", 400);
   }
 
-  const network = url.searchParams.get("n") || "m";
-  if (!network || !["m", "g", "s"].includes(network)) {
-    if (isImg) {
-      return imageErrorResponse({
-        status: 200,
-        cacheControl: "no-store",
-        type,
-        id,
-        request,
-        note: "invalid-network",
-        originalStatus: 400,
-      });
-    }
-    return textResponse("wrong network", 400);
-  }
+  const { networkCode: configuredNetworkCode } = resolveNetworkFromRequest(
+    url,
+    c.env
+  );
+  const network = configuredNetworkCode;
 
   const requestedVersion = parseThumbnailVersion(url.searchParams.get("v"));
   let resolvedVersion = requestedVersion;
   const tokenIdNumber = Number(id);
-  // Accept legacy "g" code for shadownet, but "s" is the canonical code.
-  const isShadownet = network === "s" || network === "g";
+  const isShadownet = network === "s";
   const tokenNetwork = isShadownet ? "shadownet" : "mainnet";
 
   if (
@@ -1952,6 +2028,253 @@ function extractBytesFromOption(value: unknown): string | null {
   return null;
 }
 
+async function getSvgJsBigmapPointers(
+  network: "mainnet" | "shadownet"
+): Promise<{ tokenMetadataPtr: number | null; generatorsPtr: number | null }> {
+  const now = Date.now();
+  const cachedPointers = svgJsBigmapPointersCache.get(network);
+  if (
+    cachedPointers &&
+    now - cachedPointers.cachedAtMs <= SVG_JS_BIGMAP_POINTERS_CACHE_TTL_MS
+  ) {
+    return {
+      tokenMetadataPtr: cachedPointers.tokenMetadataPtr,
+      generatorsPtr: cachedPointers.generatorsPtr,
+    };
+  }
+
+  const contract = SVG_JS_CONTRACT_BY_NETWORK[network];
+  const tzktBase = TZKT_API_BY_NETWORK[network];
+  const bigmapsResponse = await fetch(
+    `${tzktBase}/v1/contracts/${contract}/bigmaps`
+  );
+
+  let tokenMetadataPtr: number | null = null;
+  let generatorsPtr: number | null = null;
+  if (bigmapsResponse.ok) {
+    const bigmaps = (await bigmapsResponse.json()) as Array<{
+      path?: string;
+      ptr?: number;
+    }>;
+    tokenMetadataPtr =
+      bigmaps.find((entry) => entry.path === "token_metadata")?.ptr ?? null;
+    generatorsPtr = bigmaps.find((entry) => entry.path === "generators")?.ptr ?? null;
+  }
+
+  svgJsBigmapPointersCache.set(network, {
+    tokenMetadataPtr,
+    generatorsPtr,
+    cachedAtMs: now,
+  });
+
+  return { tokenMetadataPtr, generatorsPtr };
+}
+
+function decodeMetadataTextValue(value: unknown): string | null {
+  if (value == null) return null;
+  const decoded = decodeHexToText(value)
+    .replace(/\s+/g, " ")
+    .trim();
+  return decoded.length > 0 ? decoded : null;
+}
+
+function pickDecodedMetadataField(
+  source: Record<string, unknown> | null | undefined,
+  keys: string[]
+): string | null {
+  if (!source) return null;
+  for (const key of keys) {
+    const value = decodeMetadataTextValue(source[key]);
+    if (value) return value;
+  }
+  return null;
+}
+
+type TokenInfoMetadata = {
+  artifactUri: string | null;
+  name: string | null;
+  description: string | null;
+};
+
+type GeneratorMetadataRecord = {
+  artifactCid: string | null;
+  code: string | null;
+  name: string | null;
+  generatorDescription: string | null;
+  tokenDescription: string | null;
+};
+
+function parseTokenInfoMetadata(
+  tokenInfo: Record<string, unknown>
+): TokenInfoMetadata {
+  const artifactRaw = pickDecodedMetadataField(tokenInfo, [
+    "artifactUri",
+    "artifact_uri",
+    "artifactURI",
+  ]);
+  const artifactUri = artifactRaw?.trim() || null;
+  return {
+    artifactUri: artifactUri && artifactUri.length > 0 ? artifactUri : null,
+    name: pickDecodedMetadataField(tokenInfo, ["name", "token_name", "tokenName"]),
+    description: pickDecodedMetadataField(tokenInfo, [
+      "description",
+      "token_description",
+      "tokenDescription",
+    ]),
+  };
+}
+
+async function fetchSvgJsTokenMetadata(
+  network: "mainnet" | "shadownet",
+  tokenId: number
+): Promise<TokenInfoMetadata | null> {
+  try {
+    const pointers = await getSvgJsBigmapPointers(network);
+    if (!pointers.tokenMetadataPtr) return null;
+
+    const tzktBase = TZKT_API_BY_NETWORK[network];
+    const metadataResponse = await fetch(
+      `${tzktBase}/v1/bigmaps/${pointers.tokenMetadataPtr}/keys/${tokenId}`
+    );
+    if (!metadataResponse.ok) return null;
+
+    const payload = (await metadataResponse.json()) as {
+      value?: { token_info?: Record<string, unknown> };
+    };
+    return parseTokenInfoMetadata(payload.value?.token_info ?? {});
+  } catch (error) {
+    console.warn("[fetchSvgJsTokenMetadata] Failed:", {
+      network,
+      tokenId,
+      error,
+    });
+    return null;
+  }
+}
+
+async function fetchSvgJsTokenArtifactUri(
+  network: "mainnet" | "shadownet",
+  tokenId: number
+): Promise<string | null> {
+  const metadata = await fetchSvgJsTokenMetadata(network, tokenId);
+  return metadata?.artifactUri ?? null;
+}
+
+async function fetchSvgJsGeneratorMetadata(
+  network: "mainnet" | "shadownet",
+  generatorId: number
+): Promise<GeneratorMetadataRecord | null> {
+  try {
+    const pointers = await getSvgJsBigmapPointers(network);
+    if (!pointers.generatorsPtr) return null;
+
+    const tzktBase = TZKT_API_BY_NETWORK[network];
+    const generatorResponse = await fetch(
+      `${tzktBase}/v1/bigmaps/${pointers.generatorsPtr}/keys/${generatorId}`
+    );
+    if (!generatorResponse.ok) return null;
+
+    const payload = (await generatorResponse.json()) as {
+      value?: Record<string, unknown>;
+    };
+    const value = payload.value ?? {};
+    const encodedCode =
+      typeof value.code === "string" ? value.code.trim() : "";
+    const decodedCode = encodedCode
+      ? decodeUrlEncodedHexToText(encodedCode).trim()
+      : "";
+    return {
+      artifactCid: null,
+      code: decodedCode.length > 0 ? decodedCode : null,
+      name: pickDecodedMetadataField(value, ["name", "generator_name", "generatorName"]),
+      generatorDescription: pickDecodedMetadataField(value, [
+        "description",
+        "generator_description",
+        "generatorDescription",
+      ]),
+      tokenDescription: pickDecodedMetadataField(value, [
+        "token_description",
+        "tokenDescription",
+      ]),
+    };
+  } catch (error) {
+    console.warn("[fetchSvgJsGeneratorMetadata] Failed:", {
+      network,
+      generatorId,
+      error,
+    });
+    return null;
+  }
+}
+
+async function fetchSvgJsGeneratorCode(
+  network: "mainnet" | "shadownet",
+  generatorId: number
+): Promise<string | null> {
+  const metadata = await fetchSvgJsGeneratorMetadata(network, generatorId);
+  return metadata?.code ?? null;
+}
+
+async function getGenericWebBigmapPointers(
+  network: "mainnet" | "shadownet"
+): Promise<{
+  tokenExtraPtr: number;
+  generatorsPtr: number | null;
+  tokenMetadataPtr: number | null;
+  ledgerPtr: number | null;
+} | null> {
+  const contract = GENERIC_WEB_CONTRACT_BY_NETWORK[network];
+  if (!contract) return null;
+
+  const now = Date.now();
+  const cachedPointers = genericWebBigmapPointersCache.get(network);
+  if (
+    cachedPointers &&
+    now - cachedPointers.cachedAtMs <= GENERIC_WEB_BIGMAP_POINTERS_CACHE_TTL_MS
+  ) {
+    return {
+      tokenExtraPtr: cachedPointers.tokenExtraPtr,
+      generatorsPtr: cachedPointers.generatorsPtr,
+      tokenMetadataPtr: cachedPointers.tokenMetadataPtr,
+      ledgerPtr: cachedPointers.ledgerPtr,
+    };
+  }
+
+  const tzktBase = TZKT_API_BY_NETWORK[network];
+  const bigmapsResponse = await fetch(
+    `${tzktBase}/v1/contracts/${contract}/bigmaps`
+  );
+  if (!bigmapsResponse.ok) return null;
+
+  const bigmaps = (await bigmapsResponse.json()) as Array<{
+    path?: string;
+    ptr?: number;
+  }>;
+  const tokenExtraMap = bigmaps.find((entry) => entry.path === "token_extra");
+  const generatorsMap = bigmaps.find((entry) => entry.path === "generators");
+  const tokenMetadataMap = bigmaps.find(
+    (entry) => entry.path === "token_metadata"
+  );
+  const ledgerMap = bigmaps.find((entry) => entry.path === "ledger");
+  const tokenExtraPtr = tokenExtraMap?.ptr ?? null;
+  if (tokenExtraPtr == null) return null;
+
+  genericWebBigmapPointersCache.set(network, {
+    tokenExtraPtr,
+    generatorsPtr: generatorsMap?.ptr ?? null,
+    tokenMetadataPtr: tokenMetadataMap?.ptr ?? null,
+    ledgerPtr: ledgerMap?.ptr ?? null,
+    cachedAtMs: now,
+  });
+
+  return {
+    tokenExtraPtr,
+    generatorsPtr: generatorsMap?.ptr ?? null,
+    tokenMetadataPtr: tokenMetadataMap?.ptr ?? null,
+    ledgerPtr: ledgerMap?.ptr ?? null,
+  };
+}
+
 async function fetchGenericWebTokenQueueInfo(
   network: "mainnet" | "shadownet",
   tokenId: number,
@@ -1963,52 +2286,15 @@ async function fetchGenericWebTokenQueueInfo(
   seed: string | null;
   ownerAddress: string | null;
 } | null> {
-  const contract = GENERIC_WEB_CONTRACT_BY_NETWORK[network];
-  if (!contract) return null;
-
   const tzktBase = TZKT_API_BY_NETWORK[network];
   const includeOwner = options?.includeOwner === true;
 
   try {
-    const now = Date.now();
-    const cachedPointers = genericWebBigmapPointersCache.get(network);
-    let tokenExtraPtr: number | null = null;
-    let ledgerPtr: number | null = null;
-
-    if (
-      cachedPointers &&
-      now - cachedPointers.cachedAtMs <=
-        GENERIC_WEB_BIGMAP_POINTERS_CACHE_TTL_MS
-    ) {
-      tokenExtraPtr = cachedPointers.tokenExtraPtr;
-      ledgerPtr = cachedPointers.ledgerPtr;
-    } else {
-      const bigmapsResponse = await fetch(
-        `${tzktBase}/v1/contracts/${contract}/bigmaps`
-      );
-      if (!bigmapsResponse.ok) return null;
-      const bigmaps = (await bigmapsResponse.json()) as Array<{
-        path?: string;
-        ptr?: number;
-      }>;
-      const tokenExtraMap = bigmaps.find(
-        (entry) => entry.path === "token_extra"
-      );
-      const ledgerMap = bigmaps.find((entry) => entry.path === "ledger");
-      tokenExtraPtr = tokenExtraMap?.ptr ?? null;
-      ledgerPtr = ledgerMap?.ptr ?? null;
-      if (tokenExtraPtr == null) return null;
-      genericWebBigmapPointersCache.set(network, {
-        tokenExtraPtr,
-        ledgerPtr,
-        cachedAtMs: now,
-      });
-    }
-
-    if (tokenExtraPtr == null) return null;
+    const pointers = await getGenericWebBigmapPointers(network);
+    if (!pointers) return null;
 
     const extraResponse = await fetch(
-      `${tzktBase}/v1/bigmaps/${tokenExtraPtr}/keys/${tokenId}`
+      `${tzktBase}/v1/bigmaps/${pointers.tokenExtraPtr}/keys/${tokenId}`
     );
     if (!extraResponse.ok) return null;
     const extraPayload = (await extraResponse.json()) as {
@@ -2034,9 +2320,9 @@ async function fetchGenericWebTokenQueueInfo(
     const seed = extractBytesFromOption(seedRaw);
 
     let ownerAddress: string | null = null;
-    if (includeOwner && ledgerPtr != null) {
+    if (includeOwner && pointers.ledgerPtr != null) {
       const ownerResponse = await fetch(
-        `${tzktBase}/v1/bigmaps/${ledgerPtr}/keys/${tokenId}`
+        `${tzktBase}/v1/bigmaps/${pointers.ledgerPtr}/keys/${tokenId}`
       );
       if (ownerResponse.ok) {
         const ownerPayload = (await ownerResponse.json()) as { value?: string };
@@ -2055,6 +2341,191 @@ async function fetchGenericWebTokenQueueInfo(
     console.warn("[fetchGenericWebTokenQueueInfo] Failed:", {
       network,
       tokenId,
+      error,
+    });
+    return null;
+  }
+}
+
+async function fetchGenericWebTokenMetadata(
+  network: "mainnet" | "shadownet",
+  tokenId: number
+): Promise<TokenInfoMetadata | null> {
+  try {
+    const pointers = await getGenericWebBigmapPointers(network);
+    if (!pointers?.tokenMetadataPtr) return null;
+
+    const tzktBase = TZKT_API_BY_NETWORK[network];
+    const metadataResponse = await fetch(
+      `${tzktBase}/v1/bigmaps/${pointers.tokenMetadataPtr}/keys/${tokenId}`
+    );
+    if (!metadataResponse.ok) return null;
+
+    const metadataPayload = (await metadataResponse.json()) as {
+      value?: { token_info?: Record<string, unknown> };
+    };
+    return parseTokenInfoMetadata(metadataPayload.value?.token_info ?? {});
+  } catch (error) {
+    console.warn("[fetchGenericWebTokenMetadata] Failed:", {
+      network,
+      tokenId,
+      error,
+    });
+    return null;
+  }
+}
+
+async function fetchGenericWebTokenArtifactUri(
+  network: "mainnet" | "shadownet",
+  tokenId: number
+): Promise<string | null> {
+  const metadata = await fetchGenericWebTokenMetadata(network, tokenId);
+  return metadata?.artifactUri ?? null;
+}
+
+async function fetchGenericWebGeneratorMetadata(
+  network: "mainnet" | "shadownet",
+  generatorId: number
+): Promise<GeneratorMetadataRecord | null> {
+  try {
+    const pointers = await getGenericWebBigmapPointers(network);
+    if (!pointers?.generatorsPtr) return null;
+
+    const tzktBase = TZKT_API_BY_NETWORK[network];
+    const generatorResponse = await fetch(
+      `${tzktBase}/v1/bigmaps/${pointers.generatorsPtr}/keys/${generatorId}`
+    );
+    if (!generatorResponse.ok) return null;
+
+    const payload = (await generatorResponse.json()) as {
+      value?: Record<string, unknown>;
+    };
+    const value = payload.value ?? {};
+    const artifactCidRaw = pickDecodedMetadataField(value, [
+      "artifact_cid",
+      "artifactCid",
+    ]);
+    const metadataCidRaw = pickDecodedMetadataField(value, [
+      "metadata_cid",
+      "metadataCid",
+    ]);
+    const artifactCid = artifactCidRaw
+      ? stripIpfsPrefix(artifactCidRaw.trim())
+      : null;
+    const metadataCid = metadataCidRaw
+      ? stripIpfsPrefix(metadataCidRaw.trim())
+      : null;
+
+    let generatorDescription = pickDecodedMetadataField(value, [
+      "description",
+      "generator_description",
+      "generatorDescription",
+    ]);
+    let tokenDescription = pickDecodedMetadataField(value, [
+      "token_description",
+      "tokenDescription",
+    ]);
+
+    if (metadataCid) {
+      const metadataJson = await fetchGenericWebGeneratorMetadataJson(
+        network,
+        metadataCid
+      );
+      if (metadataJson) {
+        generatorDescription =
+          metadataJson.generatorDescription ?? generatorDescription;
+        tokenDescription = metadataJson.tokenDescription ?? tokenDescription;
+      }
+    }
+
+    return {
+      artifactCid: artifactCid && artifactCid.length > 0 ? artifactCid : null,
+      code: null,
+      name: pickDecodedMetadataField(value, ["name", "generator_name", "generatorName"]),
+      generatorDescription,
+      tokenDescription,
+    };
+  } catch (error) {
+    console.warn("[fetchGenericWebGeneratorMetadata] Failed:", {
+      network,
+      generatorId,
+      error,
+    });
+    return null;
+  }
+}
+
+async function fetchGenericWebGeneratorArtifactCid(
+  network: "mainnet" | "shadownet",
+  generatorId: number
+): Promise<string | null> {
+  const metadata = await fetchGenericWebGeneratorMetadata(network, generatorId);
+  return metadata?.artifactCid ?? null;
+}
+
+async function fetchGenericWebGeneratorMetadataJson(
+  network: "mainnet" | "shadownet",
+  metadataCid: string
+): Promise<{
+  generatorDescription: string | null;
+  tokenDescription: string | null;
+} | null> {
+  const cid = stripIpfsPrefix(metadataCid.trim());
+  if (!cid) return null;
+
+  const cacheKey = `${network}:${cid}`;
+  const now = Date.now();
+  const cached = generatorMetadataJsonCache.get(cacheKey);
+  if (
+    cached &&
+    now - cached.cachedAtMs <= GENERATOR_METADATA_JSON_CACHE_TTL_MS
+  ) {
+    return {
+      generatorDescription: cached.generatorDescription,
+      tokenDescription: cached.tokenDescription,
+    };
+  }
+
+  const mediaOrigin =
+    network === "shadownet"
+      ? "https://media.shadownet.bootloader.art"
+      : "https://media.bootloader.art";
+  const url = `${mediaOrigin}/ipfs/${cid}/metadata.json`;
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+
+    const payload = (await response.json()) as Record<string, unknown>;
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+      return null;
+    }
+
+    const generatorDescription = normalizeMetaText(
+      (payload.generator_description ??
+        payload.generatorDescription ??
+        payload.description) as string | null | undefined,
+      260
+    );
+    const tokenDescription = normalizeMetaText(
+      (payload.token_description ?? payload.tokenDescription) as
+        | string
+        | null
+        | undefined,
+      260
+    );
+
+    generatorMetadataJsonCache.set(cacheKey, {
+      generatorDescription,
+      tokenDescription,
+      cachedAtMs: now,
+    });
+
+    return { generatorDescription, tokenDescription };
+  } catch (error) {
+    console.warn("[fetchGenericWebGeneratorMetadataJson] Failed:", {
+      network,
+      metadataCid: cid,
       error,
     });
     return null;
@@ -2706,6 +3177,763 @@ function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
+function decodeHexToText(value: unknown): string {
+  if (typeof value !== "string") return "";
+  const raw = value.trim();
+  let hex = raw;
+  if (!hex) return "";
+  if (hex.startsWith("0x")) {
+    hex = hex.slice(2);
+  }
+  if (!hex || hex.length % 2 !== 0 || !/^[0-9a-fA-F]+$/.test(hex)) {
+    return raw;
+  }
+
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < hex.length; i += 2) {
+    const byte = Number.parseInt(hex.slice(i, i + 2), 16);
+    if (Number.isNaN(byte)) return raw;
+    bytes[i / 2] = byte;
+  }
+  try {
+    return new TextDecoder().decode(bytes);
+  } catch {
+    return raw;
+  }
+}
+
+function decodeUrlEncodedHexToText(value: string): string {
+  const decodedHex = decodeHexToText(value);
+  try {
+    return decodeURIComponent(decodedHex);
+  } catch {
+    return decodedHex;
+  }
+}
+
+function normalizeSvgSeed(seed: string | number): string {
+  if (typeof seed === "string") {
+    if (/^[0-9a-fA-F]{64}$/.test(seed)) {
+      return `0x${seed}`;
+    }
+    if (seed.startsWith("0x")) {
+      return seed;
+    }
+    return seed;
+  }
+  return String(seed);
+}
+
+function generateSvgDataUrl(
+  code: string,
+  seed: string | number,
+  iterationNumber = 0
+): string {
+  const encodedCode = encodeURIComponent(code);
+  const normalizedSeed = normalizeSvgSeed(seed);
+
+  const frag1 =
+    "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cscript%3E%3C!%5BCDATA%5Bconst%20SEED%3D";
+  const frag2 =
+    "n%3Bfunction%20splitmix64(f)%7Blet%20n%3Df%3Breturn%20function()%7Blet%20f%3Dn%3Dn%2B0x9e3779b97f4a7c15n%260xffffffffffffffffn%3Breturn%20f%3D((f%3D(f%5Ef%3E%3E30n)*0xbf58476d1ce4e5b9n%260xffffffffffffffffn)%5Ef%3E%3E27n)*0x94d049bb133111ebn%260xffffffffffffffffn%2CNumber(4294967295n%26(f%5E%3Df%3E%3E31n))%3E%3E%3E0%7D%7Dfunction%20sfc32(f%2Cn%2C%24%2Ct)%7Breturn%20function()%7B%24%7C%3D0%3Blet%20e%3D((f%7C%3D0)%2B(n%7C%3D0)%7C0)%2B(t%7C%3D0)%7C0%3Breturn%20t%3Dt%2B1%7C0%2Cf%3Dn%5En%3E%3E%3E9%2Cn%3D%24%2B(%24%3C%3C3)%7C0%2C%24%3D(%24%3D%24%3C%3C21%7C%24%3E%3E%3E11)%2Be%7C0%2C(e%3E%3E%3E0)%2F4294967296%7D%7Dconst%20sm%3Dsplitmix64(SEED)%2Ca%3Dsm()%2Cb%3Dsm()%2Cc%3Dsm()%2Cd%3Dsm()%2Cn%3D";
+  const frag3 =
+    "%2CBTLDR%3D%7Brnd%3Asfc32(a%2Cb%2Cc%2Cd)%2Cseed%3ASEED%2CiterationNumber%3An%2CisPreview%3An%3D%3D%3D0%26%26SEED%3D%3D%3D0n%2Csvg%3Adocument.documentElement%2Cv%3A%27svg-js%3A0.0.1%27%7D%3B((BTLDR)%3D%3E%7B";
+  const frag4 = "%7D)(BTLDR)%3B%5D%5D%3E%3C%2Fscript%3E%3C%2Fsvg%3E";
+
+  return `${frag1}${normalizedSeed}${frag2}${iterationNumber}${frag3}${encodedCode}${frag4}`;
+}
+
+function stripIpfsPrefix(value: string): string {
+  const withoutPrefix = value.replace(/^ipfs:\/\//i, "").replace(/^\/+/, "");
+  return withoutPrefix.split("?")[0].split("/")[0];
+}
+
+function normalizeEntryPath(value: string | null | undefined): string {
+  const raw = (value || "").trim().replace(/^\/+/, "");
+  if (!raw || raw.includes("..")) return "index.html";
+  return raw;
+}
+
+function getConfiguredNetwork(env: Bindings): "mainnet" | "shadownet" {
+  const explicitNetwork = (env.WORKER_NETWORK || "").trim().toLowerCase();
+  if (explicitNetwork === "mainnet" || explicitNetwork === "m") {
+    return "mainnet";
+  }
+  if (explicitNetwork === "shadownet" || explicitNetwork === "s") {
+    return "shadownet";
+  }
+
+  // Local default
+  return "shadownet";
+}
+
+function networkToCode(network: "mainnet" | "shadownet"): "m" | "s" {
+  return network === "mainnet" ? "m" : "s";
+}
+
+function resolveNetworkFromRequest(_url: URL, env: Bindings): {
+  network: "mainnet" | "shadownet";
+  networkCode: "m" | "s";
+} {
+  const network = getConfiguredNetwork(env);
+  return { network, networkCode: networkToCode(network) };
+}
+
+function buildUnavailablePlayerDataUrl(message: string): string {
+  const safe = escapeHtml(message);
+  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><style>html,body{margin:0;width:100%;height:100%;background:#000;color:#fff;font:14px/1.4 monospace;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;text-align:center}</style></head><body>${safe}</body></html>`;
+  return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
+}
+
+function parseShareRoute(pathname: string): {
+  kind: "token" | "generator";
+  bootloader: BootloaderType;
+  id: number;
+} | null {
+  const match = pathname.match(
+    /^\/(token|generator)\/(svg-js|generic-web)\/(\d+)\/?$/
+  );
+  if (!match) return null;
+  const id = Number(match[3]);
+  if (!Number.isFinite(id)) return null;
+  return {
+    kind: match[1] as "token" | "generator",
+    bootloader: match[2] as BootloaderType,
+    id,
+  };
+}
+
+function normalizeMetaText(value: unknown, maxLength: number): string | null {
+  if (typeof value !== "string") return null;
+  const collapsed = value.replace(/\s+/g, " ").trim();
+  if (!collapsed) return null;
+  if (collapsed.length <= maxLength) return collapsed;
+  if (maxLength <= 3) return collapsed.slice(0, maxLength);
+  return `${collapsed.slice(0, maxLength - 3).trimEnd()}...`;
+}
+
+function buildFallbackShareTitle(route: {
+  kind: "token" | "generator";
+  bootloader: BootloaderType;
+  id: number;
+}): string {
+  const kindLabel = route.kind === "token" ? "Token" : "Generator";
+  return `${kindLabel} #${route.id} · ${route.bootloader} · bootloader:`;
+}
+
+function buildFallbackShareDescription(route: {
+  kind: "token" | "generator";
+  bootloader: BootloaderType;
+  id: number;
+}): string {
+  return `Interactive ${route.bootloader} ${route.kind} #${route.id} on bootloader:.`;
+}
+
+async function resolveGeneratorShareMetadata(opts: {
+  env: Bindings;
+  bootloader: BootloaderType;
+  network: "mainnet" | "shadownet";
+  generatorId: number;
+}): Promise<{
+  name: string | null;
+  generatorDescription: string | null;
+  tokenDescription: string | null;
+}> {
+  let dbName: string | null = null;
+  let dbGeneratorDescription: string | null = null;
+  let dbTokenDescription: string | null = null;
+
+  try {
+    const generatorService = new GeneratorService(opts.env.DB);
+    const row = await generatorService.getGenerator(
+      opts.generatorId,
+      opts.network,
+      opts.bootloader
+    );
+    if (row) {
+      dbName = normalizeMetaText(row.name, 90);
+      dbGeneratorDescription = normalizeMetaText(row.generatorDescription, 260);
+      dbTokenDescription = normalizeMetaText(row.tokenDescription, 260);
+    }
+  } catch (error) {
+    console.warn("[resolveGeneratorShareMetadata] DB lookup failed", {
+      generatorId: opts.generatorId,
+      network: opts.network,
+      bootloader: opts.bootloader,
+      error,
+    });
+  }
+
+  // Mirror generator page behavior for generic-web:
+  // About = generator.description (on-chain) OR generatorMetadata.generatorDescription (D1).
+  if (opts.bootloader === "generic-web") {
+    const chainMeta = await fetchGenericWebGeneratorMetadata(
+      opts.network,
+      opts.generatorId
+    );
+    const chainName = normalizeMetaText(chainMeta?.name, 90);
+    const chainDescription = normalizeMetaText(chainMeta?.generatorDescription, 260);
+    const chainTokenDescription = normalizeMetaText(chainMeta?.tokenDescription, 260);
+    return {
+      name: chainName ?? dbName,
+      generatorDescription: chainDescription ?? dbGeneratorDescription,
+      tokenDescription: chainTokenDescription ?? dbTokenDescription,
+    };
+  }
+
+  // svg-js currently has no stored generator description metadata.
+  return { name: dbName, generatorDescription: null, tokenDescription: null };
+}
+
+function resolveShareNetworkFromRoute(
+  env: Bindings,
+  url: URL
+): "mainnet" | "shadownet" {
+  return resolveNetworkFromRequest(url, env).network;
+}
+
+async function resolveShareTextWithCache(opts: {
+  env: Bindings;
+  route: {
+    kind: "token" | "generator";
+    bootloader: BootloaderType;
+    id: number;
+  };
+  network: "mainnet" | "shadownet";
+}): Promise<{ title: string; description: string }> {
+  const cacheKey = `${opts.network}:${opts.route.kind}:${opts.route.bootloader}:${opts.route.id}`;
+  const now = Date.now();
+  const cached = shareMetaCache.get(cacheKey);
+  if (cached && now - cached.cachedAtMs <= SHARE_META_CACHE_TTL_MS) {
+    return { title: cached.title, description: cached.description };
+  }
+
+  const fallbackTitle = buildFallbackShareTitle(opts.route);
+  const fallbackDescription = buildFallbackShareDescription(opts.route);
+  let title = fallbackTitle;
+  let description = fallbackDescription;
+
+  try {
+    if (opts.route.kind === "generator") {
+      const generatorMeta = await resolveGeneratorShareMetadata({
+        env: opts.env,
+        bootloader: opts.route.bootloader,
+        network: opts.network,
+        generatorId: opts.route.id,
+      });
+
+      const titleBase = generatorMeta.name ?? `Generator #${opts.route.id}`;
+      title =
+        normalizeMetaText(
+          `${titleBase} · ${opts.route.bootloader} · bootloader:`,
+          140
+        ) ?? fallbackTitle;
+
+      const generatorDescriptionSource = generatorMeta.generatorDescription;
+      description =
+        normalizeMetaText(
+          generatorDescriptionSource ?? fallbackDescription,
+          280
+        ) ?? fallbackDescription;
+    } else {
+      const tokenMetadataPromise =
+        opts.route.bootloader === "svg-js"
+          ? fetchSvgJsTokenMetadata(opts.network, opts.route.id)
+          : fetchGenericWebTokenMetadata(opts.network, opts.route.id);
+
+      const tokenDbPromise = new TokenService(opts.env.DB)
+        .getToken(opts.route.id, opts.network, opts.route.bootloader)
+        .catch((error) => {
+          console.warn("[resolveShareTextWithCache] token DB lookup failed", {
+            tokenId: opts.route.id,
+            network: opts.network,
+            bootloader: opts.route.bootloader,
+            error,
+          });
+          return null;
+        });
+
+      const [tokenMetadata, tokenDbRow] = await Promise.all([
+        tokenMetadataPromise,
+        tokenDbPromise,
+      ]);
+
+      let generatorId = tokenDbRow?.generatorId ?? null;
+      if (generatorId == null && opts.route.bootloader === "generic-web") {
+        const queueInfo = await fetchGenericWebTokenQueueInfo(
+          opts.network,
+          opts.route.id
+        );
+        generatorId = queueInfo?.generatorId ?? null;
+      }
+
+      const generatorMeta =
+        generatorId != null
+          ? await resolveGeneratorShareMetadata({
+              env: opts.env,
+              bootloader: opts.route.bootloader,
+              network: opts.network,
+              generatorId,
+            })
+          : null;
+
+      const tokenName = normalizeMetaText(tokenMetadata?.name, 90);
+      const tokenDescription = normalizeMetaText(tokenMetadata?.description, 280);
+      const generatorName = normalizeMetaText(generatorMeta?.name, 70);
+
+      const titleBase =
+        tokenName ??
+        (generatorName
+          ? `${generatorName} #${opts.route.id}`
+          : `Token #${opts.route.id}`);
+
+      title =
+        normalizeMetaText(
+          `${titleBase} · ${opts.route.bootloader} · bootloader:`,
+          140
+        ) ?? fallbackTitle;
+
+      const tokenDescriptionSource =
+        opts.route.bootloader === "generic-web"
+          ? tokenDescription ?? generatorMeta?.tokenDescription
+          : null;
+      description =
+        normalizeMetaText(
+          tokenDescriptionSource ?? fallbackDescription,
+          280
+        ) ?? fallbackDescription;
+    }
+  } catch (error) {
+    console.warn("[resolveShareTextWithCache] fallback meta used", {
+      route: opts.route,
+      network: opts.network,
+      error,
+    });
+  }
+
+  const shouldCache =
+    !(
+      opts.route.kind === "generator" &&
+      opts.route.bootloader === "generic-web" &&
+      description === fallbackDescription
+    );
+  if (shouldCache) {
+    shareMetaCache.set(cacheKey, { title, description, cachedAtMs: now });
+  }
+  return { title, description };
+}
+
+async function buildSocialMetaFromRoute(env: Bindings, url: URL): Promise<{
+  title: string;
+  description: string;
+  imageUrl: string;
+  playerUrl: string;
+  pageUrl: string;
+} | null> {
+  const route = parseShareRoute(url.pathname);
+  if (!route) return null;
+
+  const network = resolveShareNetworkFromRoute(env, url);
+  const shareText = await resolveShareTextWithCache({
+    env,
+    route,
+    network,
+  });
+  const isToken = route.kind === "token";
+  const imagePath = isToken
+    ? `/${route.bootloader}/v1/thumbnail/${route.id}`
+    : `/${route.bootloader}/v1/generator-thumbnail/${route.id}`;
+
+  const imageUrl = new URL(imagePath, url.origin);
+  if (isToken) {
+    const version = url.searchParams.get("v");
+    if (version && /^\d+$/.test(version)) {
+      imageUrl.searchParams.set("v", version);
+    }
+  }
+
+  const playerUrl = new URL(
+    `/player/${route.kind}/${route.bootloader}/${route.id}`,
+    url.origin
+  );
+
+  return {
+    title: shareText.title,
+    description: shareText.description,
+    imageUrl: imageUrl.toString(),
+    playerUrl: playerUrl.toString(),
+    pageUrl: url.toString(),
+  };
+}
+
+function buildSocialMetaTags(meta: {
+  title: string;
+  description: string;
+  imageUrl: string;
+  playerUrl: string;
+  pageUrl: string;
+}): string {
+  const title = escapeHtml(meta.title);
+  const description = escapeHtml(meta.description);
+  const imageUrl = escapeHtml(meta.imageUrl);
+  const playerUrl = escapeHtml(meta.playerUrl);
+  const pageUrl = escapeHtml(meta.pageUrl);
+
+  return [
+    `<meta property="og:type" content="video.other" />`,
+    `<meta property="og:site_name" content="bootloader:" />`,
+    `<meta property="og:title" content="${title}" />`,
+    `<meta property="og:description" content="${description}" />`,
+    `<meta property="og:image" content="${imageUrl}" />`,
+    `<meta property="og:video" content="${playerUrl}" />`,
+    `<meta property="og:video:url" content="${playerUrl}" />`,
+    `<meta property="og:video:secure_url" content="${playerUrl}" />`,
+    `<meta property="og:video:type" content="text/html" />`,
+    `<meta property="og:video:width" content="800" />`,
+    `<meta property="og:video:height" content="800" />`,
+    `<meta property="og:url" content="${pageUrl}" />`,
+    `<link rel="canonical" href="${pageUrl}" />`,
+    `<meta name="robots" content="index, follow" />`,
+    `<meta name="twitter:card" content="player" />`,
+    `<meta name="twitter:site" content="@bootloader_art" />`,
+    `<meta name="twitter:title" content="${title}" />`,
+    `<meta name="twitter:description" content="${description}" />`,
+    `<meta name="twitter:image" content="${imageUrl}" />`,
+    `<meta name="twitter:player" content="${playerUrl}" />`,
+    `<meta name="twitter:player:width" content="800" />`,
+    `<meta name="twitter:player:height" content="800" />`,
+  ].join("\n    ");
+}
+
+function injectTagsIntoHead(html: string, tags: string): string {
+  const closeHeadTag = "</head>";
+  const index = html.indexOf(closeHeadTag);
+  if (index === -1) {
+    return `${tags}\n${html}`;
+  }
+  return `${html.slice(0, index)}\n    ${tags}\n  ${html.slice(index)}`;
+}
+
+function injectTitleAndDescription(
+  html: string,
+  title: string,
+  description: string
+): string {
+  const safeTitle = escapeHtml(title);
+  const safeDescription = escapeHtml(description);
+  let out = html;
+
+  if (/<title\b[^>]*>[\s\S]*?<\/title>/i.test(out)) {
+    out = out.replace(
+      /<title\b[^>]*>[\s\S]*?<\/title>/i,
+      `<title>${safeTitle}</title>`
+    );
+  } else {
+    out = injectTagsIntoHead(out, `<title>${safeTitle}</title>`);
+  }
+
+  if (/<meta\s+name=["']description["'][^>]*>/i.test(out)) {
+    out = out.replace(
+      /<meta\s+name=["']description["'][^>]*>/i,
+      `<meta name="description" content="${safeDescription}" />`
+    );
+  } else {
+    out = injectTagsIntoHead(
+      out,
+      `<meta name="description" content="${safeDescription}" />`
+    );
+  }
+
+  return out;
+}
+
+function buildPlayerHtml(
+  iframeSrc: string,
+  options?: { allowRandomize?: boolean }
+): string {
+  const safeSrc = escapeHtml(iframeSrc);
+  const allowRandomize = options?.allowRandomize === true;
+  const randomizeButton = allowRandomize
+    ? `<button id="seed-randomizer" type="button" aria-label="Randomize seed" title="Randomize seed">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="4.5" y="4.5" width="15" height="15"></rect>
+        <circle cx="8" cy="8" r="1.2"></circle>
+        <circle cx="16" cy="8" r="1.2"></circle>
+        <circle cx="12" cy="12" r="1.2"></circle>
+        <circle cx="8" cy="16" r="1.2"></circle>
+        <circle cx="16" cy="16" r="1.2"></circle>
+      </svg>
+    </button>`
+    : "";
+  const randomizeScript = allowRandomize
+    ? `<script>
+      (function () {
+        const button = document.getElementById("seed-randomizer");
+        const frame = document.getElementById("player-frame");
+        if (!button) return;
+        function randomHex(bytes) {
+          const arr = new Uint8Array(bytes);
+          crypto.getRandomValues(arr);
+          let out = "";
+          for (const b of arr) {
+            out += b.toString(16).padStart(2, "0");
+          }
+          return out;
+        }
+        button.addEventListener("click", function () {
+          const seed = randomHex(32);
+          const pageUrl = new URL(window.location.href);
+          pageUrl.searchParams.set("s", seed);
+          pageUrl.searchParams.set("i", "0");
+          history.replaceState(null, "", pageUrl.toString());
+          if (!(frame instanceof HTMLIFrameElement)) return;
+
+          // Keep generic-web generators on direct IPFS URLs when randomizing.
+          let nextFrameSrc = "";
+          try {
+            const currentFrameUrl = new URL(frame.src, window.location.href);
+            const isIpfsFrame = currentFrameUrl.pathname.indexOf("/ipfs/") >= 0;
+            if (isIpfsFrame) {
+              currentFrameUrl.searchParams.set("s", seed);
+              currentFrameUrl.searchParams.set("i", "0");
+              nextFrameSrc = currentFrameUrl.toString();
+            }
+          } catch (_) {}
+
+          if (!nextFrameSrc) {
+            const frameUrl = new URL(pageUrl.toString());
+            frameUrl.searchParams.set("raw", "1");
+            nextFrameSrc = frameUrl.toString();
+          }
+          frame.src = nextFrameSrc;
+        });
+      })();
+    </script>`
+    : "";
+  return `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>bootloader: player</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #000;
+      }
+      iframe {
+        width: 100%;
+        height: 100%;
+        border: 0;
+        display: block;
+        background: #000;
+      }
+      #seed-randomizer {
+        position: fixed;
+        right: 14px;
+        bottom: 14px;
+        width: 44px;
+        height: 44px;
+        border-radius: 0;
+        border: 1px solid #fff;
+        background: #000;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 9999;
+        padding: 0;
+      }
+      #seed-randomizer:hover {
+        background: #fff;
+        color: #000;
+      }
+      #seed-randomizer svg {
+        width: 24px;
+        height: 24px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.6;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      #seed-randomizer svg circle {
+        fill: currentColor;
+        stroke: none;
+      }
+    </style>
+  </head>
+  <body>
+    <iframe id="player-frame" src="${safeSrc}" allow="autoplay; fullscreen" allowfullscreen></iframe>
+    ${randomizeButton}
+    ${randomizeScript}
+  </body>
+</html>`;
+}
+
+async function resolveManifestEntryPath(
+  env: Bindings,
+  cid: string
+): Promise<string> {
+  const manifest = await loadManifest(env, cid, "index.html");
+  return normalizeEntryPath(manifest?.entry);
+}
+
+function buildGenericWebIpfsUrlFromArtifactUri(
+  baseUrl: string,
+  artifactUri: string,
+  overrides?: { seed?: string | null; iteration?: number | null }
+): string | null {
+  if (!/^ipfs:\/\//i.test(artifactUri)) return null;
+  const withoutPrefix = artifactUri.replace(/^ipfs:\/\//i, "");
+  if (!withoutPrefix) return null;
+
+  const queryIndex = withoutPrefix.indexOf("?");
+  const pathPart =
+    queryIndex >= 0 ? withoutPrefix.slice(0, queryIndex) : withoutPrefix;
+  const queryPart = queryIndex >= 0 ? withoutPrefix.slice(queryIndex + 1) : "";
+  const segments = pathPart.split("/").filter(Boolean);
+  const cid = segments.shift();
+  if (!cid) return null;
+  const entryPath = normalizeEntryPath(segments.join("/") || "index.html");
+  const url = new URL(`/ipfs/${cid}/${entryPath}`, baseUrl);
+
+  if (queryPart) {
+    const params = new URLSearchParams(queryPart);
+    for (const [key, value] of params.entries()) {
+      url.searchParams.set(key, value);
+    }
+  }
+
+  const overrideSeed = overrides?.seed;
+  if (overrideSeed && overrideSeed.trim()) {
+    url.searchParams.set("s", overrideSeed.trim());
+  }
+  if (overrides?.iteration != null && Number.isFinite(overrides.iteration)) {
+    url.searchParams.set("i", String(Math.max(0, overrides.iteration)));
+  }
+
+  return url.toString();
+}
+
+async function buildGenericWebGeneratorIpfsUrl(opts: {
+  env: Bindings;
+  baseUrl: string;
+  network: "mainnet" | "shadownet";
+  generatorId: number;
+  seedOverride?: string | null;
+  iterationOverride?: number | null;
+}): Promise<string | null> {
+  const cid = await fetchGenericWebGeneratorArtifactCid(
+    opts.network,
+    opts.generatorId
+  );
+  if (!cid) return null;
+  const entryPath = await resolveManifestEntryPath(opts.env, cid);
+  const url = new URL(`/ipfs/${cid}/${entryPath}`, opts.baseUrl);
+
+  const seed = opts.seedOverride ?? null;
+  const iteration = opts.iterationOverride ?? 0;
+  if (seed && seed.trim()) {
+    url.searchParams.set("s", seed.trim());
+  }
+  url.searchParams.set("i", String(iteration));
+  return url.toString();
+}
+
+async function buildGenericWebTokenIpfsUrlFromQueue(opts: {
+  env: Bindings;
+  baseUrl: string;
+  network: "mainnet" | "shadownet";
+  tokenId: number;
+}): Promise<string | null> {
+  const tokenInfo = await fetchGenericWebTokenQueueInfo(opts.network, opts.tokenId);
+  if (tokenInfo?.generatorId == null) return null;
+
+  return buildGenericWebGeneratorIpfsUrl({
+    env: opts.env,
+    baseUrl: opts.baseUrl,
+    network: opts.network,
+    generatorId: tokenInfo.generatorId,
+    seedOverride: tokenInfo.seed,
+    iterationOverride: tokenInfo.iteration ?? 0,
+  });
+}
+
+async function resolvePlayerSourceUrl(opts: {
+  env: Bindings;
+  requestUrl: URL;
+  kind: "token" | "generator";
+  bootloader: BootloaderType;
+  id: number;
+  network: "mainnet" | "shadownet";
+}): Promise<string> {
+  const baseUrl = opts.requestUrl.origin;
+  const network = opts.network;
+  const requestedSeed = opts.requestUrl.searchParams.get("s");
+  const requestedIterationRaw = opts.requestUrl.searchParams.get("i");
+  const requestedIteration = Number.isFinite(Number(requestedIterationRaw))
+    ? Math.max(0, Number(requestedIterationRaw))
+    : null;
+
+  if (opts.bootloader === "svg-js") {
+    if (opts.kind === "token") {
+      const artifactUri = await fetchSvgJsTokenArtifactUri(network, opts.id);
+      if (artifactUri) {
+        return artifactUri;
+      }
+    } else {
+      const code = await fetchSvgJsGeneratorCode(network, opts.id);
+      if (code) {
+        const seed = requestedSeed ?? "0";
+        const iteration = requestedIteration ?? 0;
+        return generateSvgDataUrl(code, seed, iteration);
+      }
+    }
+
+    return buildUnavailablePlayerDataUrl(
+      `Unable to resolve svg-js ${opts.kind} #${opts.id}.`
+    );
+  }
+
+  if (opts.kind === "token") {
+    const artifactUri = await fetchGenericWebTokenArtifactUri(network, opts.id);
+    if (artifactUri) {
+      const artifactUrl = buildGenericWebIpfsUrlFromArtifactUri(baseUrl, artifactUri);
+      if (artifactUrl) return artifactUrl;
+    }
+
+    const queueUrl = await buildGenericWebTokenIpfsUrlFromQueue({
+      env: opts.env,
+      baseUrl,
+      network,
+      tokenId: opts.id,
+    });
+    if (queueUrl) return queueUrl;
+  } else {
+    const generatorUrl = await buildGenericWebGeneratorIpfsUrl({
+      env: opts.env,
+      baseUrl,
+      network,
+      generatorId: opts.id,
+      seedOverride: requestedSeed,
+      iterationOverride: requestedIteration,
+    });
+    if (generatorUrl) return generatorUrl;
+  }
+
+  return buildUnavailablePlayerDataUrl(
+    `Unable to resolve generic-web ${opts.kind} #${opts.id}.`
+  );
+}
+
 function buildViewerHtml(iframeSrc: string): string {
   const safeSrc = escapeHtml(iframeSrc);
   return `<!DOCTYPE html>
@@ -3084,17 +4312,37 @@ app.get("*", async (c) => {
       console.error("[assets] Error serving exact path:", error);
     }
 
-    // For SPA routing: serve index.html for any path that didn't match a file
-    // Check if request accepts HTML (browser navigation)
-    const acceptHeader = c.req.header("accept") || "";
-    if (acceptHeader.includes("text/html")) {
+    // For SPA routing: serve index.html for non-file routes that didn't match a static file.
+    const pageUrl = new URL(c.req.url);
+    const isFileLikeRoute = /\.[a-z0-9]+$/i.test(pageUrl.pathname);
+    if (!isFileLikeRoute) {
       try {
         const indexUrl = new URL("/index.html", c.req.url);
         const indexResponse = await c.env.ASSETS.fetch(
           new Request(indexUrl.toString())
         );
         if (indexResponse.ok) {
-          return indexResponse;
+          const socialMeta = await buildSocialMetaFromRoute(c.env, pageUrl);
+          if (!socialMeta) {
+            return indexResponse;
+          }
+
+          const indexHtml = injectTitleAndDescription(
+            await indexResponse.text(),
+            socialMeta.title,
+            socialMeta.description
+          );
+          const injectedHtml = injectTagsIntoHead(
+            indexHtml,
+            buildSocialMetaTags(socialMeta)
+          );
+          const headers = new Headers(indexResponse.headers);
+          headers.set("content-type", "text/html; charset=utf-8");
+          headers.set("cache-control", "public, max-age=300");
+          return new Response(injectedHtml, {
+            status: indexResponse.status,
+            headers,
+          });
         }
       } catch (error) {
         console.error("[assets] Error serving index.html:", error);

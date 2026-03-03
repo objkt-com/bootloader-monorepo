@@ -59,6 +59,7 @@ name = "bootloader-thumbnail-renderer"
 [env.production.vars]
 ENVIRONMENT = "production"
 WORKER_URL = "https://media.bootloader.art"
+WORKER_NETWORK = "mainnet"
 
 [[env.production.r2_buckets]]
 binding = "R2_THUMBS"
@@ -97,6 +98,7 @@ command = "cd ../apps/web && VITE_MEDIA_CDN_URL=https://media.shadownet.bootload
 [env.staging.vars]
 ENVIRONMENT = "staging"
 WORKER_URL = "https://media.shadownet.bootloader.art"
+WORKER_NETWORK = "shadownet"
 AUTH_TOKEN_TTL_SECONDS = "604800"
 INDEXER_ENABLED = "true"
 INDEXER_TZKT_API = "https://api.shadownet.tzkt.io"
