@@ -15,9 +15,9 @@
   },
   "dependencies": {
     "@cloudflare/puppeteer": "^0.0.5",
-    "@taquito/signer": "^24.0.2",
-    "@taquito/taquito": "^24.0.2",
-    "@taquito/utils": "^24.0.2",
+    "@taquito/signer": "^24.2.0",
+    "@taquito/taquito": "^24.2.0",
+    "@taquito/utils": "^24.2.0",
     "hono": "^4.9.9",
     "ipfs-car": "^3.0.0",
     "ipfs-unixfs-importer": "^16.0.1",

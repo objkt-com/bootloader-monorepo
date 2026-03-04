@@ -98,9 +98,7 @@ export function PlayerPage() {
           ? 'Minted'
           : mintState === 'failed'
             ? 'Mint Failed'
-            : listed
-              ? `Mint ${((generator?.price ?? 0) / 1_000_000).toFixed(2)} ꜩ`
-              : 'Not Listed'
+            : `Mint ${((generator?.price ?? 0) / 1_000_000).toFixed(2)} ꜩ`
 
   async function onMint() {
     if (!isGenerator || !validBootloader || !id || !listed) return
@@ -156,12 +154,12 @@ export function PlayerPage() {
     <div className="player-root">
       <iframe id="player-frame" src={frameSrc} allow="autoplay; fullscreen" allowFullScreen />
 
-      {isGenerator ? (
+      {listed ? (
         <button
           id="player-mint"
           type="button"
           onClick={() => void onMint()}
-          disabled={!listed || mintState === 'connecting' || mintState === 'awaiting'}
+          disabled={mintState === 'connecting' || mintState === 'awaiting'}
           aria-label="Mint"
           title="Mint"
           className={mintState === 'minted' ? 'connected' : ''}
