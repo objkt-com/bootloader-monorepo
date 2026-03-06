@@ -318,7 +318,7 @@ def generic_web():
                             iteration_number=token_extra.iteration_number,
                         )
                     ),
-                    "artifact_uri": build_artifact_uri(
+                    "artifactUri": build_artifact_uri(
                         sp.record(
                             artifact_cid=generator.artifact_cid,
                             seed_hex=bytes_utils.to_hex_ascii(
@@ -328,7 +328,7 @@ def generic_web():
                             iteration_number=token_extra.iteration_number,
                         )
                     ),
-                    "thumbnail_uri": build_thumbnail_uri(
+                    "thumbnailUri": build_thumbnail_uri(
                         sp.record(
                             token_id=token_id,
                             version=generator.version,
@@ -371,7 +371,7 @@ def generic_web():
                             name=generator.name, iteration_number=generator.n_tokens + 1
                         )
                     ),
-                    "_artifact_uri": build_artifact_uri(
+                    "_artifactUri": build_artifact_uri(
                         sp.record(
                             artifact_cid=generator.artifact_cid,
                             seed_hex=bytes_utils.to_hex_ascii(EMPTY_SEED),
@@ -446,7 +446,7 @@ def generic_web():
                                     iteration_number=generator.n_tokens + 1,
                                 )
                             ),
-                            "_artifact_uri": build_artifact_uri(
+                            "_artifactUri": build_artifact_uri(
                                 sp.record(
                                     artifact_cid=generator.artifact_cid,
                                     seed_hex=bytes_utils.to_hex_ascii(EMPTY_SEED),
@@ -516,7 +516,7 @@ def generic_web():
                             iteration_number=token_extra.iteration_number,
                         )
                     ),
-                    "artifact_uri": build_artifact_uri(
+                    "artifactUri": build_artifact_uri(
                         sp.record(
                             artifact_cid=generator.artifact_cid,
                             seed_hex=bytes_utils.to_hex_ascii(params.entropy),
@@ -524,7 +524,7 @@ def generic_web():
                             iteration_number=token_extra.iteration_number,
                         )
                     ),
-                    "thumbnail_uri": build_thumbnail_uri(
+                    "thumbnailUri": build_thumbnail_uri(
                         sp.record(
                             token_id=params.token_id,
                             version=1,
@@ -546,7 +546,7 @@ def generic_web():
                 sp.sender == generator.author or sp.sender == self.data.administrator
             ), "ONLY_AUTHOR_OR_MODS"
             token_metadata = self.data.token_metadata[params.token_id]
-            token_metadata.token_info["thumbnail_uri"] = params.thumbnail_cid
+            token_metadata.token_info["thumbnailUri"] = params.thumbnail_cid
             self.data.token_metadata[params.token_id] = token_metadata
 
         @sp.private(with_storage="read-only", with_operations=True)

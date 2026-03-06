@@ -29,6 +29,29 @@ interface GenericWebTokenExtraBigMapValue {
   iteration_number: string
 }
 
+function readGenericWebArtifactUri(
+  tokenInfo: Record<string, string>
+): string | undefined {
+  if (tokenInfo.artifactUri) {
+    return hexToString(tokenInfo.artifactUri)
+  }
+
+  // During the pre-finalization placeholder state the contract emits `_artifactUri`.
+  if (tokenInfo._artifactUri) {
+    return hexToString(tokenInfo._artifactUri)
+  }
+
+  // Legacy compatibility for the currently deployed snake_case metadata.
+  if (tokenInfo.artifact_uri) {
+    return hexToString(tokenInfo.artifact_uri)
+  }
+  if (tokenInfo._artifact_uri) {
+    return hexToString(tokenInfo._artifact_uri)
+  }
+
+  return undefined
+}
+
 function mapGenericWebGenerator(
   keyData: { key: string; value: GenericWebGeneratorBigMapValue; firstLevel?: number },
   includeLevels = true
@@ -197,8 +220,9 @@ export async function getGenericWebToken(
       tokenMetadataBigMap.ptr,
       tokenId
     )
-    if (metaData?.value.token_info.artifact_uri) {
-      artifactUri = hexToString(metaData.value.token_info.artifact_uri)
+    const tokenInfo = metaData?.value.token_info || {}
+    artifactUri = readGenericWebArtifactUri(tokenInfo)
+    if (artifactUri) {
       const parsedArtifact = artifactUri ? parseGenericWebArtifactUri(artifactUri) : null
       artifactCid = parsedArtifact?.cid
       params = parsedArtifact?.params

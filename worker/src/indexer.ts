@@ -792,7 +792,11 @@ async function waitForTokenMetadataToMatchGenerator(
     const tokenInfo = asRecord(asRecord(tokenEntry.value).token_info);
     const generatorValue = asRecord(generatorEntry.value);
     const artifactUri = decodeHexToText(
-      tokenInfo.artifact_uri ?? tokenInfo._artifact_uri
+      tokenInfo.artifactUri ??
+        tokenInfo._artifactUri ??
+        // Legacy compatibility for the currently deployed snake_case metadata.
+        tokenInfo.artifact_uri ??
+        tokenInfo._artifact_uri
     );
     const expectedArtifactCid = decodeHexToText(generatorValue.artifact_cid).trim();
     const matchesGenerator =

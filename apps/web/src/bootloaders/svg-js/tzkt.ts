@@ -79,6 +79,15 @@ function mapSvgJsGenerator(
   }
 }
 
+function readSvgJsArtifactUri(
+  tokenInfo: Record<string, string>
+): string | undefined {
+  if (!tokenInfo.artifactUri) {
+    return undefined
+  }
+  return hexToString(tokenInfo.artifactUri)
+}
+
 export async function getSvgJsGenerators(
   client: TzktClient,
   contractAddress: string
@@ -213,8 +222,9 @@ export async function getSvgJsToken(
       tokenMetadataBigMap.ptr,
       tokenId
     )
-    if (metaData?.value.token_info.artifactUri) {
-      artifactUri = hexToString(metaData.value.token_info.artifactUri)
+    const tokenInfo = metaData?.value.token_info || {}
+    artifactUri = readSvgJsArtifactUri(tokenInfo)
+    if (artifactUri) {
       code = artifactUri
     }
   }
