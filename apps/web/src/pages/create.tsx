@@ -12,15 +12,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import type { BootloaderId } from "@/types/bootloader";
 
-// Import bootloader-specific creators
-import { SvgJsCreator } from "@/bootloaders/svg-js";
-import { GenericWebCreator } from "@/bootloaders/generic-web";
-
-const creatorComponents: Record<BootloaderId, React.ComponentType<any>> = {
-  "svg-js": SvgJsCreator,
-  "generic-web": GenericWebCreator,
-};
-
 export function CreatePage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -31,7 +22,7 @@ export function CreatePage() {
 
   // If a valid bootloader is selected and active, show its creator
   if (bootloader && bootloader.status === "active") {
-    const CreatorComponent = creatorComponents[bootloader.id];
+    const CreatorComponent = bootloader.CreatorComponent;
     return <CreatorComponent bootloader={bootloader} />;
   }
 

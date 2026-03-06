@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { useGenerator } from '@/hooks/use-generators'
-import { CONFIG, getNetworkConfig } from '@/config'
+import { CONFIG, getContractAddressForBootloader, getNetworkConfig } from '@/config'
 import type { BootloaderId } from '@/types/bootloader'
 import { mintFromGeneratorConfig } from '@/player-mint-client'
+import { isSharedBootloaderId } from '../../../../shared/bootloaders/catalog'
 
 function randomHex(bytes: number): string {
   const arr = new Uint8Array(bytes)
@@ -29,7 +30,7 @@ export function PlayerPage() {
 
   const isGenerator = kind === 'generator'
   const isToken = kind === 'token'
-  const validBootloader = bootloader === 'svg-js' || bootloader === 'generic-web'
+  const validBootloader = Boolean(bootloader && isSharedBootloaderId(bootloader))
   const bootloaderId = (validBootloader ? bootloader : undefined) as BootloaderId | undefined
   const idNumber = id ? Number(id) : NaN
 
@@ -103,10 +104,7 @@ export function PlayerPage() {
   async function onMint() {
     if (!isGenerator || !validBootloader || !id || !listed) return
 
-    const contractAddress =
-      bootloader === 'generic-web'
-        ? CONFIG.genericWebContracts[CONFIG.network]
-        : CONFIG.contracts[CONFIG.network]
+    const contractAddress = getContractAddressForBootloader(bootloaderId!)
 
     if (!contractAddress) {
       setMintState('failed')
@@ -118,7 +116,7 @@ export function PlayerPage() {
     try {
       setMintState('awaiting')
       await mintFromGeneratorConfig({
-        bootloader,
+        bootloader: bootloaderId!,
         network: CONFIG.network,
         rpcUrl: getNetworkConfig().rpcUrl,
         contractAddress,

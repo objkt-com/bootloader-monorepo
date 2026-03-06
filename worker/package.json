@@ -6,6 +6,7 @@
   "main": "src/index.ts",
   "scripts": {
     "dev": "wrangler dev",
+    "smoke:bundle": "./node_modules/.bin/esbuild src/index.ts --bundle --platform=browser --format=esm --outfile=/tmp/bootloader-worker-bundle.js --log-level=error",
     "build:frontend:mainnet": "cd ../apps/web && VITE_MEDIA_CDN_URL=https://media.bootloader.art VITE_SANDBOX_WORKER_URL=https://media.bootloader.art npm run build && rm -rf ../../worker/public && cp -r dist ../../worker/public",
     "build:frontend:shadownet": "cd ../apps/web && VITE_MEDIA_CDN_URL=https://media.shadownet.bootloader.art VITE_SANDBOX_WORKER_URL=https://media.shadownet.bootloader.art npm run build:shadownet && rm -rf ../../worker/public && cp -r dist ../../worker/public",
     "deploy:shadownet": "wrangler deploy --env staging",

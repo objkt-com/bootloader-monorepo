@@ -302,8 +302,9 @@ for (let i = 0; i < 50; i++) {
                           10 PRINT
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          The famous one-liner that inspired our homepage
-                          background. A must-read on randomness and aesthetics.
+                          A collaborative book that uses a one-line Commodore
+                          64 BASIC program to explore creative computing,
+                          code-in-culture, repetition, and randomness.
                         </p>
                       </div>
                       <ExternalLink className="h-4 w-4 text-muted-foreground flex-shrink-0" />

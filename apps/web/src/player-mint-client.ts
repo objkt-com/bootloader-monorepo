@@ -1,12 +1,12 @@
 import { TezosToolkit } from '@taquito/taquito'
 import { BeaconWallet } from '@taquito/beacon-wallet'
 import { NetworkType } from '@airgap/beacon-dapp'
+import type { SharedBootloaderId } from '../../../shared/bootloaders/catalog'
 
-type Bootloader = 'svg-js' | 'generic-web'
 type Network = 'mainnet' | 'shadownet'
 
 export type PlayerMintConfig = {
-  bootloader: Bootloader
+  bootloader: SharedBootloaderId
   network: Network
   rpcUrl: string
   contractAddress: string

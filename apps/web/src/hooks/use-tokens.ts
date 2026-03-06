@@ -4,6 +4,7 @@ import { fetchUserProfilesBatch, getDisplayName, type UserProfile } from '@/serv
 import type { Token, Generator } from '@/types/generator'
 import type { BootloaderId } from '@/types/bootloader'
 import { CONFIG } from '@/config'
+import { getBootloader } from '@/lib/bootloader-registry'
 
 interface UseGeneratorTokensResult {
   tokens: Token[]
@@ -73,7 +74,9 @@ export function useGeneratorTokens(
     setIsLoading(true)
     setError(null)
     try {
-      if (bootloaderId === 'generic-web') {
+      const bootloader = getBootloader(bootloaderId)
+
+      if (bootloader?.supportsIndexedFeatures) {
         const base = CONFIG.sandboxWorkerUrl || CONFIG.mediaCdnUrl || ''
         const network = CONFIG.network
         const url = `${base}/${bootloaderId}/v1/generators/${generatorId}/tokens/search?network=${network}&limit=${limit}&offset=0`
@@ -135,7 +138,7 @@ export function useGeneratorTokens(
         setTokens(tokensWithOwnerNames)
         setTotal(Number.isFinite(Number(data.total)) ? Number(data.total) : tokensWithOwnerNames.length)
       } else {
-        const data = await tzktService.getGeneratorMints(generatorId, bootloaderId, limit, generator || undefined)
+        const data = await tzktService.getGeneratorTokens(generatorId, bootloaderId, limit, generator || undefined)
         const ownerAddresses = Array.from(
           new Set(
             data
@@ -190,7 +193,8 @@ export function useGeneratorFeatureOptions(
   const [error, setError] = useState<Error | null>(null)
 
   const fetchOptions = useCallback(async () => {
-    if (!generatorId || bootloaderId !== 'generic-web') {
+    const bootloader = bootloaderId ? getBootloader(bootloaderId) : null
+    if (!generatorId || !bootloader?.supportsIndexedFeatures) {
       setOptions([])
       setHasFeatures(false)
       setIsLoading(false)
@@ -394,8 +398,8 @@ export function useTokenFeatures(
       return
     }
 
-    // Only generic-web tokens have features for now
-    if (bootloaderId !== 'generic-web') {
+    const bootloader = getBootloader(bootloaderId)
+    if (!bootloader?.supportsIndexedFeatures) {
       setFeatures(null)
       setIsLoading(false)
       return

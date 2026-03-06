@@ -4,11 +4,12 @@
  */
 
 import type { D1Database } from '@cloudflare/workers-types';
+import type { SharedBootloaderId } from '../../../shared/bootloaders/catalog';
 
 export interface Generator {
   id: number;
   network: 'mainnet' | 'shadownet';
-  bootloader: 'svg-js' | 'generic-web';
+  bootloader: SharedBootloaderId;
   name: string | null;
   artifactCid: string | null;
   metadataCid: string | null;
@@ -23,7 +24,7 @@ export interface Generator {
 export interface StoreGeneratorParams {
   id: number;
   network: 'mainnet' | 'shadownet';
-  bootloader: 'svg-js' | 'generic-web';
+  bootloader: SharedBootloaderId;
   name?: string;
   artifactCid?: string;
   metadataCid?: string;
@@ -91,7 +92,7 @@ export class GeneratorService {
   async getGenerator(
     id: number,
     network: 'mainnet' | 'shadownet',
-    bootloader: 'svg-js' | 'generic-web'
+    bootloader: SharedBootloaderId
   ): Promise<Generator | null> {
     const result = await this.db
       .prepare(
@@ -124,7 +125,7 @@ export class GeneratorService {
     return {
       id: result.id,
       network: result.network as 'mainnet' | 'shadownet',
-      bootloader: result.bootloader as 'svg-js' | 'generic-web',
+      bootloader: result.bootloader as SharedBootloaderId,
       name: result.name,
       artifactCid: result.artifact_cid,
       metadataCid: result.metadata_cid,
@@ -143,7 +144,7 @@ export class GeneratorService {
   async updateGenerator(
     id: number,
     network: 'mainnet' | 'shadownet',
-    bootloader: 'svg-js' | 'generic-web',
+    bootloader: SharedBootloaderId,
     params: UpdateGeneratorParams
   ): Promise<void> {
     const updates: string[] = [];
@@ -227,7 +228,7 @@ export class GeneratorService {
     return (result.results || []).map((row) => ({
       id: row.id,
       network: row.network as 'mainnet' | 'shadownet',
-      bootloader: row.bootloader as 'svg-js' | 'generic-web',
+      bootloader: row.bootloader as SharedBootloaderId,
       name: row.name,
       artifactCid: row.artifact_cid,
       metadataCid: row.metadata_cid,

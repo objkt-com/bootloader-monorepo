@@ -1,6 +1,5 @@
 import {
   Bindings,
-  BootloaderManifest,
   RenderJobResultPayload,
   RenderJobStatus,
   SessionMeta,
@@ -9,6 +8,12 @@ import {
 import { guessContentType, decodeBase64, buildDirectoryCar } from './utils';
 import { isFilebaseConfigured, uploadCarToFilebase } from './filebase';
 import JSZip from 'jszip';
+import {
+  detectArchiveRootPrefix,
+  normalizeArchivePath,
+  parseBootWebManifestBytes,
+  stripArchivePrefix,
+} from '../../shared/bootloaders/boot-web';
 
 const ARCHIVE_R2_KEY_PREFIX = 'archives/';
 const META_KEY = 'meta';
@@ -23,77 +28,6 @@ const MAX_TOTAL_FILE_BYTES = 80 * MB;
 
 function formatMb(bytes: number): string {
   return `${(bytes / MB).toFixed(1)} MB`;
-}
-
-function normalizePath(path: string): string | null {
-  const parts = path.split(/\\|\//).filter(Boolean);
-  const stack: string[] = [];
-  for (const part of parts) {
-    if (part === '.' || part === '') continue;
-    if (part === '..') {
-      if (stack.length === 0) return null;
-      stack.pop();
-      continue;
-    }
-    stack.push(part);
-  }
-  return stack.join('/');
-}
-
-function detectWrappedRootPrefix(paths: string[], explicitPrefix?: string | null): string | null {
-  if (!paths.length) return null;
-
-  const cleanedExplicit = explicitPrefix ? normalizePath(explicitPrefix) : null;
-  if (cleanedExplicit) {
-    const explicitWithSlash = `${cleanedExplicit}/`;
-    const matches = paths.every((path) => path === cleanedExplicit || path.startsWith(explicitWithSlash));
-    return matches ? cleanedExplicit : null;
-  }
-
-  const firstSegments = paths.map((path) => path.split('/')[0]).filter(Boolean);
-  if (firstSegments.length !== paths.length) return null;
-  if (paths.some((path) => !path.includes('/'))) return null;
-
-  const candidate = firstSegments[0];
-  if (!candidate || !firstSegments.every((segment) => segment === candidate)) {
-    return null;
-  }
-  return candidate;
-}
-
-function stripPrefix(path: string, prefix: string | null): string {
-  if (!prefix) return path;
-  const prefixWithSlash = `${prefix}/`;
-  if (!path.startsWith(prefixWithSlash)) return path;
-  return path.slice(prefixWithSlash.length);
-}
-
-const UTF8_DECODER = new TextDecoder();
-
-function validateGenericWebManifest(content: Uint8Array): void {
-  let raw: unknown;
-  try {
-    raw = JSON.parse(UTF8_DECODER.decode(content));
-  } catch {
-    throw new Error('manifest.json must contain valid JSON');
-  }
-
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
-    throw new Error('manifest.json must be a JSON object');
-  }
-
-  const manifest = raw as Partial<BootloaderManifest>;
-  if (manifest.spec !== 'boot:web@1.0.0') {
-    throw new Error('manifest.json spec must be "boot:web@1.0.0"');
-  }
-
-  if (
-    Object.prototype.hasOwnProperty.call(manifest, 'entry') &&
-    manifest.entry !== undefined &&
-    manifest.entry !== 'index.html'
-  ) {
-    throw new Error('manifest.json entry must be "index.html" when provided');
-  }
 }
 
 function assertFilebaseAvailableForPublicIpfs(env: Bindings): void {
@@ -292,7 +226,7 @@ export class SessionDurableObject {
         archive = decodeBase64(archiveBase64);
 
         for (const entry of filesPayload) {
-          const normalized = normalizePath(entry.path);
+          const normalized = normalizeArchivePath(entry.path);
           if (!normalized || normalized.length === 0) continue;
           const content = decodeBase64(entry.contentBase64);
 
@@ -337,7 +271,7 @@ export class SessionDurableObject {
         }
 
         for (const [rawPath, entry] of entries) {
-          const normalized = normalizePath(rawPath.replace(/\\/g, '/'));
+          const normalized = normalizeArchivePath(rawPath.replace(/\\/g, '/'));
           if (!normalized || normalized.length === 0) continue;
           const content = await entry.async('uint8array');
 
@@ -379,7 +313,7 @@ export class SessionDurableObject {
       }
 
       // Detect and strip wrapper folder before CID/CAR generation so on-chain artifact CID is the unwrapped project root.
-      const effectivePrefix = detectWrappedRootPrefix(
+      const effectivePrefix = detectArchiveRootPrefix(
         payloads.map((entry) => entry.path),
         rootPrefix
       );
@@ -388,11 +322,11 @@ export class SessionDurableObject {
       }
 
       const storagePayloads = payloads.map((entry) => ({
-        path: stripPrefix(entry.path, effectivePrefix),
+        path: stripArchivePrefix(entry.path, effectivePrefix),
         content: entry.content,
       }));
       const storageFiles = files.map((entry) => ({
-        path: stripPrefix(entry.path, effectivePrefix),
+        path: stripArchivePrefix(entry.path, effectivePrefix),
         size: entry.size,
       }));
 
@@ -403,7 +337,7 @@ export class SessionDurableObject {
 
       const manifestEntry = storagePayloads.find((entry) => entry.path === 'manifest.json');
       if (manifestEntry) {
-        validateGenericWebManifest(manifestEntry.content);
+        parseBootWebManifestBytes(manifestEntry.content);
       }
 
       const defaultEntry = 'index.html';
@@ -491,7 +425,7 @@ export class SessionDurableObject {
   }
 
   private async handleGetFile(path: string): Promise<Response> {
-    const normalized = normalizePath(path ?? '');
+    const normalized = normalizeArchivePath(path ?? '');
     if (!normalized) return new Response('Invalid path', { status: 400 });
 
     const meta = await this.getMeta();

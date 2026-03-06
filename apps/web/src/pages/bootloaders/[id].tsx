@@ -1,4 +1,5 @@
 import { useParams, Link } from "react-router-dom";
+import type { ComponentType } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -1012,6 +1013,11 @@ for (let i = 0; i < 5; i++) {
   );
 }
 
+const bootloaderDocsRegistry: Record<BootloaderId, ComponentType> = {
+  "generic-web": GenericWebDocs,
+  "svg-js": SvgJsDocs,
+};
+
 export function BootloaderDetailPage() {
   const { id } = useParams<{ id: string }>();
   const bootloader = getBootloader(id as BootloaderId);
@@ -1039,6 +1045,7 @@ export function BootloaderDetailPage() {
       : bootloader.features.storageType === "ipfs"
       ? "IPFS"
       : "Hybrid";
+  const DocsComponent = bootloaderDocsRegistry[bootloader.id];
 
   return (
     <div className="container py-8">
@@ -1092,8 +1099,7 @@ export function BootloaderDetailPage() {
       </div>
 
       {/* Bootloader-specific documentation */}
-      {bootloader.id === "generic-web" && <GenericWebDocs />}
-      {bootloader.id === "svg-js" && <SvgJsDocs />}
+      <DocsComponent />
     </div>
   );
 }

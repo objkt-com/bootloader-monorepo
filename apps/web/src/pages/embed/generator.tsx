@@ -1,11 +1,11 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
-import { SvgJsViewer } from '@/bootloaders/svg-js/viewer'
-import { GenericWebViewer } from '@/bootloaders/generic-web/viewer'
 import { CONFIG } from '@/config'
 import type { Generator } from '@/types/generator'
 import type { BootloaderId } from '@/types/bootloader'
 import { decodeParamsFromQuery } from '@/bootloaders/generic-web/param-encoder'
+import { getBootloader } from '@/lib/bootloader-registry'
+import { tzktService } from '@/services/tzkt'
 
 /**
  * Embed page for rendering generator previews full-screen.
@@ -49,92 +49,35 @@ export function EmbedGeneratorPage() {
       }
 
       try {
-        const networkConfig = CONFIG.network === 'mainnet'
-          ? { tzktApi: 'https://api.tzkt.io' }
-          : { tzktApi: 'https://api.shadownet.tzkt.io' }
-
-        // Get contract address based on bootloader
-        const contractAddress = bootloader === 'generic-web'
-          ? CONFIG.genericWebContracts[CONFIG.network]
-          : CONFIG.contracts[CONFIG.network]
-
-        if (!contractAddress) {
-          setError(`No contract configured for ${bootloader} on ${CONFIG.network}`)
-          setLoading(false)
-          return
-        }
-
-        // Fetch generator data from TzKT
-        const bigmapsRes = await fetch(
-          `${networkConfig.tzktApi}/v1/contracts/${contractAddress}/bigmaps`
-        )
-        const bigmaps = await bigmapsRes.json()
-        const generatorsBigMap = bigmaps.find((b: any) => b.path === 'generators')
-
-        if (!generatorsBigMap) {
-          setError('Generators bigmap not found')
-          setLoading(false)
-          return
-        }
-
-        const genRes = await fetch(
-          `${networkConfig.tzktApi}/v1/bigmaps/${generatorsBigMap.ptr}/keys/${id}`
+        const data = await tzktService.getGeneratorByBootloader(
+          id,
+          bootloader as BootloaderId
         )
 
-        if (!genRes.ok) {
+        if (!data) {
           setError('Generator not found')
           setLoading(false)
           return
         }
 
-        const genData = await genRes.json()
-        const value = genData.value
-
-        // Decode name from hex
-        const name = value.name ? hexToString(value.name) : `Generator #${id}`
-
-        // Build generator object based on bootloader type
-        if (bootloader === 'generic-web') {
-          // Generic-web: fetch CID and manifest
-          // CID is stored as hex-encoded string on-chain (e.g., "ipfs://bafy...")
-          const rawCid = value.cid || value.artifact_cid
-          const decodedCid = rawCid ? hexToString(rawCid) : ''
-          const cleanCid = stripIpfsPrefix(decodedCid)
-
-          // Try to fetch manifest
-          let manifest = null
-          if (cleanCid) {
-            try {
-              const manifestRes = await fetch(`${CONFIG.sandboxWorkerUrl}/ipfs/${cleanCid}/manifest.json`)
-              if (manifestRes.ok) {
-                manifest = await manifestRes.json()
-              }
-            } catch {
-              // Manifest is optional
+        let manifest = data.manifest
+        if (data.bootloaderId === 'generic-web' && data.cid) {
+          try {
+            const manifestRes = await fetch(
+              `${CONFIG.sandboxWorkerUrl}/ipfs/${data.cid}/manifest.json`
+            )
+            if (manifestRes.ok) {
+              manifest = await manifestRes.json()
             }
+          } catch {
+            // Manifest is optional
           }
-
-          setGenerator({
-            id,
-            name,
-            bootloaderId: 'generic-web',
-            cid: cleanCid,
-            manifest,
-            creator: '',
-          })
-        } else {
-          // SVG-JS: decode code from hex
-          const code = value.code ? decodeUrlEncodedHex(value.code) : ''
-
-          setGenerator({
-            id,
-            name,
-            bootloaderId: bootloader as BootloaderId,
-            code,
-            creator: '',
-          })
         }
 
+        setGenerator({
+          ...data,
+          manifest,
+        })
         setLoading(false)
       } catch (err) {
         console.error('Failed to fetch generator:', err)
@@ -180,21 +123,21 @@ export function EmbedGeneratorPage() {
     )
   }
 
-  const ViewerComponent = generator.bootloaderId === 'generic-web'
-    ? GenericWebViewer
-    : SvgJsViewer
+  const ViewerComponent = getBootloader(generator.bootloaderId)?.ViewerComponent
 
   return (
     <div className="embed-container">
-      <ViewerComponent
-        generator={generator}
-        seed={seed}
-        iteration={iteration}
-        params={params}
-        className="embed-viewer"
-        onReady={handleReady}
-        onError={handleError}
-      />
+      {ViewerComponent && (
+        <ViewerComponent
+          generator={generator}
+          seed={seed}
+          iteration={iteration}
+          params={params}
+          className="embed-viewer"
+          onReady={handleReady}
+          onError={handleError}
+        />
+      )}
       <div id="capture-marker" data-capture-ready="false" />
       <style>{`
         html,
@@ -248,33 +191,4 @@ export function EmbedGeneratorPage() {
       `}</style>
     </div>
   )
-}
-
-// Helper functions (matching tzkt.ts implementations)
-function hexToString(hex: string): string {
-  if (!hex) return ''
-  const cleanHex = hex.startsWith('0x') ? hex.slice(2) : hex
-  if (!/^[0-9a-fA-F]+$/.test(cleanHex)) return hex
-
-  const bytes = new Uint8Array(cleanHex.length / 2)
-  for (let i = 0; i < cleanHex.length; i += 2) {
-    bytes[i / 2] = parseInt(cleanHex.substr(i, 2), 16)
-  }
-  return new TextDecoder().decode(bytes)
-}
-
-function decodeUrlEncodedHex(hex: string): string {
-  const str = hexToString(hex)
-  try {
-    return decodeURIComponent(str)
-  } catch {
-    return str
-  }
-}
-
-function stripIpfsPrefix(cid: string): string {
-  if (cid.startsWith('ipfs://')) {
-    return cid.slice(7)
-  }
-  return cid
 }

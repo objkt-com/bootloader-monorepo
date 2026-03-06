@@ -1,8 +1,7 @@
 import { useMemo } from 'react'
 import type { BootloaderViewerProps } from '@/types/bootloader'
 import { cn } from '@/lib/utils'
-import { CONFIG } from '@/config'
-import { encodeParamsForQuery } from './param-encoder'
+import { buildGenericWebProjectUrl } from './url'
 
 export function GenericWebViewer({
   generator,
@@ -20,26 +19,14 @@ export function GenericWebViewer({
       return null
     }
 
-    const entry = generator.manifest?.entry || 'index.html'
-    const searchParams = new URLSearchParams()
-    searchParams.set('s', seed)
-    if (Number.isFinite(iteration)) {
-      searchParams.set('i', String(Math.trunc(iteration)))
-    }
-
-    const encodedParams = params ? encodeParamsForQuery(params) : null
-    if (encodedParams) {
-      searchParams.set('p', encodedParams)
-    }
-
-    // Pass capture mode to the artwork
-    if (isCapture) {
-      searchParams.set('c', 'true')
-    }
-
-    // Use sandbox worker URL or local proxy
-    const baseUrl = CONFIG.sandboxWorkerUrl
-    return `${baseUrl}/ipfs/${generator.cid}/${entry}?${searchParams.toString()}`
+    return buildGenericWebProjectUrl({
+      cid: generator.cid,
+      manifest: generator.manifest,
+      seed,
+      iteration,
+      params,
+      isCapture,
+    })
   }, [generator.cid, generator.manifest?.entry, seed, iteration, params, onError, isCapture])
 
   if (!previewUrl) {

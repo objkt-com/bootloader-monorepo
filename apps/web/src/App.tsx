@@ -8,7 +8,7 @@ import { BootloadersPage } from '@/pages/bootloaders'
 import { BootloaderDetailPage } from '@/pages/bootloaders/[id]'
 import { CreatePage } from '@/pages/create'
 import { GeneratorDetailPage } from '@/pages/generator/[id]'
-import { GeneratorEditPage } from '@/pages/generator/edit/[id]'
+import { BootloaderGeneratorEditPage } from '@/pages/generator/edit/router'
 import { TokenDetailPage } from '@/pages/token/[id]'
 import { ProfilePage } from '@/pages/profile/[id]'
 import { ResourcesPage } from '@/pages/resources'
@@ -34,7 +34,7 @@ export default function App() {
           <Route path="/bootloaders" element={<BootloadersPage />} />
           <Route path="/bootloaders/:id" element={<BootloaderDetailPage />} />
           <Route path="/generator/:bootloader/:id" element={<GeneratorDetailPage />} />
-          <Route path="/generator/:bootloader/:id/edit" element={<GeneratorEditPage />} />
+          <Route path="/generator/:bootloader/:id/edit" element={<BootloaderGeneratorEditPage />} />
           <Route path="/token/:bootloader/:tokenId" element={<TokenDetailPage />} />
           <Route path="/profile/:address" element={<ProfilePage />} />
           <Route path="/resources" element={<ResourcesPage />} />

@@ -1,4 +1,15 @@
 import type { R2Bucket, DurableObjectNamespace, D1Database } from '@cloudflare/workers-types';
+import type {
+  BootWebAnimationConfig,
+  BootWebCaptureConfig,
+  BootWebCaptureMode,
+  BootWebCaptureTarget,
+  BootWebManifest,
+  BootWebParamDefinition,
+  BootWebParamType,
+  BootWebParamUi,
+  BootWebParametersConfig,
+} from '../../shared/bootloaders/boot-web';
 
 // =============================================================================
 // User & Auth Types
@@ -133,103 +144,15 @@ export interface RenderJobCreatePayload {
   params?: Record<string, unknown> | null;
 }
 
-export type CaptureMode = 'auto' | 'trigger';
-export type CaptureTarget = 'auto' | 'viewport';
-
-export interface CaptureConfig {
-  mode?: CaptureMode;
-  viewPortDimension?: { width: number; height: number };
-  delayMs?: number;
-  target?: CaptureTarget;
-  selector?: string;
-}
-
-export interface AnimationConfig {
-  duration?: number;
-  fps?: number;
-}
-
-export type ParamPrimitiveType = 'boolean' | 'integer' | 'number' | 'string';
-export type ParamCompositeType = 'array' | 'object';
-export type ParamType = ParamPrimitiveType | ParamCompositeType;
-
-export interface ParamUi {
-  widget?: 'checkbox' | 'slider' | 'dropdown' | 'color' | 'text' | 'textarea';
-}
-
-export interface ParamBase<TType extends ParamType = ParamType> {
-  id: string;
-  type: TType;
-  title?: string;
-  description?: string;
-  default?: unknown;
-  enum?: unknown[];
-  enumLabels?: string[];
-  ui?: ParamUi;
-}
-
-export interface ParamBoolean extends ParamBase<'boolean'> {
-  default?: boolean;
-}
-
-export interface ParamInteger extends ParamBase<'integer'> {
-  default?: number;
-  min?: number;
-  max?: number;
-  step?: number;
-}
-
-export interface ParamNumber extends ParamBase<'number'> {
-  default?: number;
-  min?: number;
-  max?: number;
-  step?: number;
-}
-
-export interface ParamString extends ParamBase<'string'> {
-  default?: string;
-  minLength?: number;
-  maxLength?: number;
-  pattern?: string;
-  format?: 'color' | 'url' | 'textarea';
-}
-
-export type ParamPrimitiveDefinition =
-  | ParamBoolean
-  | ParamInteger
-  | ParamNumber
-  | ParamString;
-
-export interface ParamArray extends ParamBase<'array'> {
-  items: ParamPrimitiveDefinition;
-  minItems?: number;
-  maxItems?: number;
-  uniqueItems?: boolean;
-  default?: unknown[];
-}
-
-export interface ParamObject extends ParamBase<'object'> {
-  properties?: Record<string, ParamPrimitiveDefinition>;
-  required?: string[];
-  default?: Record<string, unknown>;
-}
-
-export type ParamDefinition =
-  | ParamPrimitiveDefinition
-  | ParamArray
-  | ParamObject;
-
-export interface ParametersConfig {
-  schema?: ParamDefinition[];
-}
-
-export interface BootloaderManifest {
-  spec: string;
-  entry?: string;
-  capture?: CaptureConfig;
-  animation?: AnimationConfig;
-  parameters?: ParametersConfig;
-}
+export type CaptureMode = BootWebCaptureMode;
+export type CaptureTarget = BootWebCaptureTarget;
+export type CaptureConfig = BootWebCaptureConfig;
+export type AnimationConfig = BootWebAnimationConfig;
+export type ParamType = BootWebParamType;
+export type ParamUi = BootWebParamUi;
+export type ParamDefinition = BootWebParamDefinition;
+export type ParametersConfig = BootWebParametersConfig;
+export type BootloaderManifest = BootWebManifest;
 
 export interface Bindings {
   // D1 Database

@@ -1,7 +1,20 @@
 import type { ComponentType } from 'react'
 import type { Generator } from './generator'
+import type {
+  BootWebAnimationConfig,
+  BootWebCaptureConfig,
+  BootWebCaptureMode,
+  BootWebCaptureTarget,
+  BootWebManifest,
+  BootWebParamDefinition,
+  BootWebParameterSection,
+  BootWebParametersConfig,
+  BootWebParamType,
+  BootWebParamUi,
+} from '../../../../shared/bootloaders/boot-web'
+import type { SharedBootloaderId } from '../../../../shared/bootloaders/catalog'
 
-export type BootloaderId = 'generic-web' | 'svg-js'
+export type BootloaderId = SharedBootloaderId
 
 export type PreviewType = 'iframe' | 'emulator' | 'svg'
 
@@ -42,6 +55,8 @@ export interface BootloaderViewerProps {
   iteration?: number
   /** Parameter values */
   params?: Record<string, unknown>
+  /** Signals capture mode for runtimes that need to adjust output */
+  isCapture?: boolean
   /** Callback when preview is ready */
   onReady?: () => void
   /** Callback when preview errors */
@@ -77,6 +92,8 @@ export interface CreatorSaveData {
 export interface Bootloader {
   /** Unique identifier */
   id: BootloaderId
+  /** Current runtime/protocol version */
+  currentVersion: string
   /** Spec version string (e.g., 'boot:web@1.0.0') */
   spec: string
   /** Display name */
@@ -99,71 +116,13 @@ export interface Bootloader {
   status: 'active' | 'coming-soon' | 'deprecated'
 }
 
-// Re-export manifest types
-export type CaptureMode = 'auto' | 'trigger' | 'manual'
-export type CaptureTarget = 'auto' | 'viewport'
-export type AnimationMode = 'auto' | 'manual'
-
-export interface CaptureConfig {
-  mode?: CaptureMode
-  viewPortDimension?: { width: number; height: number }
-  delayMs?: number
-  target?: CaptureTarget
-  selector?: string
-}
-
-export interface AnimationConfig {
-  mode?: AnimationMode
-  duration?: number
-  fps?: number
-}
-
-export type ParamType = 'boolean' | 'integer' | 'number' | 'string' | 'array' | 'object'
-
-export interface ParamUi {
-  widget?: 'checkbox' | 'slider' | 'dropdown' | 'color' | 'text' | 'textarea'
-}
-
-export interface ParamDefinition {
-  id: string
-  type: ParamType
-  title?: string
-  description?: string
-  default?: unknown
-  enum?: unknown[]
-  enumLabels?: string[]
-  ui?: ParamUi
-  min?: number
-  max?: number
-  step?: number
-  minLength?: number
-  maxLength?: number
-  pattern?: string
-  format?: 'color' | 'url' | 'textarea'
-  items?: ParamDefinition
-  minItems?: number
-  maxItems?: number
-  uniqueItems?: boolean
-  properties?: Record<string, ParamDefinition>
-  required?: string[]
-}
-
-export interface ParameterSection {
-  id?: string
-  title?: string
-  description?: string
-  schema: ParamDefinition[]
-}
-
-export interface ParametersConfig {
-  schema?: ParamDefinition[]
-  sections?: ParameterSection[]
-}
-
-export interface BootloaderManifest {
-  spec: string
-  entry?: string
-  capture?: CaptureConfig
-  animation?: AnimationConfig
-  parameters?: ParametersConfig
-}
+export type CaptureMode = BootWebCaptureMode
+export type CaptureTarget = BootWebCaptureTarget
+export type CaptureConfig = BootWebCaptureConfig
+export type AnimationConfig = BootWebAnimationConfig
+export type ParamType = BootWebParamType
+export type ParamUi = BootWebParamUi
+export type ParamDefinition = BootWebParamDefinition
+export type ParameterSection = BootWebParameterSection
+export type ParametersConfig = BootWebParametersConfig
+export type BootloaderManifest = BootWebManifest

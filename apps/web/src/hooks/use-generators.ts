@@ -4,6 +4,7 @@ import { fetchUserProfilesBatch, getDisplayName } from '@/services/objkt'
 import type { Generator } from '@/types/generator'
 import type { BootloaderId } from '@/types/bootloader'
 import { CONFIG } from '@/config'
+import { getBootloader } from '@/lib/bootloader-registry'
 
 interface UseGeneratorsOptions {
   bootloaderId?: BootloaderId
@@ -101,18 +102,7 @@ export function useGenerator(generatorId: string | undefined, bootloaderId?: Boo
     try {
       let data: Generator | null = null
 
-      // If bootloaderId is specified, use the appropriate service
-      if (bootloaderId === 'generic-web') {
-        data = await tzktService.getGenericWebGenerator(generatorId)
-      } else if (bootloaderId === 'svg-js') {
-        data = await tzktService.getGenerator(generatorId)
-      } else {
-        // Try svg-js first, then generic-web
-        data = await tzktService.getGenerator(generatorId)
-        if (!data) {
-          data = await tzktService.getGenericWebGenerator(generatorId)
-        }
-      }
+      data = await tzktService.getGeneratorByBootloader(generatorId, bootloaderId)
 
       if (data?.creator) {
         const profileMap = await fetchUserProfilesBatch([data.creator])
@@ -170,6 +160,13 @@ export function useGeneratorMetadata(
 
   useEffect(() => {
     if (!generatorId || !bootloaderId) {
+      setMetadata(null)
+      setIsLoading(false)
+      return
+    }
+
+    const bootloader = getBootloader(bootloaderId)
+    if (!bootloader?.supportsGeneratorMetadata) {
       setMetadata(null)
       setIsLoading(false)
       return

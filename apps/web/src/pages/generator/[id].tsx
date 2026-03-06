@@ -8,32 +8,25 @@ import {
 } from "react-router-dom";
 import {
   ArrowLeft,
-  Dices,
-  Share2,
-  Check,
   Loader2,
   Settings,
   Trash2,
   Pencil,
   Save,
   X,
-  Code,
-  Eye,
   Info,
   Clock,
   SlidersHorizontal,
 } from "lucide-react";
-import Editor from "@monaco-editor/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
-import { cn } from "@/lib/utils";
 import { getBootloader } from "@/lib/bootloader-registry";
 import type { BootloaderId } from "@/types/bootloader";
-import { CONFIG, getPrimarySaleFeePercent } from "@/config";
+import { getPrimarySaleFeePercent } from "@/config";
 import { useWallet } from "@/hooks/use-wallet";
 import { useGenerator, useGeneratorMetadata } from "@/hooks/use-generators";
 import {
@@ -45,16 +38,6 @@ import { useTheme } from "@/hooks/use-theme";
 import { useCountdown, formatCountdown } from "@/hooks/use-countdown";
 import { useTokenCardSize } from "@/hooks/use-token-card-size";
 import { TokenCard, TokenCardSkeleton } from "@/components/token-card";
-import {
-  mint,
-  setSale,
-  deleteGenerator,
-  updateGenerator,
-  setGenericWebSale,
-  mintGenericWeb,
-  deleteGenericWebGenerator,
-  updateGenericWebGenerator,
-} from "@/services/tezos";
 
 // Storage cost constants (matching on-chain behavior)
 const MUTEZ_PER_BYTE = 250;
@@ -144,24 +127,28 @@ export function GeneratorDetailPage() {
 
   // Fetch generator from chain - pass bootloader ID from URL to query the right contract
   const bootloaderId = bootloaderParam as BootloaderId | undefined;
+  const requestedBootloader = bootloaderId ? getBootloader(bootloaderId) : null;
   const { generator, isLoading, error, refetch } = useGenerator(
     id,
     bootloaderId
   );
+  const supportsIndexedFeatures =
+    (generator ? getBootloader(generator.bootloaderId) : requestedBootloader)
+      ?.supportsIndexedFeatures === true;
 
   const [featureFilters, setFeatureFilters] = useState<Record<string, string>>(
     {}
   );
 
   const activeFeatureFilters = useMemo<GeneratorTokenFilter[]>(() => {
-    if (generator?.bootloaderId !== "generic-web") return [];
+    if (!supportsIndexedFeatures) return [];
     return Object.entries(featureFilters)
       .filter(([, value]) => value && value !== FEATURE_FILTER_ALL)
       .map(([name, value]) => ({
         name,
         value: value === FEATURE_FILTER_EMPTY ? "" : value,
       }));
-  }, [featureFilters, generator?.bootloaderId]);
+  }, [featureFilters, supportsIndexedFeatures]);
 
   const {
     options: featureOptions,
@@ -250,7 +237,7 @@ export function GeneratorDetailPage() {
   }, [pendingCreateFromQuery, generator, id, bootloaderId, navigate]);
 
   const shouldWaitForNewGenerator =
-    bootloaderId === "generic-web" &&
+    requestedBootloader?.supportsPendingCreateNavigation === true &&
     isPendingCreateNavigation &&
     !generator &&
     !error &&
@@ -269,7 +256,7 @@ export function GeneratorDetailPage() {
   }, [shouldWaitForNewGenerator, refetch]);
 
   useEffect(() => {
-    if (generator?.bootloaderId !== "generic-web") {
+    if (!supportsIndexedFeatures) {
       setFeatureFilters({});
       return;
     }
@@ -295,7 +282,7 @@ export function GeneratorDetailPage() {
 
       return next;
     });
-  }, [featureOptions, generator?.bootloaderId]);
+  }, [featureOptions, supportsIndexedFeatures]);
 
   // Check if current user is the creator
   const isCreator =
@@ -335,7 +322,7 @@ export function GeneratorDetailPage() {
   const hasUpcomingDrop = generator?.saleStartTime && !countdown.isExpired;
 
   // Get bootloader info (needed for inscription fee calculation)
-  const bootloader = generator ? getBootloader(generator.bootloaderId) : null;
+  const bootloader = generator ? getBootloader(generator.bootloaderId) : requestedBootloader;
   const hasSvgCode = bootloader?.features.hasCodeEditor && generator?.code;
   const primarySaleFeePercent =
     generator?.bootloaderId && getPrimarySaleFeePercent(generator.bootloaderId);
@@ -362,59 +349,26 @@ export function GeneratorDetailPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const triggerIndexerForToken = async (tokenId: string) => {
-    if (!authToken) return;
-    if (CONFIG.network !== "shadownet") return;
-
-    try {
-      const baseUrl = CONFIG.sandboxWorkerUrl || "";
-      const response = await fetch(
-        `${baseUrl}/generic-web/v1/indexer/tokens/${encodeURIComponent(
-          tokenId
-        )}/trigger?network=shadownet`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        const body = await response.text().catch(() => "");
-        console.warn(
-          "[mint] failed to trigger manual indexer",
-          response.status,
-          body.slice(0, 200)
-        );
-      }
-    } catch (error) {
-      console.warn("[mint] failed to trigger manual indexer", error);
-    }
-  };
-
   const handleMint = async () => {
-    if (!tezos || !generator || !id) return;
+    if (!tezos || !generator || !id || !bootloader) return;
 
     setIsMinting(true);
     setMintError(null);
 
     try {
-      // Use the correct mint function based on bootloader type
-      const result =
-        generator.bootloaderId === "generic-web"
-          ? await mintGenericWeb(tezos, id, generator.price || 0)
-          : await mint(tezos, id, generator.price || 0);
+      const result = await bootloader.operations.mint({
+        tezos,
+        generatorId: id,
+        price: generator.price || 0,
+      });
 
       if (result.success) {
-        if (generator.bootloaderId === "generic-web" && result.tokenId) {
-          await triggerIndexerForToken(result.tokenId);
-          setTimeout(() => {
-            void refetchTokens();
-          }, 2500);
-          setTimeout(() => {
-            void refetchTokens();
-          }, 7000);
+        if (result.tokenId) {
+          await bootloader.operations.afterMint?.({
+            tokenId: result.tokenId,
+            authToken,
+            refetchTokens,
+          });
         }
 
         // Show the reveal modal with the minted token
@@ -489,7 +443,7 @@ export function GeneratorDetailPage() {
     : true;
 
   const handleSetSale = async () => {
-    if (!tezos || !id || !generator) return;
+    if (!tezos || !id || !generator || !bootloader) return;
 
     // Frontend validation matching chain rules
     const editions = parseInt(saleEditions || "0");
@@ -534,25 +488,14 @@ export function GeneratorDetailPage() {
         ? new Date(saleStartTime).toISOString()
         : null;
 
-      // Use the correct sale function based on bootloader type
-      const result =
-        generator.bootloaderId === "generic-web"
-          ? await setGenericWebSale(
-              tezos,
-              id,
-              priceInMutez,
-              editions,
-              salePaused,
-              startTimeIso
-            )
-          : await setSale(
-              tezos,
-              id,
-              priceInMutez,
-              editions,
-              salePaused,
-              startTimeIso
-            );
+      const result = await bootloader.operations.setSale({
+        tezos,
+        generatorId: id,
+        price: priceInMutez,
+        editions,
+        paused: salePaused,
+        startTime: startTimeIso,
+      });
 
       if (result.success) {
         setSaleDialogOpen(false);
@@ -591,16 +534,15 @@ export function GeneratorDetailPage() {
   };
 
   const handleDelete = async () => {
-    if (!tezos || !id || !generator) return;
+    if (!tezos || !id || !generator || !bootloader) return;
 
     setIsDeleting(true);
 
     try {
-      // Use the correct delete function based on bootloader type
-      const result =
-        generator.bootloaderId === "generic-web"
-          ? await deleteGenericWebGenerator(tezos, id)
-          : await deleteGenerator(tezos, id);
+      const result = await bootloader.operations.deleteGenerator({
+        tezos,
+        generatorId: id,
+      });
 
       if (result.success) {
         navigate("/explore");
@@ -625,7 +567,7 @@ export function GeneratorDetailPage() {
         generator.maxSupply !== null &&
         generator.maxSupply > 0;
       const defaultEditions =
-        generator.bootloaderId === "generic-web"
+        bootloader?.features.hasCodeEditor === false
           ? hasPositiveMaxSupply
             ? String(generator.maxSupply)
             : "100"
@@ -678,23 +620,18 @@ export function GeneratorDetailPage() {
   };
 
   const saveEdit = async () => {
-    if (!tezos || !id || !editName.trim() || !generator) return;
+    if (!tezos || !id || !editName.trim() || !generator || !bootloader) return;
 
     setIsSavingEdit(true);
     setEditError(null);
 
     try {
-      // Use the correct update function based on bootloader type
-      // For generic-web, we need to pass the CID instead of code
-      const result =
-        generator.bootloaderId === "generic-web"
-          ? await updateGenericWebGenerator(
-              tezos,
-              id,
-              editName.trim(),
-              generator.cid || ""
-            )
-          : await updateGenerator(tezos, id, editName.trim(), editCode);
+      const result = await bootloader.operations.updateGenerator({
+        tezos,
+        generatorId: id,
+        name: editName.trim(),
+        codeOrCid: bootloader.features.hasCodeEditor ? editCode : generator.cid || "",
+      });
 
       if (result.success) {
         setIsEditing(false);
@@ -779,12 +716,14 @@ export function GeneratorDetailPage() {
   }
 
   const ViewerComponent = bootloader.ViewerComponent;
+  const GeneratorDetailViewComponent = bootloader.GeneratorDetailViewComponent;
   const tokenGridClass = useLargeTokenCards
     ? "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
     : "grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4";
 
   // For editing, use editCode; otherwise use generator.code
   const displayCode = isEditing ? editCode : generator.code || "";
+  const editorTheme = effectiveTheme === "dark" ? "vs-dark" : "light";
 
   return (
     <div className="min-h-screen">
@@ -828,15 +767,20 @@ export function GeneratorDetailPage() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="secondary">{bootloader.name}</Badge>
-            {isCreator && hasSvgCode && !isEditing && (
+            {isCreator &&
+              bootloader.editMode === "inline" &&
+              hasSvgCode &&
+              !isEditing && (
               <Button variant="outline" size="sm" onClick={startEditing}>
                 <Pencil className="mr-2 h-4 w-4" />
                 Edit
               </Button>
             )}
-            {isCreator && generator.bootloaderId === "generic-web" && (
+            {isCreator &&
+              bootloader.editMode === "route" &&
+              bootloader.getEditHref && (
               <Button variant="outline" size="sm" asChild>
-                <Link to={`/generator/generic-web/${generator.id}/edit`}>
+                <Link to={bootloader.getEditHref(generator.id)}>
                   <Pencil className="mr-2 h-4 w-4" />
                   Edit
                 </Link>
@@ -876,179 +820,23 @@ export function GeneratorDetailPage() {
           </div>
         )}
 
-        {/* Main content: Side-by-side for SVG-JS, or just preview for others */}
-        {hasSvgCode ? (
-          <>
-            {/* Mobile view toggle */}
-            <div className="md:hidden flex border-b">
-              <button
-                className={cn(
-                  "flex-1 py-3 text-sm font-medium transition-colors",
-                  mobileView === "code"
-                    ? "border-b-2 border-foreground text-foreground"
-                    : "text-muted-foreground"
-                )}
-                onClick={() => setMobileView("code")}
-              >
-                <Code className="inline mr-2 h-4 w-4" />
-                Code
-              </button>
-              <button
-                className={cn(
-                  "flex-1 py-3 text-sm font-medium transition-colors",
-                  mobileView === "preview"
-                    ? "border-b-2 border-foreground text-foreground"
-                    : "text-muted-foreground"
-                )}
-                onClick={() => setMobileView("preview")}
-              >
-                <Eye className="inline mr-2 h-4 w-4" />
-                Preview
-              </button>
-            </div>
-
-            {/* Side-by-side layout for desktop, toggled for mobile */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-              {/* Code Editor */}
-              <div
-                className={`border rounded-md overflow-hidden flex flex-col ${
-                  mobileView === "preview" ? "hidden md:flex" : ""
-                }`}
-              >
-                <div className="h-10 flex items-center px-3 border-b text-sm font-medium flex-shrink-0">
-                  Code{" "}
-                  {isEditing && (
-                    <span className="text-muted-foreground">(editing)</span>
-                  )}
-                </div>
-                <div className="flex-1 min-h-[400px] md:min-h-[600px]">
-                  <Editor
-                    key={effectiveTheme}
-                    height="100%"
-                    defaultLanguage="javascript"
-                    value={displayCode}
-                    onChange={(value) => isEditing && setEditCode(value || "")}
-                    theme={effectiveTheme === "dark" ? "vs-dark" : "light"}
-                    options={{
-                      readOnly: !isEditing,
-                      minimap: { enabled: false },
-                      fontSize: 13,
-                      lineNumbers: "on",
-                      scrollBeyondLastLine: false,
-                      wordWrap: "on",
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* Preview */}
-              <div
-                className={`flex flex-col ${
-                  mobileView === "code" ? "hidden md:flex" : ""
-                }`}
-              >
-                <div className="border rounded-md overflow-hidden flex-1 flex flex-col">
-                  <div className="h-10 px-3 border-b text-sm font-medium flex items-center justify-between flex-shrink-0">
-                    <span>Preview</span>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleReroll}
-                        className="h-7 px-2"
-                      >
-                        <Dices className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="flex-1 bg-muted/30 relative overflow-hidden min-h-[400px] md:min-h-[600px] flex items-center justify-center">
-                    <div className="w-full h-full max-w-full max-h-full aspect-square">
-                      {revealModalOpen ? (
-                        <div className="w-full h-full bg-black" />
-                      ) : (
-                        <ViewerComponent
-                          generator={
-                            isEditing
-                              ? { ...generator, code: editCode }
-                              : generator
-                          }
-                          seed={seed}
-                          iteration={iteration}
-                          className="w-full h-full"
-                        />
-                      )}
-                    </div>
-                  </div>
-                </div>
-                {/* Preview controls */}
-                <div className="flex items-center gap-4 mt-3 flex-shrink-0">
-                  <div className="flex items-center gap-2">
-                    <Label className="text-xs">Seed</Label>
-                    <Input
-                      value={seed}
-                      maxLength={32}
-                      onChange={(e) => setSeedValue(e.target.value)}
-                      className="w-32 font-mono text-xs h-7"
-                    />
-                  </div>
-                  <div className="flex-1" />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleCopyLink}
-                    className="h-7"
-                  >
-                    {copied ? (
-                      <Check className="h-4 w-4" />
-                    ) : (
-                      <Share2 className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </>
-        ) : (
-          /* Non-SVG generators: full-width preview */
-          <div className="mb-8">
-            <div className="w-full aspect-square md:aspect-[16/9] bg-black border relative overflow-hidden">
-              {revealModalOpen ? (
-                <div className="absolute inset-0 bg-black" />
-              ) : (
-                <ViewerComponent
-                  generator={generator}
-                  seed={seed}
-                  iteration={iteration}
-                  className="absolute inset-0"
-                />
-              )}
-            </div>
-            <div className="flex flex-wrap items-center gap-3 mt-4">
-              <Button variant="outline" size="sm" onClick={handleReroll}>
-                <Dices className="mr-2 h-4 w-4" />
-                Random Seed
-              </Button>
-              <div className="flex items-center gap-2 min-w-0">
-                <Label className="text-xs shrink-0">Seed</Label>
-                <Input
-                  value={seed}
-                  maxLength={32}
-                  onChange={(e) => setSeedValue(e.target.value)}
-                  className="w-32 sm:w-40 font-mono text-xs h-8"
-                />
-              </div>
-              <div className="flex-1" />
-              <Button variant="ghost" size="sm" onClick={handleCopyLink}>
-                {copied ? (
-                  <Check className="mr-2 h-4 w-4" />
-                ) : (
-                  <Share2 className="mr-2 h-4 w-4" />
-                )}
-                {copied ? "Copied!" : "Share"}
-              </Button>
-            </div>
-          </div>
-        )}
+        <GeneratorDetailViewComponent
+          generator={generator}
+          ViewerComponent={ViewerComponent}
+          copied={copied}
+          revealModalOpen={revealModalOpen}
+          seed={seed}
+          iteration={iteration}
+          onSeedChange={setSeedValue}
+          onReroll={handleReroll}
+          onCopyLink={handleCopyLink}
+          mobileView={mobileView}
+          onMobileViewChange={setMobileView}
+          editorTheme={editorTheme}
+          isEditing={isEditing}
+          code={displayCode}
+          onCodeChange={setEditCode}
+        />
 
         {/* Mint Section - Primary action area */}
         <div className="mb-8 border rounded-lg p-6 bg-card">
@@ -1482,7 +1270,7 @@ export function GeneratorDetailPage() {
         <div>
           <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="text-lg font-medium">Editions</h2>
-            {generator.bootloaderId === "generic-web" &&
+            {bootloader.supportsIndexedFeatures &&
               (featureOptionsLoading || hasFeatures) && (
                 <div className="flex items-center gap-2">
                   {activeFeatureFilters.length > 0 && (
@@ -1599,7 +1387,7 @@ export function GeneratorDetailPage() {
                   ? "No editions match the selected filters"
                   : "No editions minted yet"}
               </p>
-              {generator.bootloaderId === "generic-web" &&
+              {bootloader.supportsIndexedFeatures &&
                 typeof tokenTotal === "number" &&
                 tokenTotal > 0 &&
                 activeFeatureFilters.length > 0 && (

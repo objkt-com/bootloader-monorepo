@@ -3,7 +3,7 @@
   "$id": "https://bootloader.art/schemas/boot-web-1.0.0.json",
   "title": "boot:web@1.0.0 Manifest",
   "type": "object",
-  "required": ["spec", "entry"],
+  "required": ["spec"],
   "additionalProperties": false,
   "properties": {
     "spec": {

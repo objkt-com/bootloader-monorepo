@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import {
@@ -15,8 +15,7 @@ import {
   Save,
   Download,
 } from "lucide-react";
-import JSZip from "jszip";
-import type { Bootloader, BootloaderManifest } from "@/types/bootloader";
+import type { Bootloader } from "@/types/bootloader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,104 +25,20 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { CONFIG, getPrimarySaleFeePercent } from "@/config";
 import { useWallet } from "@/hooks/use-wallet";
 import { createGenericWebGenerator } from "@/services/tezos";
+import {
+  createGenericWebSession,
+  GENERIC_WEB_MAX_RENDER_BATCH,
+  GENERIC_WEB_MAX_RENDER_PER_MINUTE,
+  generateGenericWebSeed,
+  storeGenericWebMetadataRecord,
+  uploadGenericWebMetadataJson,
+} from "./workflow";
+import { useGenericWebRenderJobs } from "./use-render-jobs";
+import { buildGenericWebProjectUrl } from "./url";
 
 interface GenericWebCreatorProps {
   bootloader: Bootloader;
   className?: string;
-}
-
-// Render job types
-type RenderJobResult = {
-  fullResKey: string;
-  thumbnailKey: string;
-  mime: string;
-  fullResolution?: { x: number; y: number };
-  thumbnailResolution?: { x: number; y: number };
-  features?: Record<string, unknown> | null;
-  params?: Record<string, unknown> | null;
-};
-
-type RenderJob = {
-  jobId: string;
-  state: "pending" | "processing" | "complete" | "error";
-  requestedAt?: number;
-  completedAt?: number;
-  error?: string;
-  seed?: string;
-  params?: Record<string, unknown> | null;
-  result?: RenderJobResult;
-};
-
-const MB = 1024 * 1024;
-const MAX_ARCHIVE_SIZE_BYTES = 50 * MB;
-const MAX_FILES_PER_ARCHIVE = 2000;
-const MAX_TOTAL_UNCOMPRESSED_BYTES = 80 * MB;
-const MAX_RENDER_BATCH = 5;
-const MAX_RENDER_PER_MINUTE = 10;
-
-function formatMegabytes(bytes: number): string {
-  return `${(bytes / MB).toFixed(1)} MB`;
-}
-
-function normalizeArchivePath(path: string): string | null {
-  const parts = path.split(/\\|\//).filter(Boolean);
-  const stack: string[] = [];
-
-  for (const part of parts) {
-    if (part === "." || part === "") continue;
-    if (part === "..") {
-      if (stack.length === 0) return null;
-      stack.pop();
-      continue;
-    }
-    stack.push(part);
-  }
-
-  return stack.join("/");
-}
-
-function detectArchiveRootPrefix(paths: string[]): string | null {
-  if (!paths.length) return null;
-
-  const firstSegments = paths.map((path) => path.split("/")[0]).filter(Boolean);
-  if (firstSegments.length !== paths.length) return null;
-  if (paths.some((path) => !path.includes("/"))) return null;
-
-  const candidate = firstSegments[0];
-  if (!candidate || !firstSegments.every((segment) => segment === candidate)) {
-    return null;
-  }
-  return candidate;
-}
-
-function stripArchivePrefix(path: string, prefix: string | null): string {
-  if (!prefix) return path;
-  const prefixWithSlash = `${prefix}/`;
-  if (!path.startsWith(prefixWithSlash)) return path;
-  return path.slice(prefixWithSlash.length);
-}
-
-// Generate a random seed
-function generateRandomSeed(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(16));
-  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-// Validate manifest.json
-function validateManifest(raw: unknown): BootloaderManifest {
-  if (!raw || typeof raw !== "object") {
-    throw new Error("Manifest must be a JSON object");
-  }
-
-  const manifest = raw as Partial<BootloaderManifest>;
-  if (manifest.spec !== "boot:web@1.0.0") {
-    throw new Error('Manifest spec must be "boot:web@1.0.0"');
-  }
-  if (manifest.entry !== undefined && manifest.entry !== "index.html") {
-    throw new Error('Manifest entry must be "index.html" when provided');
-  }
-
-  return manifest as BootloaderManifest;
 }
 
 export function GenericWebCreator({ className }: GenericWebCreatorProps) {
@@ -143,18 +58,12 @@ export function GenericWebCreator({ className }: GenericWebCreatorProps) {
   const [tokenDescription, setTokenDescription] = useState("");
 
   // Preview state
-  const [seed, setSeed] = useState(() => generateRandomSeed());
+  const [seed, setSeed] = useState(() => generateGenericWebSeed());
   const [previewNonce, setPreviewNonce] = useState(0);
 
   // Render state
-  const [renderJobs, setRenderJobs] = useState<Record<string, RenderJob>>({});
-  const [isRendering, setIsRendering] = useState(false);
   const [renderCount, setRenderCount] = useState(1);
   const [renderSpecificSeed, setRenderSpecificSeed] = useState(false);
-  const [selectedThumbnail, setSelectedThumbnail] = useState<string | null>(
-    null
-  );
-  const pollersRef = useRef<Record<string, boolean>>({});
 
   // Publishing state
   const [isPublishing, setIsPublishing] = useState(false);
@@ -172,71 +81,39 @@ export function GenericWebCreator({ className }: GenericWebCreatorProps) {
   // Build preview URL
   const previewUrl =
     sessionId && cid
-      ? (() => {
-          const entry = (defaultEntry ?? "index.html").replace(/^\/+/, "");
-          const params = new URLSearchParams();
-          params.set("s", seed);
-          params.set("i", "0");
-          params.set("_", previewNonce.toString());
-          return `${
-            CONFIG.sandboxWorkerUrl
-          }/ipfs/${cid}/${entry}?${params.toString()}`;
-        })()
+      ? buildGenericWebProjectUrl({
+          cid,
+          entry: defaultEntry,
+          seed,
+          iteration: 0,
+          cacheBust: previewNonce,
+        })
       : null;
 
-  // Cleanup pollers on unmount
-  useEffect(() => {
-    return () => {
-      pollersRef.current = {};
-    };
-  }, []);
-
-  // Update render job
-  const updateRenderJob = useCallback((jobId: string, job: RenderJob) => {
-    setRenderJobs((prev) => ({ ...prev, [jobId]: { ...job, jobId } }));
-  }, []);
-
-  // Poll for job status
-  const pollJob = useCallback(
-    (jobId: string) => {
-      if (!sessionId || !authToken) return;
-      pollersRef.current[jobId] = true;
-
-      const poll = async () => {
-        if (!pollersRef.current[jobId]) return;
-        try {
-          const res = await fetch(
-            `${CONFIG.sandboxWorkerUrl}/sessions/${sessionId}/render/${jobId}`,
-            {
-              headers: {
-                Authorization: `Bearer ${authToken}`,
-              },
-            }
-          );
-          if (res.status === 404) {
-            setTimeout(poll, 1500);
-            return;
-          }
-          if (!res.ok) {
-            throw new Error(await res.text());
-          }
-          const job = (await res.json()) as RenderJob;
-          updateRenderJob(jobId, job);
-          if (job.state === "complete" || job.state === "error") {
-            pollersRef.current[jobId] = false;
-          } else {
-            setTimeout(poll, 2000);
-          }
-        } catch (error) {
-          console.error("Polling failed", error);
-          pollersRef.current[jobId] = false;
-        }
-      };
-
-      poll();
+  const {
+    activeRenderCount,
+    handleJobClick,
+    handleSelectThumbnail,
+    isRendering,
+    queueRenders,
+    renderJobs,
+    renderList,
+    renderError,
+    reset: resetRenderJobs,
+    selectedThumbnail,
+  } = useGenericWebRenderJobs({
+    sessionId,
+    authToken,
+    onPreviewSeed: (nextSeed) => {
+      setSeed(nextSeed);
+      setPreviewNonce((value) => value + 1);
     },
-    [authToken, sessionId, updateRenderJob]
-  );
+    onThumbnailSelected: (job) => {
+      if (!job.seed) return;
+      setSeed(job.seed);
+      setPreviewNonce((value) => value + 1);
+    },
+  });
 
   // Handle render request
   const handleRender = useCallback(async () => {
@@ -245,56 +122,20 @@ export function GenericWebCreator({ className }: GenericWebCreatorProps) {
     // In specific-seed mode, always render exactly 1 with the current preview seed
     const count = renderSpecificSeed
       ? 1
-      : Math.max(1, Math.min(renderCount, MAX_RENDER_BATCH));
+      : Math.max(1, Math.min(renderCount, GENERIC_WEB_MAX_RENDER_BATCH));
 
-    try {
-      setIsRendering(true);
-
-      for (let i = 0; i < count; i++) {
-        const payload: { seed?: string } = {};
-        if (renderSpecificSeed) {
-          payload.seed = seed;
-        }
-
-        const res = await fetch(
-          `${CONFIG.sandboxWorkerUrl}/sessions/${sessionId}/render`,
-          {
-            method: "POST",
-            headers: {
-              "content-type": "application/json",
-              Authorization: `Bearer ${authToken}`,
-            },
-            body: JSON.stringify(payload),
-          }
-        );
-        const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data.error || "Render request failed");
-        }
-        const jobId = data.jobId as string;
-        updateRenderJob(jobId, {
-          jobId,
-          state: "processing",
-          requestedAt: Date.now(),
-          seed: data.seed,
-        });
-        pollJob(jobId);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Render request failed");
-      console.error("Render request failed", err);
-    } finally {
-      setIsRendering(false);
-    }
+    await queueRenders({
+      count,
+      seed: renderSpecificSeed ? seed : undefined,
+    });
   }, [
     authToken,
-    sessionId,
     cid,
+    queueRenders,
     renderCount,
     renderSpecificSeed,
     seed,
-    pollJob,
-    updateRenderJob,
+    sessionId,
   ]);
 
   // Handle file upload
@@ -303,112 +144,12 @@ export function GenericWebCreator({ className }: GenericWebCreatorProps) {
       try {
         setError(null);
         setIsUploading(true);
-        setRenderJobs({});
-        setSelectedThumbnail(null);
-
-        if (!file.name.toLowerCase().endsWith(".zip")) {
-          throw new Error("Please upload a .zip archive");
-        }
-
-        if (file.size > MAX_ARCHIVE_SIZE_BYTES) {
-          throw new Error(
-            `Archive is too large (${formatMegabytes(
-              file.size
-            )}). Max ${formatMegabytes(
-              MAX_ARCHIVE_SIZE_BYTES
-            )} per upload until direct uploads are enabled.`
-          );
-        }
-
-        const arrayBuffer = await file.arrayBuffer();
-        const zip = await JSZip.loadAsync(arrayBuffer);
-        const entries = Object.entries(zip.files).filter(
-          ([path, entry]) => !entry.dir && !path.startsWith("__MACOSX/")
-        );
-
-        if (entries.length === 0) {
-          throw new Error("Archive contains no files");
-        }
-
-        if (entries.length > MAX_FILES_PER_ARCHIVE) {
-          throw new Error(
-            `Archive has too many files (${entries.length}). Max ${MAX_FILES_PER_ARCHIVE} files per upload.`
-          );
-        }
-
-        const normalizedEntries: Array<{
-          path: string;
-          entry: JSZip.JSZipObject;
-        }> = [];
-        for (const [rawPath, entry] of entries) {
-          const normalizedPath = normalizeArchivePath(
-            rawPath.replace(/\\/g, "/")
-          );
-          if (!normalizedPath) continue;
-          normalizedEntries.push({ path: normalizedPath, entry });
-        }
-
-        if (normalizedEntries.length === 0) {
-          throw new Error("Archive contains no valid files");
-        }
-
-        const rootPrefix = detectArchiveRootPrefix(
-          normalizedEntries.map((item) => item.path)
-        );
-        const projectEntries = normalizedEntries.map((item) => ({
-          path: stripArchivePrefix(item.path, rootPrefix),
-          entry: item.entry,
-        }));
-
-        if (!projectEntries.some((item) => item.path === "index.html")) {
-          throw new Error(
-            "Archive must include index.html at the project root"
-          );
-        }
-
-        const manifestEntry = projectEntries.find(
-          (item) => item.path === "manifest.json"
-        );
-        if (manifestEntry) {
-          const raw = JSON.parse(await manifestEntry.entry.async("text"));
-          validateManifest(raw);
-        }
-
-        let totalUncompressedBytes = 0;
-        for (const { entry } of normalizedEntries) {
-          const content = await entry.async("uint8array");
-          totalUncompressedBytes += content.length;
-          if (totalUncompressedBytes > MAX_TOTAL_UNCOMPRESSED_BYTES) {
-            throw new Error(
-              `Archive expands to ${formatMegabytes(
-                totalUncompressedBytes
-              )}. Max ${formatMegabytes(
-                MAX_TOTAL_UNCOMPRESSED_BYTES
-              )} uncompressed content per upload.`
-            );
-          }
-        }
-
-        // Upload to sandbox worker (requires authentication)
         if (!user?.id || !authToken) {
           throw new Error("Please sign in to upload projects");
         }
+        resetRenderJobs();
 
-        const formData = new FormData();
-        formData.append("file", file);
-        const res = await fetch(`${CONFIG.sandboxWorkerUrl}/sessions`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
-          body: formData,
-        });
-
-        if (!res.ok) {
-          throw new Error(await res.text());
-        }
-
-        const data = await res.json();
+        const data = await createGenericWebSession(file, authToken);
         setSessionId(data.sessionId);
         setCid(data.cid);
         setDefaultEntry(data.defaultEntry);
@@ -422,7 +163,7 @@ export function GenericWebCreator({ className }: GenericWebCreatorProps) {
         setIsUploading(false);
       }
     },
-    [authToken, user]
+    [authToken, resetRenderJobs, user]
   );
 
   const handleDrop = useCallback(
@@ -435,34 +176,13 @@ export function GenericWebCreator({ className }: GenericWebCreatorProps) {
   );
 
   const handleReroll = () => {
-    setSeed(generateRandomSeed());
+    setSeed(generateGenericWebSeed());
     setPreviewNonce((n) => n + 1);
   };
 
   const handleReload = () => {
     setPreviewNonce((n) => n + 1);
   };
-
-  // Load seed from a render job
-  const handleJobClick = useCallback((job: RenderJob) => {
-    if (!job.seed) return;
-    setSeed(job.seed);
-    setPreviewNonce((n) => n + 1);
-  }, []);
-
-  // Select a render as the thumbnail and load its seed
-  const handleSelectThumbnail = useCallback(
-    (jobId: string) => {
-      setSelectedThumbnail(jobId);
-      // Also load the seed from the selected thumbnail
-      const job = renderJobs[jobId];
-      if (job?.seed) {
-        setSeed(job.seed);
-        setPreviewNonce((n) => n + 1);
-      }
-    },
-    [renderJobs]
-  );
 
   // Publish generator on-chain
   const handlePublish = useCallback(async () => {
@@ -495,29 +215,7 @@ export function GenericWebCreator({ className }: GenericWebCreatorProps) {
         metadata.thumbnail_seed = thumbnailSeed;
       }
 
-      // Upload metadata to IPFS if we have any content
-      let metadataCid = "";
-      if (Object.keys(metadata).length > 0) {
-        const metadataRes = await fetch(
-          `${CONFIG.sandboxWorkerUrl}/ipfs/json`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${authToken}`,
-            },
-            body: JSON.stringify(metadata),
-          }
-        );
-
-        if (!metadataRes.ok) {
-          const errorText = await metadataRes.text();
-          throw new Error(`Failed to upload metadata: ${errorText}`);
-        }
-
-        const metadataData = (await metadataRes.json()) as { cid: string };
-        metadataCid = metadataData.cid;
-      }
+      const metadataCid = await uploadGenericWebMetadataJson(authToken, metadata);
 
       // Use the generic-web specific contract function with metadata CID
       const result = await createGenericWebGenerator(
@@ -530,26 +228,17 @@ export function GenericWebCreator({ className }: GenericWebCreatorProps) {
       if (result.success && result.generatorId) {
         // Store metadata in D1 database for fast retrieval
         try {
-          const userAddress = await tezos.wallet.pkh();
-          await fetch(
-            `${CONFIG.sandboxWorkerUrl}/generic-web/v1/generators/${result.generatorId}/metadata?network=${CONFIG.network}`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${authToken}`,
-              },
-              body: JSON.stringify({
-                name: name.trim(),
-                artifactCid: cid.startsWith("ipfs://") ? cid : `ipfs://${cid}`,
-                metadataCid: metadataCid || undefined,
-                generatorDescription: generatorDescription.trim() || undefined,
-                tokenDescription: tokenDescription.trim() || undefined,
-                creatorAddress: userAddress,
-                thumbnailSeed: thumbnailSeed || undefined,
-              }),
-            }
-          );
+          await storeGenericWebMetadataRecord({
+            generatorId: result.generatorId,
+            name: name.trim(),
+            artifactCid: cid,
+            metadataCid: metadataCid || undefined,
+            generatorDescription: generatorDescription.trim() || undefined,
+            tokenDescription: tokenDescription.trim() || undefined,
+            thumbnailSeed: thumbnailSeed || undefined,
+            authToken,
+            tezos,
+          });
         } catch (dbError) {
           // Don't fail the whole operation if D1 storage fails
           console.warn("Failed to store generator metadata in D1:", dbError);
@@ -590,15 +279,7 @@ export function GenericWebCreator({ className }: GenericWebCreatorProps) {
 
   const isMobile = useIsMobile();
 
-  // Get sorted render list
-  const renderList = Object.entries(renderJobs)
-    .map(([jobId, job]) => ({ ...job, jobId }))
-    .sort((a, b) => (b.requestedAt ?? 0) - (a.requestedAt ?? 0));
-
   const completedRenders = renderList.filter((job) => job.state === "complete");
-  const activeRenderCount = renderList.filter(
-    (job) => job.state === "pending" || job.state === "processing"
-  ).length;
 
   // Sidebar content (params or upload zone)
   const renderSidebar = () => (
@@ -713,8 +394,7 @@ export function GenericWebCreator({ className }: GenericWebCreatorProps) {
               onClick={() => {
                 setSessionId(null);
                 setCid(null);
-                setRenderJobs({});
-                setSelectedThumbnail(null);
+                resetRenderJobs();
                 setName("");
                 setGeneratorDescription("");
                 setTokenDescription("");
@@ -850,15 +530,15 @@ export function GenericWebCreator({ className }: GenericWebCreatorProps) {
                   size="sm"
                   className="w-full"
                   onClick={handleRender}
-                  disabled={
-                    !sessionId ||
-                    !cid ||
-                    !authToken ||
-                    isRendering ||
-                    activeRenderCount >= MAX_RENDER_BATCH ||
-                    !seed.trim()
-                  }
-                >
+                    disabled={
+                      !sessionId ||
+                      !cid ||
+                      !authToken ||
+                      isRendering ||
+                      activeRenderCount >= GENERIC_WEB_MAX_RENDER_BATCH ||
+                      !seed.trim()
+                    }
+                  >
                   {isRendering ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -875,7 +555,7 @@ export function GenericWebCreator({ className }: GenericWebCreatorProps) {
                   <Input
                     type="number"
                     min="1"
-                    max={MAX_RENDER_BATCH}
+                    max={GENERIC_WEB_MAX_RENDER_BATCH}
                     value={renderCount}
                     onChange={(e) =>
                       setRenderCount(
@@ -883,7 +563,7 @@ export function GenericWebCreator({ className }: GenericWebCreatorProps) {
                           1,
                           Math.min(
                             Number.parseInt(e.target.value, 10) || 1,
-                            MAX_RENDER_BATCH
+                            GENERIC_WEB_MAX_RENDER_BATCH
                           )
                         )
                       )
@@ -898,7 +578,7 @@ export function GenericWebCreator({ className }: GenericWebCreatorProps) {
                       !cid ||
                       !authToken ||
                       isRendering ||
-                      activeRenderCount >= MAX_RENDER_BATCH
+                      activeRenderCount >= GENERIC_WEB_MAX_RENDER_BATCH
                     }
                   >
                     {isRendering ? (
@@ -912,9 +592,13 @@ export function GenericWebCreator({ className }: GenericWebCreatorProps) {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground mb-4">
-                  Max {MAX_RENDER_BATCH} at once, {MAX_RENDER_PER_MINUTE}/min.
+                  Max {GENERIC_WEB_MAX_RENDER_BATCH} at once, {GENERIC_WEB_MAX_RENDER_PER_MINUTE}/min.
                 </p>
               </>
+            )}
+
+            {renderError && (
+              <p className="text-sm text-destructive mb-4">{renderError}</p>
             )}
 
             {/* Render grid */}

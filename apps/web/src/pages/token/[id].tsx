@@ -1,35 +1,23 @@
 import { useParams, Link } from "react-router-dom";
 import {
   ArrowLeft,
-  ExternalLink,
-  Share2,
-  Check,
   RefreshCw,
   Loader2,
-  Maximize2,
   X,
-  Code,
-  Eye,
 } from "lucide-react";
 import { useState, useEffect } from "react";
-import Editor from "@monaco-editor/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
 import { getBootloader } from "@/lib/bootloader-registry";
 import type { BootloaderId } from "@/types/bootloader";
 import { useToken, useTokenFeatures } from "@/hooks/use-tokens";
 import { useGeneratorMetadata } from "@/hooks/use-generators";
 import { useWallet } from "@/hooks/use-wallet";
 import { clearTokenVersionCache } from "@/services/objkt";
-import {
-  getNetworkConfig,
-  getContractAddressForBootloader,
-  CONFIG,
-} from "@/config";
-import { regenerateToken, regenerateGenericWebToken } from "@/services/tezos";
+import { CONFIG } from "@/config";
 import { useTheme } from "@/hooks/use-theme";
+import { buildGenericWebProjectUrl } from "@/bootloaders/generic-web/url";
 
 import {
   AlertDialog,
@@ -67,7 +55,6 @@ export function TokenDetailPage() {
   const bootloader = token?.generator
     ? getBootloader(token.generator.bootloaderId)
     : null;
-  const config = getNetworkConfig();
 
   // Check if current user is the owner
   const isOwner = address && token?.owner && address === token.owner;
@@ -95,63 +82,21 @@ export function TokenDetailPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const triggerIndexerForToken = async (
-    id: string,
-    waitForCompletion = false
-  ) => {
-    if (!authToken) return;
-    if (CONFIG.network !== "shadownet") return;
-
-    try {
-      const baseUrl = CONFIG.sandboxWorkerUrl || "";
-      if (!baseUrl) return;
-      const query = new URLSearchParams({
-        network: "shadownet",
-      });
-      if (waitForCompletion) {
-        query.set("wait", "1");
-      }
-
-      const response = await fetch(
-        `${baseUrl}/generic-web/v1/indexer/tokens/${encodeURIComponent(
-          id
-        )}/trigger?${query.toString()}`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        const body = await response.text().catch(() => "");
-        console.warn(
-          "[regenerate] failed to trigger manual indexer",
-          response.status,
-          body.slice(0, 200)
-        );
-      }
-    } catch (error) {
-      console.warn("[regenerate] failed to trigger manual indexer", error);
-    }
-  };
-
   const handleRegenerate = async () => {
-    if (!tezos || !tokenId || !bootloaderId) return;
+    if (!tezos || !tokenId || !bootloader) return;
 
     setIsRegenerating(true);
     try {
-      // Use the correct regenerate function based on bootloader type
-      const result =
-        bootloaderId === "generic-web"
-          ? await regenerateGenericWebToken(tezos, tokenId)
-          : await regenerateToken(tezos, tokenId);
+      const result = await bootloader.operations.regenerateToken({
+        tezos,
+        tokenId,
+      });
       if (result.success) {
         clearTokenVersionCache();
-        if (bootloaderId === "generic-web") {
-          await triggerIndexerForToken(tokenId, true);
-        }
+        await bootloader.operations.afterRegenerate?.({
+          tokenId,
+          authToken,
+        });
         await refetch();
       } else {
         alert(result.error || "Failed to regenerate token");
@@ -214,6 +159,7 @@ export function TokenDetailPage() {
 
   const generator = token.generator;
   const ViewerComponent = bootloader.ViewerComponent;
+  const TokenDetailViewComponent = bootloader.TokenDetailViewComponent;
   const hasSvgCode = bootloader.features.hasCodeEditor && generator.code;
 
   // Check if regeneration is possible (newer version available)
@@ -225,12 +171,10 @@ export function TokenDetailPage() {
   const tokenArtifactUrl = (() => {
     if (!token.artifactUri) return null;
 
-    if (bootloaderId === "generic-web") {
-      // Parse the IPFS artifact URI: ipfs://CID?s=SEED&i=ITERATION&p=PARAMS
-      // Convert to sandbox worker URL: /ipfs/CID/index.html?s=SEED&i=ITERATION&p=PARAMS
+    if (bootloader.features.storageType === "ipfs") {
       const artifactUri = token.artifactUri;
       if (artifactUri.startsWith("ipfs://")) {
-        const withoutPrefix = artifactUri.slice(7); // Remove 'ipfs://'
+        const withoutPrefix = artifactUri.slice(7);
         const [cidPart, queryPart] = withoutPrefix.split("?");
         const entry = generator.manifest?.entry || "index.html";
         const baseUrl = CONFIG.sandboxWorkerUrl;
@@ -248,24 +192,19 @@ export function TokenDetailPage() {
   const newVersionPreviewUrl = (() => {
     if (!canRegenerate) return null;
 
-    if (bootloaderId === "generic-web" && generator.cid) {
-      // For generic-web: use the generator's current CID
-      const entry = generator.manifest?.entry || "index.html";
-      const baseUrl = CONFIG.sandboxWorkerUrl;
-      const params = new URLSearchParams();
-      params.set("s", token.seed);
-      if (Number.isFinite(token.iteration)) {
-        params.set("i", String(Math.trunc(token.iteration)));
-      }
-      if (token.params) {
-        params.set("p", btoa(JSON.stringify(token.params)));
-      }
-      return `${baseUrl}/ipfs/${generator.cid}/${entry}?${params.toString()}`;
+    if (bootloader.features.storageType === "ipfs" && generator.cid) {
+      return buildGenericWebProjectUrl({
+        cid: generator.cid,
+        manifest: generator.manifest,
+        seed: token.seed,
+        iteration: token.iteration,
+        params: token.params,
+      });
     }
 
     // For SVG-JS: we can use the ViewerComponent with the generator's current code
     // Return a marker value to indicate we should use the ViewerComponent
-    if (bootloaderId === "svg-js" && generator.code) {
+    if (bootloader.features.hasCodeEditor && generator.code) {
       return "use-viewer";
     }
 
@@ -305,299 +244,44 @@ export function TokenDetailPage() {
           <Badge variant="secondary">{bootloader.name}</Badge>
         </div>
 
-        {/* Main content: Side-by-side for SVG-JS, or preview + info for others */}
+        {/* Main content: bootloader-specific artwork view plus shared metadata */}
         {hasSvgCode ? (
-          <>
-            {/* Mobile view toggle */}
-            <div className="md:hidden flex border-b">
-              <button
-                className={cn(
-                  "flex-1 py-3 text-sm font-medium transition-colors",
-                  mobileView === "code"
-                    ? "border-b-2 border-foreground text-foreground"
-                    : "text-muted-foreground"
-                )}
-                onClick={() => setMobileView("code")}
-              >
-                <Code className="inline mr-2 h-4 w-4" />
-                Code
-              </button>
-              <button
-                className={cn(
-                  "flex-1 py-3 text-sm font-medium transition-colors",
-                  mobileView === "preview"
-                    ? "border-b-2 border-foreground text-foreground"
-                    : "text-muted-foreground"
-                )}
-                onClick={() => setMobileView("preview")}
-              >
-                <Eye className="inline mr-2 h-4 w-4" />
-                Preview
-              </button>
-            </div>
-
-            {/* Side-by-side layout for SVG-JS tokens */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-              {/* Code Editor */}
-              <div
-                className={`border rounded-md overflow-hidden flex flex-col ${
-                  mobileView === "preview" ? "hidden md:flex" : ""
-                }`}
-              >
-                <div className="h-10 flex items-center px-3 border-b text-sm font-medium flex-shrink-0">
-                  Code
-                </div>
-                <div className="flex-1 min-h-[400px] md:min-h-[600px]">
-                  <Editor
-                    key={monacoTheme}
-                    height="100%"
-                    defaultLanguage="javascript"
-                    value={generator.code}
-                    theme={monacoTheme}
-                    options={{
-                      readOnly: true,
-                      minimap: { enabled: false },
-                      fontSize: 13,
-                      lineNumbers: "on",
-                      scrollBeyondLastLine: false,
-                      wordWrap: "on",
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* Preview */}
-              <div
-                className={`flex flex-col ${
-                  mobileView === "code" ? "hidden md:flex" : ""
-                }`}
-              >
-                <div className="border rounded-md overflow-hidden flex-1 flex flex-col">
-                  <div className="h-10 px-3 border-b text-sm font-medium flex items-center justify-between flex-shrink-0">
-                    <div className="flex items-center gap-2">
-                      <span>Preview</span>
-                      {newVersionPreviewUrl && (
-                        <Badge
-                          variant={
-                            showNewVersionPreview ? "default" : "secondary"
-                          }
-                          className="text-xs"
-                        >
-                          {showNewVersionPreview
-                            ? `v${generator.version} Preview`
-                            : `v${token.version ?? 1}`}
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {newVersionPreviewUrl && (
-                        <Button
-                          variant={
-                            showNewVersionPreview ? "default" : "outline"
-                          }
-                          size="sm"
-                          onClick={() =>
-                            setShowNewVersionPreview(!showNewVersionPreview)
-                          }
-                          className="h-7 px-2 text-xs"
-                          title={
-                            showNewVersionPreview
-                              ? "View current version"
-                              : "Preview new version"
-                          }
-                        >
-                          <Eye className="h-3 w-3 mr-1" />
-                          {showNewVersionPreview
-                            ? "Current"
-                            : `Preview v${generator.version}`}
-                        </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setShowFullscreen(true)}
-                        className="h-7 px-2"
-                        title="View fullscreen"
-                      >
-                        <Maximize2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="flex-1 bg-muted/30 relative overflow-hidden min-h-[400px] md:min-h-[600px] flex items-center justify-center">
-                    <div className="w-full h-full max-w-full max-h-full aspect-square">
-                      {/* For SVG-JS tokens: show new version preview or the minted version */}
-                      {showNewVersionPreview &&
-                      newVersionPreviewUrl === "use-viewer" ? (
-                        <ViewerComponent
-                          generator={generator}
-                          seed={token.seed}
-                          iteration={token.iteration}
-                          className="w-full h-full"
-                        />
-                      ) : tokenArtifactUrl ? (
-                        <iframe
-                          src={tokenArtifactUrl}
-                          title={`${generator.name} #${token.iteration}`}
-                          className="w-full h-full border-0"
-                          sandbox="allow-scripts"
-                        />
-                      ) : (
-                        <ViewerComponent
-                          generator={
-                            token.artifactCid
-                              ? { ...generator, cid: token.artifactCid }
-                              : generator
-                          }
-                          seed={token.seed}
-                          iteration={token.iteration}
-                          className="w-full h-full"
-                        />
-                      )}
-                    </div>
-                  </div>
-                </div>
-                {/* Preview actions */}
-                <div className="flex items-center gap-2 mt-3 flex-shrink-0">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleCopyLink}
-                    className="h-7"
-                  >
-                    {copied ? (
-                      <Check className="h-4 w-4" />
-                    ) : (
-                      <Share2 className="h-4 w-4" />
-                    )}
-                  </Button>
-                  <div className="flex-1" />
-                  <Button variant="outline" size="sm" className="h-7" asChild>
-                    <a
-                      href={`${
-                        config.objktUrl
-                      }/asset/${getContractAddressForBootloader(
-                        token?.bootloaderId || "svg-js"
-                      )}/${tokenId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      objkt
-                      <ExternalLink className="ml-1 h-3 w-3" />
-                    </a>
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </>
+          <TokenDetailViewComponent
+            token={token}
+            generator={generator}
+            ViewerComponent={ViewerComponent}
+            copied={copied}
+            tokenArtifactUrl={tokenArtifactUrl}
+            newVersionPreviewUrl={newVersionPreviewUrl}
+            showNewVersionPreview={showNewVersionPreview}
+            onToggleNewVersionPreview={() =>
+              setShowNewVersionPreview(!showNewVersionPreview)
+            }
+            onCopyLink={handleCopyLink}
+            onOpenFullscreen={() => setShowFullscreen(true)}
+            mobileView={mobileView}
+            onMobileViewChange={setMobileView}
+            editorTheme={monacoTheme}
+          />
         ) : (
-          /* Non-SVG tokens: full-width preview + info below */
           <>
-            <div className="mb-8">
-              {/* Full-width artwork */}
-              <div className="border rounded-md overflow-hidden">
-                <div className="h-10 px-3 border-b text-sm font-medium flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span>Artwork</span>
-                    {newVersionPreviewUrl && (
-                      <Badge
-                        variant={
-                          showNewVersionPreview ? "default" : "secondary"
-                        }
-                        className="text-xs"
-                      >
-                        {showNewVersionPreview
-                          ? `v${generator.version} Preview`
-                          : `v${token.version ?? 1}`}
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {newVersionPreviewUrl && (
-                      <Button
-                        variant={showNewVersionPreview ? "default" : "outline"}
-                        size="sm"
-                        onClick={() =>
-                          setShowNewVersionPreview(!showNewVersionPreview)
-                        }
-                        className="h-7 px-2 text-xs"
-                        title={
-                          showNewVersionPreview
-                            ? "View current version"
-                            : "Preview new version"
-                        }
-                      >
-                        <Eye className="h-3 w-3 mr-1" />
-                        {showNewVersionPreview
-                          ? "Current"
-                          : `Preview v${generator.version}`}
-                      </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowFullscreen(true)}
-                      className="h-7 px-2"
-                      title="View fullscreen"
-                    >
-                      <Maximize2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-                <div className="aspect-square md:aspect-[16/9] bg-black relative overflow-hidden">
-                  {showNewVersionPreview && newVersionPreviewUrl ? (
-                    <iframe
-                      src={newVersionPreviewUrl}
-                      title={`${generator.name} #${token.iteration} - v${generator.version} Preview`}
-                      className="absolute inset-0 w-full h-full border-0"
-                      sandbox="allow-scripts"
-                    />
-                  ) : tokenArtifactUrl ? (
-                    <iframe
-                      src={tokenArtifactUrl}
-                      title={`${generator.name} #${token.iteration}`}
-                      className="absolute inset-0 w-full h-full border-0"
-                      sandbox="allow-scripts"
-                    />
-                  ) : (
-                    <ViewerComponent
-                      generator={
-                        token.artifactCid
-                          ? { ...generator, cid: token.artifactCid }
-                          : generator
-                      }
-                      seed={token.seed}
-                      iteration={token.iteration}
-                      className="absolute inset-0"
-                    />
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-4 mt-4">
-                <Button variant="ghost" size="sm" onClick={handleCopyLink}>
-                  {copied ? (
-                    <Check className="mr-2 h-4 w-4" />
-                  ) : (
-                    <Share2 className="mr-2 h-4 w-4" />
-                  )}
-                  {copied ? "Copied!" : "Share"}
-                </Button>
-                <div className="flex-1" />
-                <Button variant="outline" size="sm" asChild>
-                  <a
-                    href={`${
-                      config.objktUrl
-                    }/asset/${getContractAddressForBootloader(
-                      token?.bootloaderId || "svg-js"
-                    )}/${tokenId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    View on objkt
-                    <ExternalLink className="ml-2 h-4 w-4" />
-                  </a>
-                </Button>
-              </div>
-            </div>
+            <TokenDetailViewComponent
+              token={token}
+              generator={generator}
+              ViewerComponent={ViewerComponent}
+              copied={copied}
+              tokenArtifactUrl={tokenArtifactUrl}
+              newVersionPreviewUrl={newVersionPreviewUrl}
+              showNewVersionPreview={showNewVersionPreview}
+              onToggleNewVersionPreview={() =>
+                setShowNewVersionPreview(!showNewVersionPreview)
+              }
+              onCopyLink={handleCopyLink}
+              onOpenFullscreen={() => setShowFullscreen(true)}
+              mobileView={mobileView}
+              onMobileViewChange={setMobileView}
+              editorTheme={monacoTheme}
+            />
 
             {/* Regenerate banner for owners */}
             {isOwner && canRegenerate && (

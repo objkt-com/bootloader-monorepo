@@ -1,4 +1,10 @@
 import type { BootloaderId } from "@/types/bootloader";
+import type { SharedBootloaderId } from "../../../../shared/bootloaders/catalog";
+import {
+  getSharedBootloaderArtifactContract,
+  getSharedBootloaderRngContract,
+  SHARED_BOOTLOADER_CONTRACTS,
+} from "../../../../shared/bootloaders/contracts";
 
 export const NETWORKS = {
   mainnet: {
@@ -21,23 +27,7 @@ export const CONFIG = {
     | "mainnet"
     | "shadownet",
 
-  // Contract addresses for svg-js bootloader (also the main FA2 contract)
-  contracts: {
-    shadownet: "KT1M34LsFSPvBqCpE8DH3TVvf2PDqMbGhCfu",
-    mainnet: "KT1CB4MYiAViCuXWBU961x7LjQXGeA8SnQwt",
-  },
-
-  // Contract addresses for generic-web bootloader (separate contract)
-  genericWebContracts: {
-    shadownet: "KT1MkVTbYNJ6hkJKWSukLBgPaXtkHFKugK6v",
-    mainnet: "", // TODO: Deploy mainnet generic-web contract
-  },
-
-  // RNG contract addresses (used by generic-web bootloader)
-  rngContracts: {
-    shadownet: "KT1Mub11JnyhBA8huycUekE26DFB5VW4SDqh",
-    mainnet: "", // TODO: Deploy mainnet RNG contract
-  },
+  bootloaderContracts: SHARED_BOOTLOADER_CONTRACTS,
 
   // App branding
   branding: {
@@ -72,7 +62,7 @@ export const CONFIG = {
 
 export function getNetworkConfig() {
   const network = NETWORKS[CONFIG.network];
-  const contractAddress = CONFIG.contracts[CONFIG.network];
+  const contractAddress = getSharedBootloaderArtifactContract("svg-js", CONFIG.network);
   const objktUrl =
     CONFIG.network === "mainnet"
       ? "https://objkt.com"
@@ -102,28 +92,27 @@ export function getTzktExplorerBaseUrl(): string {
 }
 
 export function getContractAddress() {
-  return CONFIG.contracts[CONFIG.network];
+  return getSharedBootloaderArtifactContract("svg-js", CONFIG.network);
 }
 
 export function getGenericWebContractAddress() {
-  return CONFIG.genericWebContracts[CONFIG.network];
+  return getSharedBootloaderArtifactContract("generic-web", CONFIG.network);
 }
 
 export function getRngContractAddress() {
-  return CONFIG.rngContracts[CONFIG.network];
+  return getSharedBootloaderRngContract("generic-web", CONFIG.network);
 }
 
 /**
  * Get the contract address for a specific bootloader type
  */
 export function getContractAddressForBootloader(
-  bootloaderId: "svg-js" | "generic-web" | string
+  bootloaderId: SharedBootloaderId | string
 ): string {
-  if (bootloaderId === "generic-web") {
-    return CONFIG.genericWebContracts[CONFIG.network];
+  if (bootloaderId === "generic-web" || bootloaderId === "svg-js") {
+    return getSharedBootloaderArtifactContract(bootloaderId, CONFIG.network);
   }
-  // svg-js uses the main contract
-  return CONFIG.contracts[CONFIG.network];
+  return getSharedBootloaderArtifactContract("svg-js", CONFIG.network);
 }
 
 /**
@@ -141,7 +130,7 @@ export function getNetworkCode(): "m" | "s" {
 export function getGeneratorThumbnailUrl(
   generatorId: string | number,
   version?: number,
-  bootloaderId: "svg-js" | "generic-web" | string = "svg-js"
+  bootloaderId: SharedBootloaderId | string = "svg-js"
 ): string {
   const base = CONFIG.mediaCdnUrl;
   const params = new URLSearchParams();
@@ -159,7 +148,7 @@ export function getGeneratorThumbnailUrl(
 export function getTokenThumbnailUrl(
   tokenId: string | number,
   generatorVersion?: number,
-  bootloaderId: "svg-js" | "generic-web" | string = "svg-js"
+  bootloaderId: SharedBootloaderId | string = "svg-js"
 ): string {
   const base = CONFIG.mediaCdnUrl;
   const params = new URLSearchParams();

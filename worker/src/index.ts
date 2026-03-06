@@ -6,12 +6,6 @@ import type {
   RenderJobResultPayload,
   SessionInitResponse,
   SessionMeta,
-  BootloaderManifest,
-  CaptureConfig,
-  AnimationConfig,
-  ParamDefinition,
-  CaptureMode,
-  CaptureTarget,
   User,
 } from "./types";
 import {
@@ -37,6 +31,32 @@ import {
   signAuthToken,
   verifyAuthToken,
 } from "./auth-token";
+import {
+  BOOTLOADER_IDS,
+  isSharedBootloaderId,
+  type SharedBootloaderId,
+} from "../../shared/bootloaders/catalog";
+import {
+  buildViewerHtml,
+  extractFeatures,
+  processRenderJob,
+} from "./lib/render-jobs";
+import {
+  fetchGenericWebGeneratorArtifactCid,
+  fetchGenericWebGeneratorMetadata,
+  fetchGenericWebTokenArtifactUri,
+  fetchGenericWebTokenMetadata,
+  fetchGenericWebTokenQueueInfo,
+  fetchSvgJsGeneratorCode,
+  fetchSvgJsTokenMetadata,
+} from "./lib/bootloader-chain";
+import {
+  buildSocialMetaFromRoute,
+  buildSocialMetaTags,
+  injectTagsIntoHead,
+  injectTitleAndDescription,
+  resolveNetworkFromRequest,
+} from "./lib/share-meta";
 
 const app = new Hono<{ Bindings: Bindings }>();
 const MAX_SESSION_INIT_REQUEST_BYTES = 80 * 1024 * 1024;
@@ -72,6 +92,10 @@ class HttpError extends Error {
     this.name = "HttpError";
     this.status = status;
   }
+}
+
+function parseBootloaderId(value: string): SharedBootloaderId | null {
+  return isSharedBootloaderId(value) ? value : null;
 }
 
 function readBearerToken(c: any): string | null {
@@ -379,13 +403,13 @@ app.post("/generic-web/v1/indexer/tokens/:id/trigger", async (c) => {
 
 // Get attributes for a specific token (with bootloader namespace)
 app.get("/:bootloader/v1/tokens/:id/attributes", async (c) => {
-  const bootloader = c.req.param("bootloader") as "svg-js" | "generic-web";
+  const bootloader = parseBootloaderId(c.req.param("bootloader"));
   const tokenId = Number(c.req.param("id"));
   const network = (c.req.query("network") || "mainnet") as
     | "mainnet"
     | "shadownet";
 
-  if (!["svg-js", "generic-web"].includes(bootloader)) {
+  if (!bootloader) {
     return c.json({ error: "Invalid bootloader" }, 400);
   }
 
@@ -451,13 +475,13 @@ app.get("/tokens/:id/attributes", async (c) => {
 
 // Get all attribute names for a generator/collection (with bootloader namespace)
 app.get("/:bootloader/v1/generators/:id/attributes", async (c) => {
-  const bootloader = c.req.param("bootloader") as "svg-js" | "generic-web";
+  const bootloader = parseBootloaderId(c.req.param("bootloader"));
   const generatorId = Number(c.req.param("id"));
   const network = (c.req.query("network") || "mainnet") as
     | "mainnet"
     | "shadownet";
 
-  if (!["svg-js", "generic-web"].includes(bootloader)) {
+  if (!bootloader) {
     return c.json({ error: "Invalid bootloader" }, 400);
   }
 
@@ -487,14 +511,14 @@ app.get("/:bootloader/v1/generators/:id/attributes", async (c) => {
 
 // Get all values for a specific attribute in a collection (with bootloader namespace)
 app.get("/:bootloader/v1/generators/:id/attributes/:name/values", async (c) => {
-  const bootloader = c.req.param("bootloader") as "svg-js" | "generic-web";
+  const bootloader = parseBootloaderId(c.req.param("bootloader"));
   const generatorId = Number(c.req.param("id"));
   const attributeName = c.req.param("name");
   const network = (c.req.query("network") || "mainnet") as
     | "mainnet"
     | "shadownet";
 
-  if (!["svg-js", "generic-web"].includes(bootloader)) {
+  if (!bootloader) {
     return c.json({ error: "Invalid bootloader" }, 400);
   }
 
@@ -526,7 +550,7 @@ app.get("/:bootloader/v1/generators/:id/attributes/:name/values", async (c) => {
 
 // Search tokens by attributes (with bootloader namespace)
 app.post("/:bootloader/v1/generators/:id/tokens/search", async (c) => {
-  const bootloader = c.req.param("bootloader") as "svg-js" | "generic-web";
+  const bootloader = parseBootloaderId(c.req.param("bootloader"));
   const generatorId = Number(c.req.param("id"));
   const network = (c.req.query("network") || "mainnet") as
     | "mainnet"
@@ -534,7 +558,7 @@ app.post("/:bootloader/v1/generators/:id/tokens/search", async (c) => {
   const limit = Math.min(Number(c.req.query("limit") || 100), 500);
   const offset = Number(c.req.query("offset") || 0);
 
-  if (!["svg-js", "generic-web"].includes(bootloader)) {
+  if (!bootloader) {
     return c.json({ error: "Invalid bootloader" }, 400);
   }
 
@@ -687,13 +711,13 @@ app.post("/generators/:id/tokens/search", async (c) => {
 
 // Get generator metadata (with bootloader namespace)
 app.get("/:bootloader/v1/generators/:id/metadata", async (c) => {
-  const bootloader = c.req.param("bootloader") as "svg-js" | "generic-web";
+  const bootloader = parseBootloaderId(c.req.param("bootloader"));
   const generatorId = Number(c.req.param("id"));
   const network = (c.req.query("network") || "mainnet") as
     | "mainnet"
     | "shadownet";
 
-  if (!["svg-js", "generic-web"].includes(bootloader)) {
+  if (!bootloader) {
     return c.json({ error: "Invalid bootloader" }, 400);
   }
 
@@ -731,13 +755,13 @@ app.get("/:bootloader/v1/generators/:id/metadata", async (c) => {
 
 // Store or update generator metadata
 app.post("/:bootloader/v1/generators/:id/metadata", async (c) => {
-  const bootloader = c.req.param("bootloader") as "svg-js" | "generic-web";
+  const bootloader = parseBootloaderId(c.req.param("bootloader"));
   const generatorId = Number(c.req.param("id"));
   const network = (c.req.query("network") || "mainnet") as
     | "mainnet"
     | "shadownet";
 
-  if (!["svg-js", "generic-web"].includes(bootloader)) {
+  if (!bootloader) {
     return c.json({ error: "Invalid bootloader" }, 400);
   }
 
@@ -1445,24 +1469,11 @@ const TRANSPARENT_PNG = decodeBase64(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg=="
 );
 
-type BootloaderType = "svg-js" | "generic-web";
+type BootloaderType = SharedBootloaderId;
 
 const TZKT_API_BY_NETWORK: Record<"mainnet" | "shadownet", string> = {
   mainnet: "https://api.tzkt.io",
   shadownet: "https://api.shadownet.tzkt.io",
-};
-
-const SVG_JS_CONTRACT_BY_NETWORK: Record<"mainnet" | "shadownet", string> = {
-  mainnet: "KT1CB4MYiAViCuXWBU961x7LjQXGeA8SnQwt",
-  shadownet: "KT1M34LsFSPvBqCpE8DH3TVvf2PDqMbGhCfu",
-};
-
-const GENERIC_WEB_CONTRACT_BY_NETWORK: Record<
-  "mainnet" | "shadownet",
-  string | null
-> = {
-  mainnet: null,
-  shadownet: "KT1MkVTbYNJ6hkJKWSukLBgPaXtkHFKugK6v",
 };
 
 const SVG_JS_BIGMAP_POINTERS_CACHE_TTL_MS = 60_000;
@@ -1483,47 +1494,19 @@ const genericWebBigmapPointersCache = new Map<
   }
 >();
 
-const SHARE_META_CACHE_TTL_MS = 300_000;
-const shareMetaCache = new Map<
-  string,
-  {
-    title: string;
-    description: string;
-    cachedAtMs: number;
-  }
->();
-
-const GENERATOR_METADATA_JSON_CACHE_TTL_MS = 300_000;
-const generatorMetadataJsonCache = new Map<
-  string,
-  {
-    generatorDescription: string | null;
-    tokenDescription: string | null;
-    cachedAtMs: number;
-  }
->();
-
 // =============================================================================
 // NEW NAMESPACED ROUTES (v1)
 // =============================================================================
 
-// SVG-JS routes (use Screenshot One)
-app.get("/svg-js/v1/thumbnail/:id", async (c) => {
-  return handleThumbnailRequest(c, "thumbnail", "svg-js");
-});
+for (const bootloader of BOOTLOADER_IDS) {
+  app.get(`/${bootloader}/v1/thumbnail/:id`, async (c) => {
+    return handleThumbnailRequest(c, "thumbnail", bootloader);
+  });
 
-app.get("/svg-js/v1/generator-thumbnail/:id", async (c) => {
-  return handleThumbnailRequest(c, "generator-thumbnail", "svg-js");
-});
-
-// Generic-web routes (use Screenshot One)
-app.get("/generic-web/v1/thumbnail/:id", async (c) => {
-  return handleThumbnailRequest(c, "thumbnail", "generic-web");
-});
-
-app.get("/generic-web/v1/generator-thumbnail/:id", async (c) => {
-  return handleThumbnailRequest(c, "generator-thumbnail", "generic-web");
-});
+  app.get(`/${bootloader}/v1/generator-thumbnail/:id`, async (c) => {
+    return handleThumbnailRequest(c, "generator-thumbnail", bootloader);
+  });
+}
 
 // =============================================================================
 // LEGACY ROUTES (backwards compatibility - maps to svg-js)
@@ -1611,7 +1594,7 @@ async function handleThumbnailRequest(
     const storePromise = storeTokenFeatures(c.env, {
       tokenId: Number(id),
       network: tokenNetwork,
-      bootloader: bootloader as "svg-js" | "generic-web",
+      bootloader,
       featuresJson,
     });
     if (storeFeaturesSync) {
@@ -1959,529 +1942,6 @@ function makeImageHeaders(cacheControl: string, type: string, id: string) {
   };
 }
 
-function extractBytesFromOption(value: unknown): string | null {
-  if (!value) return null;
-
-  if (typeof value === "string") {
-    return value.startsWith("0x") ? value.slice(2) : value;
-  }
-
-  if (typeof value === "object") {
-    const asRecord = value as Record<string, unknown>;
-    const someValue =
-      asRecord.Some ?? asRecord.some ?? asRecord.bytes ?? asRecord.value;
-    if (typeof someValue === "string") {
-      return someValue.startsWith("0x") ? someValue.slice(2) : someValue;
-    }
-  }
-
-  return null;
-}
-
-async function getSvgJsBigmapPointers(
-  network: "mainnet" | "shadownet"
-): Promise<{ tokenMetadataPtr: number | null; generatorsPtr: number | null }> {
-  const now = Date.now();
-  const cachedPointers = svgJsBigmapPointersCache.get(network);
-  if (
-    cachedPointers &&
-    now - cachedPointers.cachedAtMs <= SVG_JS_BIGMAP_POINTERS_CACHE_TTL_MS
-  ) {
-    return {
-      tokenMetadataPtr: cachedPointers.tokenMetadataPtr,
-      generatorsPtr: cachedPointers.generatorsPtr,
-    };
-  }
-
-  const contract = SVG_JS_CONTRACT_BY_NETWORK[network];
-  const tzktBase = TZKT_API_BY_NETWORK[network];
-  const bigmapsResponse = await fetch(
-    `${tzktBase}/v1/contracts/${contract}/bigmaps`
-  );
-
-  let tokenMetadataPtr: number | null = null;
-  let generatorsPtr: number | null = null;
-  if (bigmapsResponse.ok) {
-    const bigmaps = (await bigmapsResponse.json()) as Array<{
-      path?: string;
-      ptr?: number;
-    }>;
-    tokenMetadataPtr =
-      bigmaps.find((entry) => entry.path === "token_metadata")?.ptr ?? null;
-    generatorsPtr = bigmaps.find((entry) => entry.path === "generators")?.ptr ?? null;
-  }
-
-  svgJsBigmapPointersCache.set(network, {
-    tokenMetadataPtr,
-    generatorsPtr,
-    cachedAtMs: now,
-  });
-
-  return { tokenMetadataPtr, generatorsPtr };
-}
-
-function decodeMetadataTextValue(value: unknown): string | null {
-  if (value == null) return null;
-  const decoded = decodeHexToText(value)
-    .replace(/\s+/g, " ")
-    .trim();
-  return decoded.length > 0 ? decoded : null;
-}
-
-function pickDecodedMetadataField(
-  source: Record<string, unknown> | null | undefined,
-  keys: string[]
-): string | null {
-  if (!source) return null;
-  for (const key of keys) {
-    const value = decodeMetadataTextValue(source[key]);
-    if (value) return value;
-  }
-  return null;
-}
-
-type TokenInfoMetadata = {
-  artifactUri: string | null;
-  name: string | null;
-  description: string | null;
-};
-
-type GeneratorMetadataRecord = {
-  artifactCid: string | null;
-  code: string | null;
-  name: string | null;
-  generatorDescription: string | null;
-  tokenDescription: string | null;
-};
-
-function parseTokenInfoMetadata(
-  tokenInfo: Record<string, unknown>
-): TokenInfoMetadata {
-  const artifactRaw = pickDecodedMetadataField(tokenInfo, [
-    "artifactUri",
-    "artifact_uri",
-    "artifactURI",
-  ]);
-  const artifactUri = artifactRaw?.trim() || null;
-  return {
-    artifactUri: artifactUri && artifactUri.length > 0 ? artifactUri : null,
-    name: pickDecodedMetadataField(tokenInfo, ["name", "token_name", "tokenName"]),
-    description: pickDecodedMetadataField(tokenInfo, [
-      "description",
-      "token_description",
-      "tokenDescription",
-    ]),
-  };
-}
-
-async function fetchSvgJsTokenMetadata(
-  network: "mainnet" | "shadownet",
-  tokenId: number
-): Promise<TokenInfoMetadata | null> {
-  try {
-    const pointers = await getSvgJsBigmapPointers(network);
-    if (!pointers.tokenMetadataPtr) return null;
-
-    const tzktBase = TZKT_API_BY_NETWORK[network];
-    const metadataResponse = await fetch(
-      `${tzktBase}/v1/bigmaps/${pointers.tokenMetadataPtr}/keys/${tokenId}`
-    );
-    if (!metadataResponse.ok) return null;
-
-    const payload = (await metadataResponse.json()) as {
-      value?: { token_info?: Record<string, unknown> };
-    };
-    return parseTokenInfoMetadata(payload.value?.token_info ?? {});
-  } catch (error) {
-    console.warn("[fetchSvgJsTokenMetadata] Failed:", {
-      network,
-      tokenId,
-      error,
-    });
-    return null;
-  }
-}
-
-async function fetchSvgJsTokenArtifactUri(
-  network: "mainnet" | "shadownet",
-  tokenId: number
-): Promise<string | null> {
-  const metadata = await fetchSvgJsTokenMetadata(network, tokenId);
-  return metadata?.artifactUri ?? null;
-}
-
-async function fetchSvgJsGeneratorMetadata(
-  network: "mainnet" | "shadownet",
-  generatorId: number
-): Promise<GeneratorMetadataRecord | null> {
-  try {
-    const pointers = await getSvgJsBigmapPointers(network);
-    if (!pointers.generatorsPtr) return null;
-
-    const tzktBase = TZKT_API_BY_NETWORK[network];
-    const generatorResponse = await fetch(
-      `${tzktBase}/v1/bigmaps/${pointers.generatorsPtr}/keys/${generatorId}`
-    );
-    if (!generatorResponse.ok) return null;
-
-    const payload = (await generatorResponse.json()) as {
-      value?: Record<string, unknown>;
-    };
-    const value = payload.value ?? {};
-    const encodedCode =
-      typeof value.code === "string" ? value.code.trim() : "";
-    const decodedCode = encodedCode
-      ? decodeUrlEncodedHexToText(encodedCode).trim()
-      : "";
-    return {
-      artifactCid: null,
-      code: decodedCode.length > 0 ? decodedCode : null,
-      name: pickDecodedMetadataField(value, ["name", "generator_name", "generatorName"]),
-      generatorDescription: pickDecodedMetadataField(value, [
-        "description",
-        "generator_description",
-        "generatorDescription",
-      ]),
-      tokenDescription: pickDecodedMetadataField(value, [
-        "token_description",
-        "tokenDescription",
-      ]),
-    };
-  } catch (error) {
-    console.warn("[fetchSvgJsGeneratorMetadata] Failed:", {
-      network,
-      generatorId,
-      error,
-    });
-    return null;
-  }
-}
-
-async function fetchSvgJsGeneratorCode(
-  network: "mainnet" | "shadownet",
-  generatorId: number
-): Promise<string | null> {
-  const metadata = await fetchSvgJsGeneratorMetadata(network, generatorId);
-  return metadata?.code ?? null;
-}
-
-async function getGenericWebBigmapPointers(
-  network: "mainnet" | "shadownet"
-): Promise<{
-  tokenExtraPtr: number;
-  generatorsPtr: number | null;
-  tokenMetadataPtr: number | null;
-  ledgerPtr: number | null;
-} | null> {
-  const contract = GENERIC_WEB_CONTRACT_BY_NETWORK[network];
-  if (!contract) return null;
-
-  const now = Date.now();
-  const cachedPointers = genericWebBigmapPointersCache.get(network);
-  if (
-    cachedPointers &&
-    now - cachedPointers.cachedAtMs <= GENERIC_WEB_BIGMAP_POINTERS_CACHE_TTL_MS
-  ) {
-    return {
-      tokenExtraPtr: cachedPointers.tokenExtraPtr,
-      generatorsPtr: cachedPointers.generatorsPtr,
-      tokenMetadataPtr: cachedPointers.tokenMetadataPtr,
-      ledgerPtr: cachedPointers.ledgerPtr,
-    };
-  }
-
-  const tzktBase = TZKT_API_BY_NETWORK[network];
-  const bigmapsResponse = await fetch(
-    `${tzktBase}/v1/contracts/${contract}/bigmaps`
-  );
-  if (!bigmapsResponse.ok) return null;
-
-  const bigmaps = (await bigmapsResponse.json()) as Array<{
-    path?: string;
-    ptr?: number;
-  }>;
-  const tokenExtraMap = bigmaps.find((entry) => entry.path === "token_extra");
-  const generatorsMap = bigmaps.find((entry) => entry.path === "generators");
-  const tokenMetadataMap = bigmaps.find(
-    (entry) => entry.path === "token_metadata"
-  );
-  const ledgerMap = bigmaps.find((entry) => entry.path === "ledger");
-  const tokenExtraPtr = tokenExtraMap?.ptr ?? null;
-  if (tokenExtraPtr == null) return null;
-
-  genericWebBigmapPointersCache.set(network, {
-    tokenExtraPtr,
-    generatorsPtr: generatorsMap?.ptr ?? null,
-    tokenMetadataPtr: tokenMetadataMap?.ptr ?? null,
-    ledgerPtr: ledgerMap?.ptr ?? null,
-    cachedAtMs: now,
-  });
-
-  return {
-    tokenExtraPtr,
-    generatorsPtr: generatorsMap?.ptr ?? null,
-    tokenMetadataPtr: tokenMetadataMap?.ptr ?? null,
-    ledgerPtr: ledgerMap?.ptr ?? null,
-  };
-}
-
-async function fetchGenericWebTokenQueueInfo(
-  network: "mainnet" | "shadownet",
-  tokenId: number,
-  options?: { includeOwner?: boolean }
-): Promise<{
-  generatorId: number | null;
-  generatorVersion: number | null;
-  iteration: number | null;
-  seed: string | null;
-  ownerAddress: string | null;
-} | null> {
-  const tzktBase = TZKT_API_BY_NETWORK[network];
-  const includeOwner = options?.includeOwner === true;
-
-  try {
-    const pointers = await getGenericWebBigmapPointers(network);
-    if (!pointers) return null;
-
-    const extraResponse = await fetch(
-      `${tzktBase}/v1/bigmaps/${pointers.tokenExtraPtr}/keys/${tokenId}`
-    );
-    if (!extraResponse.ok) return null;
-    const extraPayload = (await extraResponse.json()) as {
-      value?: Record<string, unknown>;
-    };
-    const value = extraPayload.value || {};
-
-    const generatorIdRaw = value.generator_id ?? value.generatorId;
-    const generatorVersionRaw =
-      value.generator_version ?? value.generatorVersion;
-    const iterationRaw = value.iteration_number ?? value.iteration;
-    const seedRaw = value.raw_seed ?? value.seed;
-
-    const generatorId = Number.isFinite(Number(generatorIdRaw))
-      ? Number(generatorIdRaw)
-      : null;
-    const generatorVersion = Number.isFinite(Number(generatorVersionRaw))
-      ? Number(generatorVersionRaw)
-      : null;
-    const iteration = Number.isFinite(Number(iterationRaw))
-      ? Number(iterationRaw)
-      : null;
-    const seed = extractBytesFromOption(seedRaw);
-
-    let ownerAddress: string | null = null;
-    if (includeOwner && pointers.ledgerPtr != null) {
-      const ownerResponse = await fetch(
-        `${tzktBase}/v1/bigmaps/${pointers.ledgerPtr}/keys/${tokenId}`
-      );
-      if (ownerResponse.ok) {
-        const ownerPayload = (await ownerResponse.json()) as { value?: string };
-        ownerAddress = ownerPayload.value || null;
-      }
-    }
-
-    return {
-      generatorId,
-      generatorVersion,
-      iteration,
-      seed,
-      ownerAddress,
-    };
-  } catch (error) {
-    console.warn("[fetchGenericWebTokenQueueInfo] Failed:", {
-      network,
-      tokenId,
-      error,
-    });
-    return null;
-  }
-}
-
-async function fetchGenericWebTokenMetadata(
-  network: "mainnet" | "shadownet",
-  tokenId: number
-): Promise<TokenInfoMetadata | null> {
-  try {
-    const pointers = await getGenericWebBigmapPointers(network);
-    if (!pointers?.tokenMetadataPtr) return null;
-
-    const tzktBase = TZKT_API_BY_NETWORK[network];
-    const metadataResponse = await fetch(
-      `${tzktBase}/v1/bigmaps/${pointers.tokenMetadataPtr}/keys/${tokenId}`
-    );
-    if (!metadataResponse.ok) return null;
-
-    const metadataPayload = (await metadataResponse.json()) as {
-      value?: { token_info?: Record<string, unknown> };
-    };
-    return parseTokenInfoMetadata(metadataPayload.value?.token_info ?? {});
-  } catch (error) {
-    console.warn("[fetchGenericWebTokenMetadata] Failed:", {
-      network,
-      tokenId,
-      error,
-    });
-    return null;
-  }
-}
-
-async function fetchGenericWebTokenArtifactUri(
-  network: "mainnet" | "shadownet",
-  tokenId: number
-): Promise<string | null> {
-  const metadata = await fetchGenericWebTokenMetadata(network, tokenId);
-  return metadata?.artifactUri ?? null;
-}
-
-async function fetchGenericWebGeneratorMetadata(
-  network: "mainnet" | "shadownet",
-  generatorId: number
-): Promise<GeneratorMetadataRecord | null> {
-  try {
-    const pointers = await getGenericWebBigmapPointers(network);
-    if (!pointers?.generatorsPtr) return null;
-
-    const tzktBase = TZKT_API_BY_NETWORK[network];
-    const generatorResponse = await fetch(
-      `${tzktBase}/v1/bigmaps/${pointers.generatorsPtr}/keys/${generatorId}`
-    );
-    if (!generatorResponse.ok) return null;
-
-    const payload = (await generatorResponse.json()) as {
-      value?: Record<string, unknown>;
-    };
-    const value = payload.value ?? {};
-    const artifactCidRaw = pickDecodedMetadataField(value, [
-      "artifact_cid",
-      "artifactCid",
-    ]);
-    const metadataCidRaw = pickDecodedMetadataField(value, [
-      "metadata_cid",
-      "metadataCid",
-    ]);
-    const artifactCid = artifactCidRaw
-      ? stripIpfsPrefix(artifactCidRaw.trim())
-      : null;
-    const metadataCid = metadataCidRaw
-      ? stripIpfsPrefix(metadataCidRaw.trim())
-      : null;
-
-    let generatorDescription = pickDecodedMetadataField(value, [
-      "description",
-      "generator_description",
-      "generatorDescription",
-    ]);
-    let tokenDescription = pickDecodedMetadataField(value, [
-      "token_description",
-      "tokenDescription",
-    ]);
-
-    if (metadataCid) {
-      const metadataJson = await fetchGenericWebGeneratorMetadataJson(
-        network,
-        metadataCid
-      );
-      if (metadataJson) {
-        generatorDescription =
-          metadataJson.generatorDescription ?? generatorDescription;
-        tokenDescription = metadataJson.tokenDescription ?? tokenDescription;
-      }
-    }
-
-    return {
-      artifactCid: artifactCid && artifactCid.length > 0 ? artifactCid : null,
-      code: null,
-      name: pickDecodedMetadataField(value, ["name", "generator_name", "generatorName"]),
-      generatorDescription,
-      tokenDescription,
-    };
-  } catch (error) {
-    console.warn("[fetchGenericWebGeneratorMetadata] Failed:", {
-      network,
-      generatorId,
-      error,
-    });
-    return null;
-  }
-}
-
-async function fetchGenericWebGeneratorArtifactCid(
-  network: "mainnet" | "shadownet",
-  generatorId: number
-): Promise<string | null> {
-  const metadata = await fetchGenericWebGeneratorMetadata(network, generatorId);
-  return metadata?.artifactCid ?? null;
-}
-
-async function fetchGenericWebGeneratorMetadataJson(
-  network: "mainnet" | "shadownet",
-  metadataCid: string
-): Promise<{
-  generatorDescription: string | null;
-  tokenDescription: string | null;
-} | null> {
-  const cid = stripIpfsPrefix(metadataCid.trim());
-  if (!cid) return null;
-
-  const cacheKey = `${network}:${cid}`;
-  const now = Date.now();
-  const cached = generatorMetadataJsonCache.get(cacheKey);
-  if (
-    cached &&
-    now - cached.cachedAtMs <= GENERATOR_METADATA_JSON_CACHE_TTL_MS
-  ) {
-    return {
-      generatorDescription: cached.generatorDescription,
-      tokenDescription: cached.tokenDescription,
-    };
-  }
-
-  const mediaOrigin =
-    network === "shadownet"
-      ? "https://media.shadownet.bootloader.art"
-      : "https://media.bootloader.art";
-  const url = `${mediaOrigin}/ipfs/${cid}/metadata.json`;
-
-  try {
-    const response = await fetch(url);
-    if (!response.ok) return null;
-
-    const payload = (await response.json()) as Record<string, unknown>;
-    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
-      return null;
-    }
-
-    const generatorDescription = normalizeMetaText(
-      (payload.generator_description ??
-        payload.generatorDescription ??
-        payload.description) as string | null | undefined,
-      260
-    );
-    const tokenDescription = normalizeMetaText(
-      (payload.token_description ?? payload.tokenDescription) as
-        | string
-        | null
-        | undefined,
-      260
-    );
-
-    generatorMetadataJsonCache.set(cacheKey, {
-      generatorDescription,
-      tokenDescription,
-      cachedAtMs: now,
-    });
-
-    return { generatorDescription, tokenDescription };
-  } catch (error) {
-    console.warn("[fetchGenericWebGeneratorMetadataJson] Failed:", {
-      network,
-      metadataCid: cid,
-      error,
-    });
-    return null;
-  }
-}
-
 /**
  * Store token features in D1 database
  * This is called asynchronously after thumbnail generation
@@ -2604,1056 +2064,7 @@ const SCREENSHOTONE_TAKE_URL = "https://api.screenshotone.com/take";
 const SCREENSHOTONE_ANIMATE_URL = "https://api.screenshotone.com/animate";
 const SCREENSHOTONE_WAIT_SELECTOR =
   '#capture-marker[data-capture-ready="true"]';
-const DEFAULT_CAPTURE_WIDTH = 800;
-const DEFAULT_CAPTURE_HEIGHT = 800;
-const DEFAULT_CAPTURE_DELAY_MS = 5000;
-const DEFAULT_ANIMATION_DURATION_MS = 5000;
-const DEFAULT_ANIMATION_FPS = 30;
 const SCREENSHOTONE_TIMEOUT_SECONDS = 90;
-
-interface ResolvedCaptureConfig {
-  mode: CaptureMode;
-  width: number;
-  height: number;
-  delayMs: number;
-  target: CaptureTarget;
-  selector: string | null;
-}
-
-interface ResolvedAnimationConfig {
-  durationMs: number;
-  fps: number;
-}
-
-async function processRenderJob({
-  env,
-  sessionId,
-  jobId,
-  seed,
-  useGpu,
-  params,
-}: {
-  env: Bindings;
-  sessionId: string;
-  jobId: string;
-  seed: string;
-  useGpu: boolean;
-  params: Record<string, unknown> | null;
-}) {
-  const stub = env.SESSIONS.get(env.SESSIONS.idFromString(sessionId));
-
-  const markError = async (message: string) => {
-    await stub.fetch(`https://session/render-jobs/${jobId}`, {
-      method: "PUT",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        state: "error",
-        completedAt: Date.now(),
-        error: message,
-      } satisfies RenderJobResultPayload),
-    });
-  };
-
-  try {
-    const metaRes = await stub.fetch("https://session/meta");
-    if (!metaRes.ok) {
-      await markError("Session metadata unavailable");
-      return;
-    }
-
-    const sessionMeta = (await metaRes.json()) as SessionMeta;
-    const entryPath = sessionMeta.defaultEntry ?? "index.html";
-    const cid = sessionMeta.cid ?? sessionMeta.upload?.cid;
-    if (!cid) {
-      await markError("Project upload incomplete");
-      return;
-    }
-
-    const manifest = await loadManifest(env, cid, entryPath);
-    const capture = resolveCaptureConfig(manifest?.capture);
-    const animation = resolveAnimationConfig(manifest?.animation);
-    const defaults = resolveParamDefaults(manifest?.parameters?.schema);
-    const effectiveParams = mergeParamValues(
-      manifest?.parameters?.schema,
-      defaults,
-      params
-    );
-
-    let viewerUrl: string;
-    try {
-      viewerUrl = buildViewerUrl({
-        baseUrl: ensureWorkerUrl(env),
-        cid,
-        entryPath,
-        capture,
-        params: effectiveParams,
-        seed,
-      });
-    } catch (error) {
-      await markError(error instanceof Error ? error.message : String(error));
-      return;
-    }
-
-    console.log("[worker] viewer URL for ScreenshotOne:", viewerUrl);
-
-    const { screenshotUrl, contentUrl } = await requestScreenshotOne(env, {
-      url: viewerUrl,
-      capture,
-      animation,
-    });
-
-    if (!screenshotUrl) {
-      await markError("ScreenshotOne did not return a screenshot URL");
-      return;
-    }
-
-    const asset = await downloadBinary(screenshotUrl);
-    const ext = mimeToExtension(asset.mime);
-    const assetKey = `renders/${sessionId}/${jobId}/capture.${ext}`;
-
-    await env.R2_SANDBOX.put(assetKey, asset.bytes, {
-      httpMetadata: {
-        contentType: asset.mime,
-        cacheControl: "public, max-age=31536000, immutable",
-      },
-      customMetadata: { sessionId, jobId },
-    });
-
-    let features: Record<string, unknown> | null = null;
-    let featuresKey: string | undefined;
-    if (contentUrl) {
-      const html = await downloadText(contentUrl);
-      if (html) {
-        features = extractFeatures(html);
-      }
-    }
-
-    if (features && Object.keys(features).length > 0) {
-      featuresKey = `renders/${sessionId}/${jobId}/features.json`;
-      await env.R2_SANDBOX.put(featuresKey, JSON.stringify(features), {
-        httpMetadata: {
-          contentType: "application/json",
-          cacheControl: "public, max-age=31536000, immutable",
-        },
-        customMetadata: { sessionId, jobId },
-      });
-    }
-
-    const paramsForResult =
-      Object.keys(effectiveParams).length > 0 ? effectiveParams : null;
-
-    const payload: RenderJobResultPayload = {
-      state: "complete",
-      completedAt: Date.now(),
-      result: {
-        fullResKey: assetKey,
-        thumbnailKey: assetKey,
-        mime: asset.mime,
-        fullResolution: { x: capture.width, y: capture.height },
-        thumbnailResolution: { x: capture.width, y: capture.height },
-        features: features ?? null,
-        params: paramsForResult,
-        featuresKey,
-        metadata: {
-          hash: seed,
-          iteration: 1,
-          hasAnimation: !!animation,
-          animationFrameCount: animation
-            ? Math.round((animation.durationMs / 1000) * animation.fps)
-            : undefined,
-        },
-      },
-    };
-
-    await stub.fetch(`https://session/render-jobs/${jobId}`, {
-      method: "PUT",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error("[worker] render failed", { sessionId, jobId, message });
-    await markError(message);
-  }
-}
-
-function resolveCaptureConfig(
-  config?: CaptureConfig | null
-): ResolvedCaptureConfig {
-  const mode: CaptureMode = config?.mode === "trigger" ? "trigger" : "auto";
-  const width = clampInt(
-    config?.viewPortDimension?.width ?? DEFAULT_CAPTURE_WIDTH,
-    1,
-    8192
-  );
-  const height = clampInt(
-    config?.viewPortDimension?.height ?? DEFAULT_CAPTURE_HEIGHT,
-    1,
-    8192
-  );
-  const delayMs = Number.isFinite(config?.delayMs)
-    ? Math.max(0, Number(config?.delayMs))
-    : DEFAULT_CAPTURE_DELAY_MS;
-  const target: CaptureTarget =
-    config?.target === "viewport" ? "viewport" : "auto";
-  const selector =
-    typeof config?.selector === "string" && config.selector.length > 0
-      ? config.selector
-      : null;
-  return { mode, width, height, delayMs, target, selector };
-}
-
-function resolveAnimationConfig(
-  config?: AnimationConfig | null
-): ResolvedAnimationConfig | null {
-  if (!config) return null;
-  const durationMs = Number.isFinite(config.duration)
-    ? Math.max(100, Number(config.duration))
-    : DEFAULT_ANIMATION_DURATION_MS;
-  const fps = Number.isFinite(config.fps)
-    ? Math.max(1, Number(config.fps))
-    : DEFAULT_ANIMATION_FPS;
-  return { durationMs, fps };
-}
-
-async function loadManifest(
-  env: Bindings,
-  cid: string,
-  entryPath: string
-): Promise<BootloaderManifest | null> {
-  const candidates = new Set<string>();
-  const entryDirIndex = entryPath.lastIndexOf("/");
-  if (entryDirIndex > -1) {
-    candidates.add(`${cid}/${entryPath.slice(0, entryDirIndex)}/manifest.json`);
-  }
-  candidates.add(`${cid}/manifest.json`);
-
-  for (const key of candidates) {
-    try {
-      const object = await env.R2_SANDBOX.get(key);
-      if (!object) continue;
-      const text = await object.text();
-      const manifest = JSON.parse(text) as BootloaderManifest;
-      if (
-        manifest &&
-        typeof manifest === "object" &&
-        typeof manifest.spec === "string"
-      ) {
-        return manifest;
-      }
-    } catch (error) {
-      console.warn("[worker] failed to load manifest candidate", key, error);
-    }
-  }
-  return null;
-}
-
-function resolveParamDefaults(
-  schema?: ParamDefinition[] | null
-): Record<string, unknown> {
-  if (!Array.isArray(schema)) return {};
-  const result: Record<string, unknown> = {};
-  for (const def of schema) {
-    if (!def || typeof def.id !== "string") continue;
-    if (def.default === undefined) continue;
-    result[def.id] = cloneValue(def.default);
-  }
-  return result;
-}
-
-function mergeParamValues(
-  schema: ParamDefinition[] | undefined | null,
-  defaults: Record<string, unknown>,
-  overrides: Record<string, unknown> | null
-): Record<string, unknown> {
-  if (!overrides || Object.keys(overrides).length === 0) {
-    return defaults;
-  }
-
-  const merged = { ...defaults };
-  const allowedIds = new Set((schema ?? []).map((def) => def.id));
-
-  for (const [key, value] of Object.entries(overrides)) {
-    if (allowedIds.size === 0 || allowedIds.has(key)) {
-      merged[key] = cloneValue(value);
-    }
-  }
-
-  return merged;
-}
-
-function encodeParamsForQuery(values: Record<string, unknown>): string | null {
-  if (!values || Object.keys(values).length === 0) return null;
-  const encoded = encodeParamValue(values);
-  const json = JSON.stringify(encoded);
-  const bytes = new TextEncoder().encode(json);
-  return base64UrlEncode(bytes);
-}
-
-function encodeParamValue(value: unknown): unknown {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    if (Number.isInteger(value)) {
-      return value;
-    }
-    return { "@f": floatToToken(value) };
-  }
-  if (Array.isArray(value)) {
-    return value.map(encodeParamValue);
-  }
-  if (value && typeof value === "object") {
-    const out: Record<string, unknown> = {};
-    for (const [key, inner] of Object.entries(value)) {
-      out[key] = encodeParamValue(inner);
-    }
-    return out;
-  }
-  return value;
-}
-
-function floatToToken(value: number): string {
-  return Number(value).toPrecision(17);
-}
-
-function base64UrlEncode(bytes: Uint8Array): string {
-  let binary = "";
-  for (const byte of bytes) {
-    binary += String.fromCharCode(byte);
-  }
-  const base64 = btoa(binary);
-  return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-}
-
-function ensureWorkerUrl(env: Bindings): string {
-  const base = env.WORKER_URL?.trim();
-  if (!base) {
-    throw new Error(
-      "WORKER_URL binding is required for ScreenshotOne extraction"
-    );
-  }
-  return base.endsWith("/") ? base : `${base}`;
-}
-
-function buildViewerUrl({
-  baseUrl,
-  cid,
-  entryPath,
-  capture,
-  params,
-  seed,
-}: {
-  baseUrl: string;
-  cid: string;
-  entryPath: string;
-  capture: ResolvedCaptureConfig;
-  params: Record<string, unknown>;
-  seed: string;
-}): string {
-  const url = new URL("/viewer", baseUrl);
-  url.searchParams.set("cid", cid);
-  url.searchParams.set("entry", entryPath.replace(/^\/+/, ""));
-  url.searchParams.set("s", seed);
-  url.searchParams.set("cm", capture.mode);
-  url.searchParams.set("d", String(capture.delayMs));
-  if (capture.selector) {
-    url.searchParams.set("selector", capture.selector);
-  }
-  url.searchParams.set("i", "1");
-
-  const encodedParams = encodeParamsForQuery(params);
-  if (encodedParams) {
-    url.searchParams.set("p", encodedParams);
-  }
-
-  return url.toString();
-}
-
-async function requestScreenshotOne(
-  env: Bindings,
-  opts: {
-    url: string;
-    capture: ResolvedCaptureConfig;
-    animation: ResolvedAnimationConfig | null;
-  }
-): Promise<{ screenshotUrl: string; contentUrl?: string }> {
-  if (!env.SO_ACCESS_KEY) {
-    throw new Error("SO_ACCESS_KEY binding is missing");
-  }
-
-  const params = new URLSearchParams({
-    access_key: env.SO_ACCESS_KEY,
-    url: opts.url,
-    response_type: "json",
-    viewport_width: String(opts.capture.width),
-    viewport_height: String(opts.capture.height),
-    device_scale_factor: "1",
-    block_ads: "true",
-    block_cookie_banners: "true",
-    block_banners_by_heuristics: "true",
-    metadata_content: "true",
-    wait_for_selector: SCREENSHOTONE_WAIT_SELECTOR,
-    timeout: String(SCREENSHOTONE_TIMEOUT_SECONDS),
-  });
-
-  if (opts.capture.selector && opts.capture.target !== "viewport") {
-    params.set("selector", opts.capture.selector);
-  }
-
-  if (opts.capture.delayMs > 0) {
-    params.set("delay", (opts.capture.delayMs / 1000).toFixed(2));
-  }
-
-  let endpoint = SCREENSHOTONE_TAKE_URL;
-  if (opts.animation) {
-    endpoint = SCREENSHOTONE_ANIMATE_URL;
-    const durationSeconds = Math.max(
-      1,
-      Math.min(30, Math.round(opts.animation.durationMs / 1000))
-    );
-    params.set("format", "gif");
-    params.set("duration", String(durationSeconds));
-  } else {
-    params.set("format", "png");
-  }
-
-  const response = await fetch(`${endpoint}?${params.toString()}`);
-  if (!response.ok) {
-    const text = await response.text().catch(() => "Unknown error");
-    throw new Error(`ScreenshotOne request failed: ${text}`);
-  }
-
-  interface ScreenshotOneResponseBody {
-    screenshot_url?: string;
-    content?: { url?: string };
-    metadata?: { content_url?: string };
-  }
-
-  const body = (await response.json()) as ScreenshotOneResponseBody;
-  return {
-    screenshotUrl: body.screenshot_url ?? "",
-    contentUrl: body.content?.url ?? body.metadata?.content_url,
-  };
-}
-
-async function downloadBinary(
-  url: string
-): Promise<{ bytes: Uint8Array; mime: string }> {
-  const response = await fetch(url);
-  if (!response.ok) {
-    const text = await response.text().catch(() => "");
-    throw new Error(
-      `Failed to download screenshot: ${text || response.status}`
-    );
-  }
-  const buffer = await response.arrayBuffer();
-  const mime =
-    response.headers.get("content-type") ?? "application/octet-stream";
-  return { bytes: new Uint8Array(buffer), mime };
-}
-
-async function downloadText(url: string): Promise<string | null> {
-  try {
-    const response = await fetch(url);
-    if (!response.ok) return null;
-    return await response.text();
-  } catch (error) {
-    console.warn("[worker] failed to download metadata content", error);
-    return null;
-  }
-}
-
-function extractFeatures(html: string): Record<string, unknown> | null {
-  const attrMatch = html.match(
-    /id="traits-container"[^>]*data-features="([^"]*)"/i
-  );
-  if (attrMatch) {
-    try {
-      const decoded = decodeHtmlEntities(attrMatch[1]);
-      return JSON.parse(decoded);
-    } catch {
-      // Non-fatal: HTML serializers may mutate attribute encoding.
-      // We keep a fallback parser using inner text below.
-    }
-  }
-
-  const contentMatch = html.match(
-    /<div[^>]*id="traits-container"[^>]*>([\s\S]*?)<\/div>/i
-  );
-  if (contentMatch) {
-    const text = contentMatch[1].trim();
-    if (text.length) {
-      try {
-        return JSON.parse(text);
-      } catch (error) {
-        console.warn("[worker] failed to parse traits inner text", error);
-      }
-    }
-  }
-  return null;
-}
-
-function decodeHtmlEntities(value: string): string {
-  return value
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&amp;/g, "&");
-}
-
-function cloneValue<T>(value: T): T {
-  try {
-    return JSON.parse(JSON.stringify(value)) as T;
-  } catch {
-    return value;
-  }
-}
-
-function mimeToExtension(mime: string): string {
-  if (mime.startsWith("image/png")) return "png";
-  if (mime.startsWith("image/jpeg")) return "jpg";
-  if (mime.startsWith("image/gif")) return "gif";
-  if (mime.startsWith("image/webp")) return "webp";
-  if (mime.startsWith("video/mp4")) return "mp4";
-  if (mime.startsWith("video/webm")) return "webm";
-  return "bin";
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-function decodeHexToText(value: unknown): string {
-  if (typeof value !== "string") return "";
-  const raw = value.trim();
-  let hex = raw;
-  if (!hex) return "";
-  if (hex.startsWith("0x")) {
-    hex = hex.slice(2);
-  }
-  if (!hex || hex.length % 2 !== 0 || !/^[0-9a-fA-F]+$/.test(hex)) {
-    return raw;
-  }
-
-  const bytes = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < hex.length; i += 2) {
-    const byte = Number.parseInt(hex.slice(i, i + 2), 16);
-    if (Number.isNaN(byte)) return raw;
-    bytes[i / 2] = byte;
-  }
-  try {
-    return new TextDecoder().decode(bytes);
-  } catch {
-    return raw;
-  }
-}
-
-function decodeUrlEncodedHexToText(value: string): string {
-  const decodedHex = decodeHexToText(value);
-  try {
-    return decodeURIComponent(decodedHex);
-  } catch {
-    return decodedHex;
-  }
-}
-
-function stripIpfsPrefix(value: string): string {
-  const withoutPrefix = value.replace(/^ipfs:\/\//i, "").replace(/^\/+/, "");
-  return withoutPrefix.split("?")[0].split("/")[0];
-}
-
-function getConfiguredNetwork(env: Bindings): "mainnet" | "shadownet" {
-  const explicitNetwork = (env.WORKER_NETWORK || "").trim().toLowerCase();
-  if (explicitNetwork === "mainnet" || explicitNetwork === "m") {
-    return "mainnet";
-  }
-  if (explicitNetwork === "shadownet" || explicitNetwork === "s") {
-    return "shadownet";
-  }
-
-  // Local default
-  return "shadownet";
-}
-
-function networkToCode(network: "mainnet" | "shadownet"): "m" | "s" {
-  return network === "mainnet" ? "m" : "s";
-}
-
-function resolveNetworkFromRequest(_url: URL, env: Bindings): {
-  network: "mainnet" | "shadownet";
-  networkCode: "m" | "s";
-} {
-  const network = getConfiguredNetwork(env);
-  return { network, networkCode: networkToCode(network) };
-}
-
-function parseShareRoute(pathname: string): {
-  kind: "token" | "generator";
-  bootloader: BootloaderType;
-  id: number;
-} | null {
-  const match = pathname.match(
-    /^\/(token|generator)\/(svg-js|generic-web)\/(\d+)\/?$/
-  );
-  if (!match) return null;
-  const id = Number(match[3]);
-  if (!Number.isFinite(id)) return null;
-  return {
-    kind: match[1] as "token" | "generator",
-    bootloader: match[2] as BootloaderType,
-    id,
-  };
-}
-
-function normalizeMetaText(value: unknown, maxLength: number): string | null {
-  if (typeof value !== "string") return null;
-  const collapsed = value.replace(/\s+/g, " ").trim();
-  if (!collapsed) return null;
-  if (collapsed.length <= maxLength) return collapsed;
-  if (maxLength <= 3) return collapsed.slice(0, maxLength);
-  return `${collapsed.slice(0, maxLength - 3).trimEnd()}...`;
-}
-
-function buildFallbackShareTitle(route: {
-  kind: "token" | "generator";
-  bootloader: BootloaderType;
-  id: number;
-}): string {
-  const kindLabel = route.kind === "token" ? "Token" : "Generator";
-  return `${kindLabel} #${route.id} · ${route.bootloader} · bootloader:`;
-}
-
-function buildFallbackShareDescription(route: {
-  kind: "token" | "generator";
-  bootloader: BootloaderType;
-  id: number;
-}): string {
-  return `Interactive ${route.bootloader} ${route.kind} #${route.id} on bootloader:.`;
-}
-
-async function resolveGeneratorShareMetadata(opts: {
-  env: Bindings;
-  bootloader: BootloaderType;
-  network: "mainnet" | "shadownet";
-  generatorId: number;
-}): Promise<{
-  name: string | null;
-  generatorDescription: string | null;
-  tokenDescription: string | null;
-}> {
-  let dbName: string | null = null;
-  let dbGeneratorDescription: string | null = null;
-  let dbTokenDescription: string | null = null;
-
-  try {
-    const generatorService = new GeneratorService(opts.env.DB);
-    const row = await generatorService.getGenerator(
-      opts.generatorId,
-      opts.network,
-      opts.bootloader
-    );
-    if (row) {
-      dbName = normalizeMetaText(row.name, 90);
-      dbGeneratorDescription = normalizeMetaText(row.generatorDescription, 260);
-      dbTokenDescription = normalizeMetaText(row.tokenDescription, 260);
-    }
-  } catch (error) {
-    console.warn("[resolveGeneratorShareMetadata] DB lookup failed", {
-      generatorId: opts.generatorId,
-      network: opts.network,
-      bootloader: opts.bootloader,
-      error,
-    });
-  }
-
-  // Mirror generator page behavior for generic-web:
-  // About = generator.description (on-chain) OR generatorMetadata.generatorDescription (D1).
-  if (opts.bootloader === "generic-web") {
-    const chainMeta = await fetchGenericWebGeneratorMetadata(
-      opts.network,
-      opts.generatorId
-    );
-    const chainName = normalizeMetaText(chainMeta?.name, 90);
-    const chainDescription = normalizeMetaText(chainMeta?.generatorDescription, 260);
-    const chainTokenDescription = normalizeMetaText(chainMeta?.tokenDescription, 260);
-    return {
-      name: chainName ?? dbName,
-      generatorDescription: chainDescription ?? dbGeneratorDescription,
-      tokenDescription: chainTokenDescription ?? dbTokenDescription,
-    };
-  }
-
-  // svg-js currently has no stored generator description metadata.
-  return { name: dbName, generatorDescription: null, tokenDescription: null };
-}
-
-function resolveShareNetworkFromRoute(
-  env: Bindings,
-  url: URL
-): "mainnet" | "shadownet" {
-  return resolveNetworkFromRequest(url, env).network;
-}
-
-async function resolveShareTextWithCache(opts: {
-  env: Bindings;
-  route: {
-    kind: "token" | "generator";
-    bootloader: BootloaderType;
-    id: number;
-  };
-  network: "mainnet" | "shadownet";
-}): Promise<{ title: string; description: string }> {
-  const cacheKey = `${opts.network}:${opts.route.kind}:${opts.route.bootloader}:${opts.route.id}`;
-  const now = Date.now();
-  const cached = shareMetaCache.get(cacheKey);
-  if (cached && now - cached.cachedAtMs <= SHARE_META_CACHE_TTL_MS) {
-    return { title: cached.title, description: cached.description };
-  }
-
-  const fallbackTitle = buildFallbackShareTitle(opts.route);
-  const fallbackDescription = buildFallbackShareDescription(opts.route);
-  let title = fallbackTitle;
-  let description = fallbackDescription;
-
-  try {
-    if (opts.route.kind === "generator") {
-      const generatorMeta = await resolveGeneratorShareMetadata({
-        env: opts.env,
-        bootloader: opts.route.bootloader,
-        network: opts.network,
-        generatorId: opts.route.id,
-      });
-
-      const titleBase = generatorMeta.name ?? `Generator #${opts.route.id}`;
-      title =
-        normalizeMetaText(
-          `${titleBase} · ${opts.route.bootloader} · bootloader:`,
-          140
-        ) ?? fallbackTitle;
-
-      const generatorDescriptionSource = generatorMeta.generatorDescription;
-      description =
-        normalizeMetaText(
-          generatorDescriptionSource ?? fallbackDescription,
-          280
-        ) ?? fallbackDescription;
-    } else {
-      const tokenMetadataPromise =
-        opts.route.bootloader === "svg-js"
-          ? fetchSvgJsTokenMetadata(opts.network, opts.route.id)
-          : fetchGenericWebTokenMetadata(opts.network, opts.route.id);
-
-      const tokenDbPromise = new TokenService(opts.env.DB)
-        .getToken(opts.route.id, opts.network, opts.route.bootloader)
-        .catch((error) => {
-          console.warn("[resolveShareTextWithCache] token DB lookup failed", {
-            tokenId: opts.route.id,
-            network: opts.network,
-            bootloader: opts.route.bootloader,
-            error,
-          });
-          return null;
-        });
-
-      const [tokenMetadata, tokenDbRow] = await Promise.all([
-        tokenMetadataPromise,
-        tokenDbPromise,
-      ]);
-
-      let generatorId = tokenDbRow?.generatorId ?? null;
-      if (generatorId == null && opts.route.bootloader === "generic-web") {
-        const queueInfo = await fetchGenericWebTokenQueueInfo(
-          opts.network,
-          opts.route.id
-        );
-        generatorId = queueInfo?.generatorId ?? null;
-      }
-
-      const generatorMeta =
-        generatorId != null
-          ? await resolveGeneratorShareMetadata({
-              env: opts.env,
-              bootloader: opts.route.bootloader,
-              network: opts.network,
-              generatorId,
-            })
-          : null;
-
-      const tokenName = normalizeMetaText(tokenMetadata?.name, 90);
-      const tokenDescription = normalizeMetaText(tokenMetadata?.description, 280);
-      const generatorName = normalizeMetaText(generatorMeta?.name, 70);
-
-      const titleBase =
-        tokenName ??
-        (generatorName
-          ? `${generatorName} #${opts.route.id}`
-          : `Token #${opts.route.id}`);
-
-      title =
-        normalizeMetaText(
-          `${titleBase} · ${opts.route.bootloader} · bootloader:`,
-          140
-        ) ?? fallbackTitle;
-
-      const tokenDescriptionSource =
-        opts.route.bootloader === "generic-web"
-          ? tokenDescription ?? generatorMeta?.tokenDescription
-          : null;
-      description =
-        normalizeMetaText(
-          tokenDescriptionSource ?? fallbackDescription,
-          280
-        ) ?? fallbackDescription;
-    }
-  } catch (error) {
-    console.warn("[resolveShareTextWithCache] fallback meta used", {
-      route: opts.route,
-      network: opts.network,
-      error,
-    });
-  }
-
-  const shouldCache =
-    !(
-      opts.route.kind === "generator" &&
-      opts.route.bootloader === "generic-web" &&
-      description === fallbackDescription
-    );
-  if (shouldCache) {
-    shareMetaCache.set(cacheKey, { title, description, cachedAtMs: now });
-  }
-  return { title, description };
-}
-
-async function buildSocialMetaFromRoute(env: Bindings, url: URL): Promise<{
-  title: string;
-  description: string;
-  imageUrl: string;
-  playerUrl: string;
-  pageUrl: string;
-} | null> {
-  const route = parseShareRoute(url.pathname);
-  if (!route) return null;
-
-  const network = resolveShareNetworkFromRoute(env, url);
-  const shareText = await resolveShareTextWithCache({
-    env,
-    route,
-    network,
-  });
-  const isToken = route.kind === "token";
-  const imagePath = isToken
-    ? `/${route.bootloader}/v1/thumbnail/${route.id}`
-    : `/${route.bootloader}/v1/generator-thumbnail/${route.id}`;
-
-  const imageUrl = new URL(imagePath, url.origin);
-  if (isToken) {
-    const version = url.searchParams.get("v");
-    if (version && /^\d+$/.test(version)) {
-      imageUrl.searchParams.set("v", version);
-    }
-  }
-
-  const playerUrl = new URL(
-    `/player/${route.kind}/${route.bootloader}/${route.id}`,
-    url.origin
-  );
-
-  return {
-    title: shareText.title,
-    description: shareText.description,
-    imageUrl: imageUrl.toString(),
-    playerUrl: playerUrl.toString(),
-    pageUrl: url.toString(),
-  };
-}
-
-function buildSocialMetaTags(meta: {
-  title: string;
-  description: string;
-  imageUrl: string;
-  playerUrl: string;
-  pageUrl: string;
-}): string {
-  const title = escapeHtml(meta.title);
-  const description = escapeHtml(meta.description);
-  const imageUrl = escapeHtml(meta.imageUrl);
-  const playerUrl = escapeHtml(meta.playerUrl);
-  const pageUrl = escapeHtml(meta.pageUrl);
-
-  return [
-    `<meta property="og:type" content="video.other" />`,
-    `<meta property="og:site_name" content="bootloader:" />`,
-    `<meta property="og:title" content="${title}" />`,
-    `<meta property="og:description" content="${description}" />`,
-    `<meta property="og:image" content="${imageUrl}" />`,
-    `<meta property="og:video" content="${playerUrl}" />`,
-    `<meta property="og:video:url" content="${playerUrl}" />`,
-    `<meta property="og:video:secure_url" content="${playerUrl}" />`,
-    `<meta property="og:video:type" content="text/html" />`,
-    `<meta property="og:video:width" content="800" />`,
-    `<meta property="og:video:height" content="800" />`,
-    `<meta property="og:url" content="${pageUrl}" />`,
-    `<link rel="canonical" href="${pageUrl}" />`,
-    `<meta name="robots" content="index, follow" />`,
-    `<meta name="twitter:card" content="player" />`,
-    `<meta name="twitter:site" content="@bootloader_art" />`,
-    `<meta name="twitter:title" content="${title}" />`,
-    `<meta name="twitter:description" content="${description}" />`,
-    `<meta name="twitter:image" content="${imageUrl}" />`,
-    `<meta name="twitter:player" content="${playerUrl}" />`,
-    `<meta name="twitter:player:width" content="800" />`,
-    `<meta name="twitter:player:height" content="800" />`,
-  ].join("\n    ");
-}
-
-function injectTagsIntoHead(html: string, tags: string): string {
-  const closeHeadTag = "</head>";
-  const index = html.indexOf(closeHeadTag);
-  if (index === -1) {
-    return `${tags}\n${html}`;
-  }
-  return `${html.slice(0, index)}\n    ${tags}\n  ${html.slice(index)}`;
-}
-
-function injectTitleAndDescription(
-  html: string,
-  title: string,
-  description: string
-): string {
-  const safeTitle = escapeHtml(title);
-  const safeDescription = escapeHtml(description);
-  let out = html;
-
-  if (/<title\b[^>]*>[\s\S]*?<\/title>/i.test(out)) {
-    out = out.replace(
-      /<title\b[^>]*>[\s\S]*?<\/title>/i,
-      () => `<title>${safeTitle}</title>`
-    );
-  } else {
-    out = injectTagsIntoHead(out, `<title>${safeTitle}</title>`);
-  }
-
-  if (/<meta\s+name=["']description["'][^>]*>/i.test(out)) {
-    out = out.replace(
-      /<meta\s+name=["']description["'][^>]*>/i,
-      () => `<meta name="description" content="${safeDescription}" />`
-    );
-  } else {
-    out = injectTagsIntoHead(
-      out,
-      `<meta name="description" content="${safeDescription}" />`
-    );
-  }
-
-  return out;
-}
-
-function buildViewerHtml(iframeSrc: string): string {
-  const safeSrc = escapeHtml(iframeSrc);
-  return `<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bootloader Viewer</title>
-    <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-      html,
-      body {
-        width: 100%;
-        height: 100%;
-        overflow: hidden;
-        background: #000;
-      }
-      iframe {
-        width: 100%;
-        height: 100%;
-        border: none;
-        display: block;
-      }
-      #capture-marker,
-      #traits-container {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        top: -9999px;
-        left: -9999px;
-        opacity: 0;
-        pointer-events: none;
-      }
-    </style>
-  </head>
-  <body>
-    <iframe id="content-frame" src="${safeSrc}"></iframe>
-    <div id="capture-marker" data-capture-ready="false"></div>
-    <div id="traits-container"></div>
-    <script>
-      (function () {
-        const iframe = document.getElementById('content-frame');
-        const captureMarker = document.getElementById('capture-marker');
-        const traitsContainer = document.getElementById('traits-container');
-
-        function markCapture(data) {
-          if (!captureMarker) return;
-          captureMarker.setAttribute('data-capture-ready', 'true');
-          captureMarker.setAttribute('data-timestamp', String(Date.now()));
-          if (data && data.resolution) {
-            if (data.resolution.width) {
-              captureMarker.setAttribute('data-width', String(data.resolution.width));
-            }
-            if (data.resolution.height) {
-              captureMarker.setAttribute('data-height', String(data.resolution.height));
-            }
-          }
-        }
-
-        function storeFeatures(payload) {
-          if (!traitsContainer || !payload) return;
-          try {
-            const json = JSON.stringify(payload, null, 2);
-            traitsContainer.textContent = json;
-            traitsContainer.setAttribute('data-features', json.replace(/"/g, '&quot;'));
-          } catch (error) {
-            console.warn('[viewer] failed to serialize features', error);
-          }
-        }
-
-        window.addEventListener('message', (event) => {
-          if (!iframe || event.source !== iframe.contentWindow) return;
-          const message = event.data;
-          if (!message || typeof message.id !== 'string') return;
-
-          if (message.id === 'bootloader:capture') {
-            markCapture(message.data || {});
-          }
-
-          if (message.id === 'bootloader:features') {
-            storeFeatures(message.data);
-          }
-
-        });
-
-        if (iframe) {
-          iframe.addEventListener('load', () => {
-            if (captureMarker) {
-              captureMarker.setAttribute('data-frame-loaded', String(Date.now()));
-            }
-          });
-        }
-      })();
-    </script>
-  </body>
-</html>`;
-}
 
 // =============================================================================
 // RENDER COORDINATOR DURABLE OBJECT (for thumbnail rendering)

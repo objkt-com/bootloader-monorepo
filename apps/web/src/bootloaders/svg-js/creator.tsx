@@ -122,7 +122,7 @@ export function SvgJsCreator({ className }: SvgJsCreatorProps) {
 
       if (result.success && result.generatorId) {
         // Navigate to the newly created generator
-        navigate(`/generator/${result.generatorId}`);
+        navigate(`/generator/svg-js/${result.generatorId}`);
       } else {
         setSaveError(result.error || "Failed to create generator");
       }

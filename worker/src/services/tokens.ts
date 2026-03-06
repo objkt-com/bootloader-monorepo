@@ -1,10 +1,11 @@
 import type { D1Database } from '@cloudflare/workers-types';
+import type { SharedBootloaderId } from '../../../shared/bootloaders/catalog';
 
 export interface Token {
   id: number;
   generatorId: number;
   network: 'mainnet' | 'shadownet';
-  bootloader: 'svg-js' | 'generic-web';
+  bootloader: SharedBootloaderId;
   seed: string | null;
   iteration: number | null;
   ownerAddress: string | null;
@@ -39,7 +40,7 @@ export interface StoreTokenParams {
   id: number;
   generatorId: number;
   network: 'mainnet' | 'shadownet';
-  bootloader: 'svg-js' | 'generic-web';
+  bootloader: SharedBootloaderId;
   seed?: string | null;
   iteration?: number | null;
   ownerAddress?: string | null;
@@ -163,7 +164,11 @@ export class TokenService {
   /**
    * Get a token by ID and network, optionally filtered by bootloader
    */
-  async getToken(tokenId: number, network: string, bootloader?: string): Promise<Token | null> {
+  async getToken(
+    tokenId: number,
+    network: string,
+    bootloader?: SharedBootloaderId | string
+  ): Promise<Token | null> {
     let query = `
       SELECT id, generator_id as generatorId, network, bootloader, seed, iteration,
              owner_address as ownerAddress, minted_at as mintedAt, features_json as featuresJson,
@@ -188,7 +193,11 @@ export class TokenService {
   /**
    * Get a token with its attributes, optionally filtered by bootloader
    */
-  async getTokenWithAttributes(tokenId: number, network: string, bootloader?: string): Promise<TokenWithAttributes | null> {
+  async getTokenWithAttributes(
+    tokenId: number,
+    network: string,
+    bootloader?: SharedBootloaderId | string
+  ): Promise<TokenWithAttributes | null> {
     const token = await this.getToken(tokenId, network, bootloader);
     if (!token) return null;
 
@@ -256,7 +265,7 @@ export class TokenService {
   async getAttributeNamesForGeneratorByBootloader(
     generatorId: number,
     network: string,
-    bootloader: 'svg-js' | 'generic-web'
+    bootloader: SharedBootloaderId
   ): Promise<string[]> {
     const result = await this.db
       .prepare(`
@@ -298,7 +307,7 @@ export class TokenService {
     generatorId: number,
     network: string,
     attributeName: string,
-    bootloader: 'svg-js' | 'generic-web'
+    bootloader: SharedBootloaderId
   ): Promise<Array<{ value: string; count: number }>> {
     const result = await this.db
       .prepare(`
@@ -324,7 +333,7 @@ export class TokenService {
     filters: Array<{ name: string; value: string }>,
     limit = 100,
     offset = 0,
-    bootloader?: 'svg-js' | 'generic-web'
+    bootloader?: SharedBootloaderId
   ): Promise<{ tokens: Token[]; total: number }> {
     if (filters.length === 0) {
       // No filters, return all tokens for generator
