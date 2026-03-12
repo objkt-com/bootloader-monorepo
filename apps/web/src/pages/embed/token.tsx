@@ -143,20 +143,63 @@ export function EmbedTokenPage() {
   }
 
   const ViewerComponent = getBootloader(generator.bootloaderId)?.ViewerComponent
+  const tokenArtifactUrl = (() => {
+    if (!token.artifactUri) {
+      return null
+    }
+
+    if (token.bootloaderId === 'generic-web' && token.artifactUri.startsWith('ipfs://')) {
+      const withoutPrefix = token.artifactUri.slice(7)
+      const [cidPart, queryPart] = withoutPrefix.split('?')
+      const entry = generator.manifest?.entry || 'index.html'
+      return queryPart
+        ? `${CONFIG.sandboxWorkerUrl}/ipfs/${cidPart}/${entry}?${queryPart}`
+        : `${CONFIG.sandboxWorkerUrl}/ipfs/${cidPart}/${entry}`
+    }
+
+    return token.artifactUri
+  })()
+
+  const handleArtifactLoad = () => {
+    if (token.bootloaderId === 'svg-js') {
+      const marker = document.getElementById('capture-marker')
+      if (marker) {
+        marker.setAttribute('data-capture-ready', 'true')
+        marker.setAttribute('data-timestamp', String(Date.now()))
+      }
+      return
+    }
+
+    handleReady()
+  }
 
   return (
     <div className="embed-container">
-      {ViewerComponent && (
-        <ViewerComponent
-          generator={generator}
-          seed={token.seed}
-          iteration={token.iteration}
-          params={token.params}
+      {tokenArtifactUrl ? (
+        <iframe
+          src={tokenArtifactUrl}
+          title={`${generator.name} #${token.iteration}`}
           className="embed-viewer"
-          onReady={handleReady}
-          onError={handleError}
-          isCapture={isCaptureMode}
+          sandbox="allow-scripts allow-same-origin"
+          onLoad={handleArtifactLoad}
         />
+      ) : (
+        ViewerComponent && (
+          <ViewerComponent
+            generator={
+              token.artifactCid
+                ? { ...generator, cid: token.artifactCid }
+                : generator
+            }
+            seed={token.seed}
+            iteration={token.iteration}
+            params={token.params}
+            className="embed-viewer"
+            onReady={handleReady}
+            onError={handleError}
+            isCapture={isCaptureMode}
+          />
+        )
       )}
       <div id="capture-marker" data-capture-ready="false" />
       <div id="traits-container" />
