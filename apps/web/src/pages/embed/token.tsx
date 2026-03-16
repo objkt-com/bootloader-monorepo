@@ -5,6 +5,7 @@ import type { Generator, Token } from '@/types/generator'
 import type { BootloaderId } from '@/types/bootloader'
 import { getBootloader } from '@/lib/bootloader-registry'
 import { tzktService } from '@/services/tzkt'
+import { buildGenericWebProjectUrl } from '@/bootloaders/generic-web/url'
 
 /**
  * Embed page for rendering token previews full-screen.
@@ -25,6 +26,14 @@ export function EmbedTokenPage() {
   const [error, setError] = useState<string | null>(null)
 
   const isCaptureMode = searchParams.get('c') === 'true'
+  const captureMode =
+    generator?.bootloaderId === 'generic-web'
+      ? generator.manifest?.capture?.mode || 'auto'
+      : 'trigger'
+  const captureDelayMs =
+    generator?.bootloaderId === 'generic-web'
+      ? generator.manifest?.capture?.delayMs ?? 5000
+      : 0
 
   useEffect(() => {
     async function fetchToken() {
@@ -107,16 +116,33 @@ export function EmbedTokenPage() {
     return () => window.removeEventListener('message', handleMessage)
   }, [isCaptureMode])
 
+  const markCaptureReady = () => {
+    const marker = document.getElementById('capture-marker')
+    if (marker) {
+      marker.setAttribute('data-capture-ready', 'true')
+      marker.setAttribute('data-timestamp', String(Date.now()))
+    }
+  }
+
   const handleReady = () => {
-    if (isCaptureMode) {
-      setTimeout(() => {
+    if (!isCaptureMode) {
+      return
+    }
+
+    if (generator?.bootloaderId === 'generic-web' && captureMode === 'trigger') {
+      // Wait for explicit $bootloader.capture(), but keep a last-resort escape hatch.
+      window.setTimeout(() => {
         const marker = document.getElementById('capture-marker')
         if (marker && marker.getAttribute('data-capture-ready') !== 'true') {
           console.warn('[embed] Fallback: marking capture ready after timeout')
           marker.setAttribute('data-capture-ready', 'true')
         }
       }, 30000)
+      return
     }
+
+    const delay = Math.max(0, captureDelayMs)
+    window.setTimeout(markCaptureReady, delay)
   }
 
   const handleError = (err: Error) => {
@@ -151,10 +177,15 @@ export function EmbedTokenPage() {
     if (token.bootloaderId === 'generic-web' && token.artifactUri.startsWith('ipfs://')) {
       const withoutPrefix = token.artifactUri.slice(7)
       const [cidPart, queryPart] = withoutPrefix.split('?')
-      const entry = generator.manifest?.entry || 'index.html'
-      return queryPart
-        ? `${CONFIG.sandboxWorkerUrl}/ipfs/${cidPart}/${entry}?${queryPart}`
-        : `${CONFIG.sandboxWorkerUrl}/ipfs/${cidPart}/${entry}`
+      const query = new URLSearchParams(queryPart || '')
+      return buildGenericWebProjectUrl({
+        cid: cidPart,
+        manifest: generator.manifest,
+        seed: query.get('s') || token.seed,
+        iteration: Number.parseInt(query.get('i') || String(token.iteration), 10),
+        params: token.params,
+        isCapture: isCaptureMode,
+      })
     }
 
     return token.artifactUri
@@ -162,11 +193,7 @@ export function EmbedTokenPage() {
 
   const handleArtifactLoad = () => {
     if (token.bootloaderId === 'svg-js') {
-      const marker = document.getElementById('capture-marker')
-      if (marker) {
-        marker.setAttribute('data-capture-ready', 'true')
-        marker.setAttribute('data-timestamp', String(Date.now()))
-      }
+      markCaptureReady()
       return
     }
 
