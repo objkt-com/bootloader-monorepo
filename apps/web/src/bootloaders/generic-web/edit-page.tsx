@@ -228,10 +228,31 @@ export function GeneratorEditPage() {
     [handleFile]
   );
 
+  const selectedThumbnailJob =
+    selectedThumbnail ? renderJobs[selectedThumbnail] : undefined;
+  const hasValidThumbnailSelection = Boolean(
+    selectedThumbnailJob &&
+      selectedThumbnailJob.state === "complete" &&
+      selectedThumbnailJob.result?.thumbnailKey &&
+      selectedThumbnailJob.seed
+  );
+  const hasUploadedNewVersion = Boolean(
+    newCid &&
+      generator?.cid &&
+      newCid !== generator.cid
+  );
+
   // Handle save
   const handleSave = useCallback(async () => {
     if (!tezos || !generator || !id || !name.trim() || !user?.id || !authToken)
       return;
+
+    if (hasUploadedNewVersion && !hasValidThumbnailSelection) {
+      setSaveError(
+        "Upload a new version, generate renders, and select a valid thumbnail before saving."
+      );
+      return;
+    }
 
     setIsSaving(true);
     setSaveError(null);
@@ -241,8 +262,8 @@ export function GeneratorEditPage() {
       const artifactCid = newCid || generator.cid || "";
 
       const effectiveThumbnailSeed =
-        selectedThumbnail && renderJobs[selectedThumbnail]?.seed
-          ? renderJobs[selectedThumbnail].seed
+        selectedThumbnailJob?.seed
+          ? selectedThumbnailJob.seed
           : thumbnailSeed.trim();
 
       // Create metadata JSON with descriptions
@@ -311,10 +332,11 @@ export function GeneratorEditPage() {
     name,
     newCid,
     generatorDescription,
+    hasUploadedNewVersion,
+    hasValidThumbnailSelection,
     tokenDescription,
     thumbnailSeed,
-    selectedThumbnail,
-    renderJobs,
+    selectedThumbnailJob,
     user,
     authToken,
     navigate,
@@ -845,13 +867,20 @@ export function GeneratorEditPage() {
               </Button>
               <Button
                 onClick={handleSave}
-                disabled={!isConnected || !name.trim() || isSaving}
+                disabled={
+                  !isConnected ||
+                  !name.trim() ||
+                  isSaving ||
+                  (hasUploadedNewVersion && !hasValidThumbnailSelection)
+                }
               >
                 {isSaving ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Saving...
                   </>
+                ) : hasUploadedNewVersion && !hasValidThumbnailSelection ? (
+                  "Select a thumbnail to save"
                 ) : (
                   <>
                     <Save className="mr-2 h-4 w-4" />
@@ -860,6 +889,12 @@ export function GeneratorEditPage() {
                 )}
               </Button>
             </div>
+            {hasUploadedNewVersion && !hasValidThumbnailSelection && (
+              <p className="text-xs text-muted-foreground">
+                A completed render must be selected as the thumbnail before a
+                new uploaded version can be saved.
+              </p>
+            )}
           </div>
         </div>
       </div>

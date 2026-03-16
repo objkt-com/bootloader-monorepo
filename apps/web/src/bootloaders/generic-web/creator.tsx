@@ -184,19 +184,30 @@ export function GenericWebCreator({ className }: GenericWebCreatorProps) {
     setPreviewNonce((n) => n + 1);
   };
 
+  const completedRenders = renderList.filter((job) => job.state === "complete");
+  const selectedThumbnailJob =
+    selectedThumbnail ? renderJobs[selectedThumbnail] : undefined;
+  const hasValidThumbnailSelection = Boolean(
+    selectedThumbnailJob &&
+      selectedThumbnailJob.state === "complete" &&
+      selectedThumbnailJob.result?.thumbnailKey &&
+      selectedThumbnailJob.seed
+  );
+
   // Publish generator on-chain
   const handlePublish = useCallback(async () => {
     if (!tezos || !cid || !name.trim() || !user?.id || !authToken) return;
+
+    if (!hasValidThumbnailSelection || !selectedThumbnailJob?.seed) {
+      setPublishError("Generate renders and select a valid thumbnail before publishing.");
+      return;
+    }
 
     setIsPublishing(true);
     setPublishError(null);
 
     try {
-      // Get the thumbnail seed - either from selected render or current preview seed
-      const thumbnailSeed =
-        selectedThumbnail && renderJobs[selectedThumbnail]?.seed
-          ? renderJobs[selectedThumbnail].seed
-          : seed;
+      const thumbnailSeed = selectedThumbnailJob.seed;
 
       // Create metadata JSON with descriptions and thumbnail seed
       const metadata: {
@@ -272,14 +283,11 @@ export function GenericWebCreator({ className }: GenericWebCreatorProps) {
     user,
     authToken,
     navigate,
-    selectedThumbnail,
-    renderJobs,
-    seed,
+    hasValidThumbnailSelection,
+    selectedThumbnailJob,
   ]);
 
   const isMobile = useIsMobile();
-
-  const completedRenders = renderList.filter((job) => job.state === "complete");
 
   // Sidebar content (params or upload zone)
   const renderSidebar = () => (
@@ -451,7 +459,13 @@ export function GenericWebCreator({ className }: GenericWebCreatorProps) {
               )}
               <Button
                 className="w-full"
-                disabled={!isConnected || !cid || !name.trim() || isPublishing}
+                disabled={
+                  !isConnected ||
+                  !cid ||
+                  !name.trim() ||
+                  isPublishing ||
+                  !hasValidThumbnailSelection
+                }
                 onClick={handlePublish}
               >
                 {isPublishing ? (
@@ -459,6 +473,8 @@ export function GenericWebCreator({ className }: GenericWebCreatorProps) {
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Publishing...
                   </>
+                ) : !hasValidThumbnailSelection ? (
+                  "Select a thumbnail to publish"
                 ) : !isConnected ? (
                   "Connect wallet to publish"
                 ) : (
@@ -472,6 +488,12 @@ export function GenericWebCreator({ className }: GenericWebCreatorProps) {
                 Publishing creates your generator on-chain. You'll be able to
                 set up pricing and editions right after.
               </p>
+              {!hasValidThumbnailSelection && (
+                <p className="text-xs text-muted-foreground">
+                  A completed render must be selected as the generator thumbnail
+                  before publishing.
+                </p>
+              )}
               <p className="text-xs text-muted-foreground">
                 Primary sale fee: {primarySaleFeePercent}% of each mint.
               </p>
