@@ -5,18 +5,10 @@ import { CONFIG, getContractAddressForBootloader, getNetworkConfig } from '@/con
 import type { BootloaderId } from '@/types/bootloader'
 import { mintFromGeneratorConfig } from '@/player-mint-client'
 import { isSharedBootloaderId } from '../../../../shared/bootloaders/catalog'
-
-function randomHex(bytes: number): string {
-  const arr = new Uint8Array(bytes)
-  crypto.getRandomValues(arr)
-  let out = ''
-  for (const b of arr) {
-    out += b.toString(16).padStart(2, '0')
-  }
-  return out
-}
+import { GENERIC_WEB_SEED_BYTES, randomHex } from '../../../../shared/bootloaders/seed-hex'
 
 type MintState = 'idle' | 'connecting' | 'awaiting' | 'minted' | 'failed'
+const SVG_JS_PLAYER_SEED_BYTES = 16
 
 export function PlayerPage() {
   const { kind, bootloader, id } = useParams<{
@@ -26,7 +18,9 @@ export function PlayerPage() {
   }>()
   const [searchParams, setSearchParams] = useSearchParams()
   const [mintState, setMintState] = useState<MintState>('idle')
-  const [generatedSeed] = useState(() => randomHex(16))
+  const [generatedSeed] = useState(() =>
+    randomHex(bootloader === 'generic-web' ? GENERIC_WEB_SEED_BYTES : SVG_JS_PLAYER_SEED_BYTES)
+  )
 
   const isGenerator = kind === 'generator'
   const isToken = kind === 'token'
@@ -135,7 +129,12 @@ export function PlayerPage() {
   function onRandomizeSeed() {
     if (!isGenerator) return
     const next = new URLSearchParams(searchParams)
-    next.set('s', randomHex(16))
+    next.set(
+      's',
+      randomHex(
+        bootloader === 'generic-web' ? GENERIC_WEB_SEED_BYTES : SVG_JS_PLAYER_SEED_BYTES
+      )
+    )
     next.set('i', '0')
     setSearchParams(next, { replace: true })
   }

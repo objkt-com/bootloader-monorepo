@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { BootloaderGeneratorDetailViewProps } from '@/bootloaders/page-types'
+import { GENERIC_WEB_SEED_HEX_LENGTH } from '../../../../../shared/bootloaders/seed-hex'
 
 export function GenericWebGeneratorDetailView({
   generator,
@@ -38,9 +39,9 @@ export function GenericWebGeneratorDetailView({
           <Label className="text-xs shrink-0">Seed</Label>
           <Input
             value={seed}
-            maxLength={32}
+            maxLength={GENERIC_WEB_SEED_HEX_LENGTH}
             onChange={(event) => onSeedChange(event.target.value)}
-            className="w-32 sm:w-40 font-mono text-xs h-8"
+            className="w-48 sm:w-80 font-mono text-xs h-8"
           />
         </div>
         <div className="flex-1" />

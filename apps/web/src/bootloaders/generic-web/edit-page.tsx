@@ -26,6 +26,7 @@ import {
   createGenericWebSessionFromCid,
   GENERIC_WEB_MAX_RENDER_BATCH,
   GENERIC_WEB_MAX_RENDER_PER_MINUTE,
+  GENERIC_WEB_SEED_HEX_LENGTH,
   generateGenericWebSeed,
   storeGenericWebMetadataRecord,
   uploadGenericWebMetadataJson,
@@ -476,7 +477,7 @@ export function GeneratorEditPage() {
               <Label className="block mb-2">Preview Seed</Label>
               <Input
                 value={previewSeed}
-                maxLength={32}
+                maxLength={GENERIC_WEB_SEED_HEX_LENGTH}
                 onChange={(e) => setPreviewSeed(e.target.value)}
                 className="font-mono text-xs"
               />
@@ -525,7 +526,7 @@ export function GeneratorEditPage() {
               <div className="flex gap-2">
                 <Input
                   value={thumbnailSeed}
-                  maxLength={32}
+                  maxLength={GENERIC_WEB_SEED_HEX_LENGTH}
                   onChange={(e) => setThumbnailSeed(e.target.value)}
                   placeholder="Seed used for generator thumbnail"
                   className="font-mono text-xs"
@@ -684,7 +685,7 @@ export function GeneratorEditPage() {
                   <div className="mb-3">
                     <Input
                       value={previewSeed}
-                      maxLength={32}
+                      maxLength={GENERIC_WEB_SEED_HEX_LENGTH}
                       onChange={(e) => setPreviewSeed(e.target.value)}
                       placeholder="Seed to render"
                       className="font-mono text-xs h-8 mb-2"

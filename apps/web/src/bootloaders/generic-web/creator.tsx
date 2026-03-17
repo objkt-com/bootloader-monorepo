@@ -29,6 +29,7 @@ import {
   createGenericWebSession,
   GENERIC_WEB_MAX_RENDER_BATCH,
   GENERIC_WEB_MAX_RENDER_PER_MINUTE,
+  GENERIC_WEB_SEED_HEX_LENGTH,
   generateGenericWebSeed,
   storeGenericWebMetadataRecord,
   uploadGenericWebMetadataJson,
@@ -540,7 +541,7 @@ export function GenericWebCreator({ className }: GenericWebCreatorProps) {
               <div className="mb-4">
                 <Input
                   value={seed}
-                  maxLength={32}
+                  maxLength={GENERIC_WEB_SEED_HEX_LENGTH}
                   onChange={(e) => {
                     setSeed(e.target.value);
                     setPreviewNonce((n) => n + 1);
@@ -777,7 +778,7 @@ export function GenericWebCreator({ className }: GenericWebCreatorProps) {
           <span className="text-xs text-muted-foreground">Seed:</span>
           <Input
             value={seed}
-            maxLength={32}
+            maxLength={GENERIC_WEB_SEED_HEX_LENGTH}
             onChange={(e) => {
               setSeed(e.target.value);
               setPreviewNonce((n) => n + 1);

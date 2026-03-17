@@ -2,7 +2,7 @@
    - $bootloader.capture() - signal that artwork is ready for thumbnail capture
    - $bootloader.setFeatures({ key: value }) - set token attributes/traits
    - $bootloader.rnd - seeded random number generator (0-1)
-   - $bootloader.hash - 32-char hex seed
+   - $bootloader.hash - 64-char hex seed
    - $bootloader.iteration - edition number
    - $bootloader.isCapture - true when in capture mode
 */
@@ -23,14 +23,23 @@
     }
   }
 
-  function parseSeed(hex) {
+  function normalizeSeed(hex) {
     if (!hex || typeof hex !== 'string') {
-      hex = Array(32)
+      hex = Array(64)
         .fill(0)
         .map(() => Math.floor(Math.random() * 16).toString(16))
         .join('');
     }
-    hex = hex.replace(/[^0-9a-f]/gi, 'f').padStart(32, '0').toLowerCase();
+    return hex
+      .trim()
+      .replace(/^0x/i, '')
+      .replace(/[^0-9a-f]/gi, 'f')
+      .toLowerCase()
+      .slice(-64)
+      .padStart(64, '0');
+  }
+
+  function parseSeed(hex) {
     const bytes = [];
     for (let i = 0; i < hex.length; i += 2) bytes.push(parseInt(hex.substring(i, i + 2), 16));
     const abcd = new Uint32Array(4);
@@ -72,17 +81,15 @@
     return g;
   }
 
-  function u32ToHex(u32) {
-    return Array.from(u32, (v) => v.toString(16).padStart(8, '0')).join('');
-  }
-
   const q = new URLSearchParams(location.search);
   const seed = q.get('s');
-  const rnd = sfc32(parseSeed(seed));
+  const normalizedSeed = normalizeSeed(seed);
+  const parsedSeed = parseSeed(normalizedSeed);
+  const rnd = sfc32(parsedSeed);
 
   window.$bootloader = {
     version: VERSION,
-    hash: u32ToHex(parseSeed(seed)),
+    hash: normalizedSeed,
     rnd,
     iteration: parseInt(q.get('i') || '1', 10),
     isCapture: q.get('c') === 'true',

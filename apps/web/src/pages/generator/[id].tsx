@@ -38,6 +38,10 @@ import { useTheme } from "@/hooks/use-theme";
 import { useCountdown, formatCountdown } from "@/hooks/use-countdown";
 import { useTokenCardSize } from "@/hooks/use-token-card-size";
 import { TokenCard, TokenCardSkeleton } from "@/components/token-card";
+import {
+  generateGenericWebSeedHex,
+  randomHex,
+} from "../../../../../shared/bootloaders/seed-hex";
 
 // Storage cost constants (matching on-chain behavior)
 const MUTEZ_PER_BYTE = 250;
@@ -102,9 +106,12 @@ const FEATURE_FILTER_EMPTY = "__bl_filter_empty__";
 const GENERATOR_PENDING_RETRY_MAX_ATTEMPTS = 10;
 const GENERATOR_PENDING_RETRY_DELAY_MS = 1500;
 
-function generateRandomSeed(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(16));
-  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+const SVG_JS_PREVIEW_SEED_BYTES = 16;
+
+function generatePreviewSeed(bootloaderId?: string): string {
+  return bootloaderId === "generic-web"
+    ? generateGenericWebSeedHex()
+    : randomHex(SVG_JS_PREVIEW_SEED_BYTES);
 }
 
 export function GeneratorDetailPage() {
@@ -176,7 +183,7 @@ export function GeneratorDetailPage() {
     bootloaderId
   );
 
-  const [seed, setSeedValue] = useState(() => generateRandomSeed());
+  const [seed, setSeedValue] = useState(() => generatePreviewSeed(bootloaderParam));
   const [iteration] = useState(0);
   const [copied, setCopied] = useState(false);
 
@@ -340,7 +347,7 @@ export function GeneratorDetailPage() {
   }, [hasSvgCode, generator?.code, generator?.name, generator?.id]);
 
   const handleReroll = () => {
-    setSeedValue(generateRandomSeed());
+    setSeedValue(generatePreviewSeed(generator?.bootloaderId ?? bootloaderParam));
   };
 
   const handleCopyLink = () => {

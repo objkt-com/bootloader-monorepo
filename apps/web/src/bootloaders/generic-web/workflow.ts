@@ -7,6 +7,11 @@ import {
   parseBootWebManifest,
   stripArchivePrefix,
 } from "../../../../../shared/bootloaders/boot-web";
+export {
+  GENERIC_WEB_SEED_BYTES,
+  GENERIC_WEB_SEED_HEX_LENGTH,
+  generateGenericWebSeedHex as generateGenericWebSeed,
+} from "../../../../../shared/bootloaders/seed-hex";
 
 const MB = 1024 * 1024;
 
@@ -58,11 +63,6 @@ export interface GenericWebMetadataRecordInput {
 
 export function formatMegabytes(bytes: number): string {
   return `${(bytes / MB).toFixed(1)} MB`;
-}
-
-export function generateGenericWebSeed(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(16));
-  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 async function validateGenericWebArchive(file: File): Promise<void> {

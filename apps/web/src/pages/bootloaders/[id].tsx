@@ -281,7 +281,7 @@ function GenericWebDocs() {
                 </code>
                 <span className="text-muted-foreground ml-2">: string</span>
                 <p className="text-sm text-muted-foreground mt-1">
-                  32-character hex string. The unique seed for this token. Same
+                  64-character hex string. The unique seed for this token. Same
                   seed = same output.
                 </p>
               </div>

@@ -6,6 +6,7 @@ import type { BootloaderId } from "@/types/bootloader";
 import { decodeParamsFromQuery } from "@/bootloaders/generic-web/param-encoder";
 import { getBootloader } from "@/lib/bootloader-registry";
 import { tzktService } from "@/services/tzkt";
+import { GENERIC_WEB_PREVIEW_SEED } from "../../../../../shared/bootloaders/seed-hex";
 
 /**
  * Embed page for rendering generator previews full-screen.
@@ -25,7 +26,11 @@ export function EmbedGeneratorPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const seed = searchParams.get("s") || CONFIG.defaultPreviewSeed;
+  const seed =
+    searchParams.get("s") ||
+    (bootloader === "generic-web"
+      ? GENERIC_WEB_PREVIEW_SEED
+      : CONFIG.defaultPreviewSeed);
   const iteration = parseInt(searchParams.get("i") || "1", 10);
   const isCaptureMode = searchParams.get("c") === "true";
   const captureMode =

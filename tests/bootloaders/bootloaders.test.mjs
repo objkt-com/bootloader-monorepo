@@ -1,5 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs/promises";
+import vm from "node:vm";
 
 const bootWeb = await import("../../tmp/bootloader-tests/shared/bootloaders/boot-web.js");
 const bootWebParams = await import(
@@ -9,6 +11,7 @@ const catalog = await import("../../tmp/bootloader-tests/shared/bootloaders/cata
 const contracts = await import(
   "../../tmp/bootloader-tests/shared/bootloaders/contracts.js"
 );
+const seedHex = await import("../../tmp/bootloader-tests/seed-hex.js");
 
 test("boot:web manifest accepts omitted entry and resolves defaults", () => {
   const manifest = bootWeb.parseBootWebManifest(
@@ -111,4 +114,70 @@ test("shared contract map resolves known contracts", () => {
     "KT1Mub11JnyhBA8huycUekE26DFB5VW4SDqh"
   );
   assert.equal(contracts.getSharedBootloaderRngContract("svg-js", "mainnet"), "");
+});
+
+test("generic-web seed helpers produce normalized 32-byte hex seeds", () => {
+  const generated = seedHex.generateGenericWebSeedHex();
+  assert.match(generated, /^[0-9a-f]{64}$/);
+  assert.equal(generated.length, seedHex.GENERIC_WEB_SEED_HEX_LENGTH);
+  assert.equal(seedHex.GENERIC_WEB_PREVIEW_SEED.length, 64);
+
+  assert.equal(
+    seedHex.normalizeGenericWebSeedHex("0xAbC"),
+    `${"0".repeat(61)}abc`
+  );
+  assert.equal(
+    seedHex.normalizeGenericWebSeedHex("g-1"),
+    `${"0".repeat(61)}ff1`
+  );
+});
+
+test("public generic-web snippet preserves normalized 64-char hashes", async () => {
+  const snippetPath = new URL(
+    "../../apps/web/public/snippet/bootloader.js",
+    import.meta.url
+  );
+  const snippetSource = await fs.readFile(snippetPath, "utf8");
+  const inputSeed = "0123456789abcdef".repeat(4);
+  const postedMessages = [];
+
+  const context = {
+    URL,
+    URLSearchParams,
+    crypto: globalThis.crypto,
+    location: {
+      search: `?s=${inputSeed}&i=7&c=true`,
+    },
+    document: {
+      referrer: "https://media.shadownet.bootloader.art/embed/generator/generic-web/1",
+    },
+    Date,
+    Math,
+  };
+
+  const parent = {
+    postMessage(message, origin) {
+      postedMessages.push({ message, origin });
+    },
+  };
+
+  context.window = {
+    parent,
+    location: context.location,
+    document: context.document,
+    crypto: context.crypto,
+    Math,
+    Date,
+  };
+  context.window.window = context.window;
+
+  vm.createContext(context);
+  vm.runInContext(snippetSource, context);
+
+  assert.equal(context.window.$bootloader.hash, inputSeed);
+  assert.equal(context.window.$bootloader.iteration, 7);
+  assert.equal(context.window.$bootloader.isCapture, true);
+  assert.ok(
+    postedMessages.some(({ message }) => message?.id === "bootloader:ready")
+  );
 });
