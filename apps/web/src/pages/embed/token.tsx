@@ -24,15 +24,16 @@ export function EmbedTokenPage() {
   const [generator, setGenerator] = useState<Generator | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const isWebProjectBootloader = generator ? generator.bootloaderId !== 'svg-js' : false
 
   const isCaptureMode = searchParams.get('c') === 'true'
   const captureMode =
-    generator?.bootloaderId === 'generic-web'
-      ? generator.manifest?.capture?.mode || 'auto'
+    isWebProjectBootloader
+      ? generator?.manifest?.capture?.mode || 'auto'
       : 'trigger'
   const captureDelayMs =
-    generator?.bootloaderId === 'generic-web'
-      ? generator.manifest?.capture?.delayMs ?? 5000
+    isWebProjectBootloader
+      ? generator?.manifest?.capture?.delayMs ?? 5000
       : 0
 
   useEffect(() => {
@@ -56,7 +57,7 @@ export function EmbedTokenPage() {
         }
 
         let manifest = data.generator.manifest
-        if (data.generator.bootloaderId === 'generic-web' && data.generator.cid) {
+        if (data.generator.bootloaderId !== 'svg-js' && data.generator.cid) {
           try {
             const manifestRes = await fetch(
               `${CONFIG.sandboxWorkerUrl}/ipfs/${data.generator.cid}/manifest.json`
@@ -129,7 +130,7 @@ export function EmbedTokenPage() {
       return
     }
 
-    if (generator?.bootloaderId === 'generic-web' && captureMode === 'trigger') {
+    if (generator?.bootloaderId !== 'svg-js' && captureMode === 'trigger') {
       // Wait for explicit $bootloader.capture(), but keep a last-resort escape hatch.
       window.setTimeout(() => {
         const marker = document.getElementById('capture-marker')
@@ -174,7 +175,7 @@ export function EmbedTokenPage() {
       return null
     }
 
-    if (token.bootloaderId === 'generic-web' && token.artifactUri.startsWith('ipfs://')) {
+    if (token.bootloaderId !== 'svg-js' && token.artifactUri.startsWith('ipfs://')) {
       const withoutPrefix = token.artifactUri.slice(7)
       const [cidPart, queryPart] = withoutPrefix.split('?')
       const query = new URLSearchParams(queryPart || '')
@@ -207,6 +208,7 @@ export function EmbedTokenPage() {
           src={tokenArtifactUrl}
           title={`${generator.name} #${token.iteration}`}
           className="embed-viewer"
+          allow="accelerometer; gyroscope; magnetometer"
           sandbox="allow-scripts allow-same-origin"
           onLoad={handleArtifactLoad}
         />

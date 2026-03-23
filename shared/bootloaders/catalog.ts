@@ -1,6 +1,7 @@
 import { BOOT_WEB_SPEC } from "./boot-web";
+import { BOOT_P5_SPEC } from "./boot-p5";
 
-export const BOOTLOADER_IDS = ["svg-js", "generic-web"] as const;
+export const BOOTLOADER_IDS = ["svg-js", "generic-web", "p5-js"] as const;
 export type SharedBootloaderId = (typeof BOOTLOADER_IDS)[number];
 
 export interface SharedBootloaderCatalogEntry {
@@ -30,6 +31,15 @@ export const SHARED_BOOTLOADER_CATALOG: Record<
     id: "generic-web",
     currentVersion: "1.0.0",
     spec: BOOT_WEB_SPEC,
+    storageType: "ipfs",
+    supportsIndexedFeatures: true,
+    supportsDedicatedEditRoute: true,
+    supportsGeneratorMetadata: true,
+  },
+  "p5-js": {
+    id: "p5-js",
+    currentVersion: "1.0.0",
+    spec: BOOT_P5_SPEC,
     storageType: "ipfs",
     supportsIndexedFeatures: true,
     supportsDedicatedEditRoute: true,

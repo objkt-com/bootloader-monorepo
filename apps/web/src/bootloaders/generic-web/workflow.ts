@@ -1,6 +1,7 @@
 import JSZip from "jszip";
 import type { TezosToolkit } from "@taquito/taquito";
 import { CONFIG } from "@/config";
+import type { BootloaderId } from "@/types/bootloader";
 import {
   detectArchiveRootPrefix,
   normalizeArchivePath,
@@ -51,6 +52,7 @@ export interface GenericWebSessionData {
 
 export interface GenericWebMetadataRecordInput {
   generatorId: string;
+  bootloaderId?: BootloaderId;
   name: string;
   artifactCid: string;
   metadataCid?: string;
@@ -228,6 +230,7 @@ export async function uploadGenericWebMetadataJson(
 
 export async function storeGenericWebMetadataRecord({
   generatorId,
+  bootloaderId = "generic-web",
   name,
   artifactCid,
   metadataCid,
@@ -239,7 +242,7 @@ export async function storeGenericWebMetadataRecord({
 }: GenericWebMetadataRecordInput): Promise<void> {
   const creatorAddress = await tezos.wallet.pkh();
   await fetch(
-    `${CONFIG.sandboxWorkerUrl}/generic-web/v1/generators/${generatorId}/metadata?network=${CONFIG.network}`,
+    `${CONFIG.sandboxWorkerUrl}/${bootloaderId}/v1/generators/${generatorId}/metadata?network=${CONFIG.network}`,
     {
       method: "POST",
       headers: {
@@ -264,11 +267,13 @@ export async function storeGenericWebMetadataRecord({
 export async function triggerGenericWebTokenIndexer(
   tokenId: string,
   authToken: string,
-  options?: { waitForCompletion?: boolean }
+  options?: { waitForCompletion?: boolean; bootloaderId?: BootloaderId }
 ): Promise<void> {
   if (CONFIG.network !== "shadownet") {
     return;
   }
+
+  const bootloaderId = options?.bootloaderId || "generic-web";
 
   const query = new URLSearchParams({
     network: "shadownet",
@@ -278,7 +283,7 @@ export async function triggerGenericWebTokenIndexer(
   }
 
   const response = await fetch(
-    `${CONFIG.sandboxWorkerUrl}/generic-web/v1/indexer/tokens/${encodeURIComponent(
+    `${CONFIG.sandboxWorkerUrl}/${bootloaderId}/v1/indexer/tokens/${encodeURIComponent(
       tokenId
     )}/trigger?${query.toString()}`,
     {

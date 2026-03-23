@@ -1,13 +1,15 @@
 import type { Generator, Token } from '@/types/generator'
+import type { BootloaderId } from '@/types/bootloader'
 import { stripIpfsPrefix, hexToString } from '@/lib/chain-codec'
 import { parseGenericWebArtifactUri } from './artifact-uri'
 import type { TzktClient } from '@/services/tzkt-client'
+import { SHARED_BOOTLOADER_CATALOG } from '../../../../../shared/bootloaders/catalog'
 
 interface GenericWebGeneratorBigMapValue {
   name: string
-  description: string
   author: string
-  artifact_cid: string
+  artifact_uri: string
+  bootloader_spec_id: string
   n_tokens: string
   sale: {
     editions: string
@@ -41,22 +43,26 @@ function readGenericWebArtifactUri(
     return hexToString(tokenInfo._artifactUri)
   }
 
-  // Legacy compatibility for the currently deployed snake_case metadata.
-  if (tokenInfo.artifact_uri) {
-    return hexToString(tokenInfo.artifact_uri)
-  }
-  if (tokenInfo._artifact_uri) {
-    return hexToString(tokenInfo._artifact_uri)
-  }
-
   return undefined
+}
+
+function mapWebProjectBootloaderId(specHex: string): BootloaderId | null {
+  const spec = hexToString(specHex)
+  const match = Object.values(SHARED_BOOTLOADER_CATALOG).find(
+    (entry) => entry.spec === spec
+  )
+  return (match?.id as BootloaderId | undefined) || null
 }
 
 function mapGenericWebGenerator(
   keyData: { key: string; value: GenericWebGeneratorBigMapValue; firstLevel?: number },
   includeLevels = true
-): Generator {
+): Generator | null {
   const gen = keyData.value
+  const bootloaderId = mapWebProjectBootloaderId(gen.bootloader_spec_id)
+  if (!bootloaderId) {
+    return null
+  }
   const flag = parseInt(gen.flag || '0')
   const sale = gen.sale
   const supply = parseInt(gen.n_tokens || '0')
@@ -65,14 +71,14 @@ function mapGenericWebGenerator(
   const notSoldOut = maxSupply === 0 || supply < maxSupply
   const startTimePassed = !sale?.start_time || new Date(sale.start_time) <= new Date()
   const mintingOpen = sale !== null && notPaused && notSoldOut && startTimePassed
+  const artifactUriBase = hexToString(gen.artifact_uri)
 
   return {
     id: keyData.key,
     name: hexToString(gen.name),
-    description: hexToString(gen.description),
     creator: gen.author,
-    bootloaderId: 'generic-web',
-    cid: stripIpfsPrefix(hexToString(gen.artifact_cid)),
+    bootloaderId,
+    cid: stripIpfsPrefix(artifactUriBase),
     createdAt: '',
     updatedAt: '',
     version: parseInt(gen.version || '1'),
@@ -102,13 +108,16 @@ export async function getGenericWebGenerators(
     sortDesc: 'firstLevel',
   })
 
-  return keys.map((keyData) => mapGenericWebGenerator(keyData))
+  return keys
+    .map((keyData) => mapGenericWebGenerator(keyData))
+    .filter((generator): generator is Generator => Boolean(generator))
 }
 
 export async function getGenericWebGenerator(
   client: TzktClient,
   contractAddress: string,
-  generatorId: string
+  generatorId: string,
+  bootloaderId?: BootloaderId
 ): Promise<Generator | null> {
   const generatorsBigMap = await client.getBigMapByPath('generators', contractAddress)
   if (!generatorsBigMap) {
@@ -123,7 +132,14 @@ export async function getGenericWebGenerator(
     return null
   }
 
-  return mapGenericWebGenerator(keyData, false)
+  const generator = mapGenericWebGenerator(keyData, false)
+  if (!generator) {
+    return null
+  }
+  if (bootloaderId && generator.bootloaderId !== bootloaderId) {
+    return null
+  }
+  return generator
 }
 
 export async function getGenericWebGeneratorMints(
@@ -162,7 +178,7 @@ export async function getGenericWebGeneratorMints(
     tokens.push({
       id: tokenId,
       generatorId,
-      bootloaderId: 'generic-web',
+      bootloaderId: generatorData?.bootloaderId || 'generic-web',
       owner,
       seed: extra.raw_seed || '',
       iteration: parseInt(extra.iteration_number || '0'),
@@ -177,7 +193,8 @@ export async function getGenericWebGeneratorMints(
 export async function getGenericWebToken(
   client: TzktClient,
   contractAddress: string,
-  tokenId: string
+  tokenId: string,
+  bootloaderId?: BootloaderId
 ): Promise<Token | null> {
   const tokenExtraBigMap = await client.getBigMapByPath('token_extra', contractAddress)
   if (!tokenExtraBigMap) {
@@ -201,6 +218,10 @@ export async function getGenericWebToken(
 
   const generator = await getGenericWebGenerator(client, contractAddress, extra.generatorId)
   if (!generator) {
+    return null
+  }
+
+  if (bootloaderId && generator.bootloaderId !== bootloaderId) {
     return null
   }
 
@@ -232,7 +253,7 @@ export async function getGenericWebToken(
   return {
     id: tokenId,
     generatorId: extra.generatorId,
-    bootloaderId: 'generic-web',
+    bootloaderId: generator.bootloaderId,
     owner,
     seed: extra.seed,
     iteration: extra.iteration,

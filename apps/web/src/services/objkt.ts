@@ -4,6 +4,7 @@ import {
   getGenericWebContractAddress,
 } from "@/config";
 import type { BootloaderId } from "@/types/bootloader";
+import { SHARED_BOOTLOADER_CATALOG } from "../../../../shared/bootloaders/catalog";
 
 // Cache for user profiles to avoid repeated API calls
 const userProfileCache = new Map<string, UserProfile | null>();
@@ -13,6 +14,16 @@ const tokenVersionCache = new Map<
   { version: number; cachedAtMs: number }
 >();
 const tokenExtraPtrCache = new Map<string, number | null>();
+const tokenMetadataPtrCache = new Map<string, number | null>();
+const generatorsPtrCache = new Map<string, number | null>();
+const tokenBootloaderCache = new Map<
+  string,
+  { bootloaderId: BootloaderId; cachedAtMs: number }
+>();
+const generatorBootloaderCache = new Map<
+  string,
+  { bootloaderId: BootloaderId; cachedAtMs: number }
+>();
 
 export interface UserProfile {
   address: string;
@@ -106,6 +117,219 @@ async function getTokenExtraBigMapPtr(
     return ptr;
   } catch {
     return null;
+  }
+}
+
+async function getGeneratorsBigMapPtr(
+  faContract: string
+): Promise<number | null> {
+  const cached = generatorsPtrCache.get(faContract);
+  if (cached !== undefined) return cached;
+
+  try {
+    const networkConfig = getNetworkConfig();
+    const response = await fetch(
+      `${networkConfig.tzktApi}/v1/contracts/${faContract}/bigmaps`
+    );
+    if (!response.ok) {
+      if (response.status === 404) {
+        generatorsPtrCache.set(faContract, null);
+      }
+      return null;
+    }
+
+    const bigmaps = (await response.json()) as Array<{
+      path?: string;
+      ptr?: number;
+    }>;
+    const generators = bigmaps.find((entry) => entry.path === "generators");
+    const ptr = typeof generators?.ptr === "number" ? generators.ptr : null;
+    generatorsPtrCache.set(faContract, ptr);
+    return ptr;
+  } catch {
+    return null;
+  }
+}
+
+async function getTokenMetadataBigMapPtr(
+  faContract: string
+): Promise<number | null> {
+  const cached = tokenMetadataPtrCache.get(faContract);
+  if (cached !== undefined) return cached;
+
+  try {
+    const networkConfig = getNetworkConfig();
+    const response = await fetch(
+      `${networkConfig.tzktApi}/v1/contracts/${faContract}/bigmaps`
+    );
+    if (!response.ok) {
+      if (response.status === 404) {
+        tokenMetadataPtrCache.set(faContract, null);
+      }
+      return null;
+    }
+
+    const bigmaps = (await response.json()) as Array<{
+      path?: string;
+      ptr?: number;
+    }>;
+    const tokenMetadata = bigmaps.find(
+      (entry) => entry.path === "token_metadata"
+    );
+    const ptr =
+      typeof tokenMetadata?.ptr === "number" ? tokenMetadata.ptr : null;
+    tokenMetadataPtrCache.set(faContract, ptr);
+    return ptr;
+  } catch {
+    return null;
+  }
+}
+
+function decodeHexToText(value: string | undefined | null): string {
+  if (!value) return "";
+  const hex = value.startsWith("0x") ? value.slice(2) : value;
+  if (!hex || hex.length % 2 !== 0 || !/^[0-9a-fA-F]+$/.test(hex)) {
+    return "";
+  }
+
+  try {
+    const bytes = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < hex.length; i += 2) {
+      bytes[i / 2] = parseInt(hex.slice(i, i + 2), 16);
+    }
+    return new TextDecoder().decode(bytes);
+  } catch {
+    return "";
+  }
+}
+
+function resolveSharedWebProjectBootloaderId(
+  specHex: string | undefined | null
+): BootloaderId | null {
+  const spec = decodeHexToText(specHex).trim();
+  if (!spec) return null;
+
+  const match = Object.values(SHARED_BOOTLOADER_CATALOG).find(
+    (entry) => entry.spec === spec
+  );
+  return (match?.id as BootloaderId | undefined) || null;
+}
+
+async function fetchTokenBootloaderId(
+  faContract: string,
+  tokenId: string
+): Promise<BootloaderId> {
+  const defaultBootloader = getBootloaderIdForContract(faContract);
+  if (defaultBootloader === "svg-js") {
+    return "svg-js";
+  }
+
+  const tokenCacheKey = `${faContract}:${tokenId}`;
+  const cachedToken = tokenBootloaderCache.get(tokenCacheKey);
+  if (
+    cachedToken &&
+    Date.now() - cachedToken.cachedAtMs <= TOKEN_VERSION_CACHE_TTL_MS
+  ) {
+    return cachedToken.bootloaderId;
+  }
+
+  const tokenExtraPtr = await getTokenExtraBigMapPtr(faContract);
+  const generatorsPtr = await getGeneratorsBigMapPtr(faContract);
+  if (!tokenExtraPtr || !generatorsPtr) {
+    return defaultBootloader;
+  }
+
+  try {
+    const networkConfig = getNetworkConfig();
+    const tokenExtraResponse = await fetch(
+      `${networkConfig.tzktApi}/v1/bigmaps/${tokenExtraPtr}/keys/${encodeURIComponent(
+        tokenId
+      )}`
+    );
+    if (!tokenExtraResponse.ok) {
+      return defaultBootloader;
+    }
+
+    const tokenExtraPayload = (await tokenExtraResponse.json()) as {
+      value?: { generator_id?: string | number };
+    };
+    const generatorId = String(tokenExtraPayload.value?.generator_id ?? "");
+    if (!generatorId) {
+      return defaultBootloader;
+    }
+
+    const generatorCacheKey = `${faContract}:${generatorId}`;
+    const cachedGenerator = generatorBootloaderCache.get(generatorCacheKey);
+    if (
+      cachedGenerator &&
+      Date.now() - cachedGenerator.cachedAtMs <= TOKEN_VERSION_CACHE_TTL_MS
+    ) {
+      tokenBootloaderCache.set(tokenCacheKey, {
+        bootloaderId: cachedGenerator.bootloaderId,
+        cachedAtMs: Date.now(),
+      });
+      return cachedGenerator.bootloaderId;
+    }
+
+    const generatorResponse = await fetch(
+      `${networkConfig.tzktApi}/v1/bigmaps/${generatorsPtr}/keys/${encodeURIComponent(
+        generatorId
+      )}`
+    );
+    if (!generatorResponse.ok) {
+      return defaultBootloader;
+    }
+
+    const generatorPayload = (await generatorResponse.json()) as {
+      value?: { bootloader_spec_id?: string };
+    };
+    const resolved =
+      resolveSharedWebProjectBootloaderId(
+        generatorPayload.value?.bootloader_spec_id
+      ) || defaultBootloader;
+
+    const cacheEntry = { bootloaderId: resolved, cachedAtMs: Date.now() };
+    generatorBootloaderCache.set(generatorCacheKey, cacheEntry);
+    tokenBootloaderCache.set(tokenCacheKey, cacheEntry);
+    return resolved;
+  } catch {
+    return defaultBootloader;
+  }
+}
+
+async function fetchSharedContractTokenName(
+  faContract: string,
+  tokenId: string
+): Promise<string | undefined> {
+  const defaultBootloader = getBootloaderIdForContract(faContract);
+  if (defaultBootloader === "svg-js") {
+    return undefined;
+  }
+
+  const tokenMetadataPtr = await getTokenMetadataBigMapPtr(faContract);
+  if (!tokenMetadataPtr) {
+    return undefined;
+  }
+
+  try {
+    const networkConfig = getNetworkConfig();
+    const response = await fetch(
+      `${networkConfig.tzktApi}/v1/bigmaps/${tokenMetadataPtr}/keys/${encodeURIComponent(
+        tokenId
+      )}`
+    );
+    if (!response.ok) {
+      return undefined;
+    }
+
+    const payload = (await response.json()) as {
+      value?: { token_info?: Record<string, string> };
+    };
+    const rawName = payload.value?.token_info?.name;
+    const name = decodeHexToText(rawName).trim();
+    return name || undefined;
+  } catch {
+    return undefined;
   }
 }
 
@@ -485,18 +709,21 @@ function getAllContractAddresses(): Array<{
   bootloaderId: BootloaderId;
 }> {
   const contracts: Array<{ address: string; bootloaderId: BootloaderId }> = [];
+  const seen = new Set<string>();
 
   const svgJsContract = getContractAddress();
-  if (svgJsContract) {
+  if (svgJsContract && !seen.has(svgJsContract)) {
     contracts.push({ address: svgJsContract, bootloaderId: "svg-js" });
+    seen.add(svgJsContract);
   }
 
   const genericWebContract = getGenericWebContractAddress();
-  if (genericWebContract) {
+  if (genericWebContract && !seen.has(genericWebContract)) {
     contracts.push({
       address: genericWebContract,
       bootloaderId: "generic-web",
     });
+    seen.add(genericWebContract);
   }
 
   return contracts;
@@ -644,8 +871,15 @@ export async function fetchBootloaderActivity(
           const isMint = event.event_type === "mint";
           const eventFaContract =
             event.token?.fa_contract || event.fa_contract || "";
-          const bootloaderId = getBootloaderIdForContract(eventFaContract);
           const tokenId = event.token?.token_id || "";
+          const bootloaderId = tokenId
+            ? await fetchTokenBootloaderId(eventFaContract, tokenId)
+            : getBootloaderIdForContract(eventFaContract);
+          const tokenName =
+            event.token?.name ||
+            (tokenId
+              ? await fetchSharedContractTokenName(eventFaContract, tokenId)
+              : undefined);
           const generatorVersion =
             getCachedTokenGeneratorVersion(eventFaContract, tokenId) ??
             (await fetchTokenGeneratorVersion(eventFaContract, tokenId));
@@ -668,7 +902,7 @@ export async function fetchBootloaderActivity(
             recipientAlias: event.recipient?.alias,
             tokenId,
             generatorVersion,
-            tokenName: event.token?.name,
+            tokenName,
             tokenDescription: event.token?.description,
             tokenThumbnailUri: event.token?.thumbnail_uri,
             tokenDisplayUri: event.token?.display_uri,
@@ -769,6 +1003,7 @@ export async function fetchOwnedTokens(
         }): Promise<OwnedToken> => {
           const tokenId = holder.token.token_id;
           const faContract = holder.token.fa_contract;
+          const bootloaderId = await fetchTokenBootloaderId(faContract, tokenId);
           const generatorVersion =
             getCachedTokenGeneratorVersion(faContract, tokenId) ??
             (await fetchTokenGeneratorVersion(faContract, tokenId));
@@ -786,7 +1021,7 @@ export async function fetchOwnedTokens(
             quantity: parseFloat(holder.quantity),
             creators: holder.token.creators || [],
             faContract,
-            bootloaderId: getBootloaderIdForContract(faContract),
+            bootloaderId,
           };
         }
       )

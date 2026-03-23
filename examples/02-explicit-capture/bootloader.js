@@ -15,7 +15,10 @@
     const msg = { id: `bootloader:${id}`, data, timestamp: Date.now() };
     try {
       if (window.parent && window.parent !== window) {
-        const origin = document.referrer ? new URL(document.referrer).origin : '*';
+        const candidateOrigin = document.referrer
+          ? new URL(document.referrer).origin
+          : '*';
+        const origin = candidateOrigin && candidateOrigin !== 'null' ? candidateOrigin : '*';
         window.parent.postMessage(msg, origin);
       }
     } catch {
@@ -82,17 +85,35 @@
   }
 
   const q = new URLSearchParams(location.search);
-  const seed = q.get('s');
+  const previewConfig =
+    window.__BOOTLOADER_PREVIEW__ &&
+    typeof window.__BOOTLOADER_PREVIEW__ === 'object'
+      ? window.__BOOTLOADER_PREVIEW__
+      : null;
+  const seed =
+    previewConfig && typeof previewConfig.seed === 'string'
+      ? previewConfig.seed
+      : q.get('s');
   const normalizedSeed = normalizeSeed(seed);
   const parsedSeed = parseSeed(normalizedSeed);
   const rnd = sfc32(parsedSeed);
+  const previewIteration = Number(
+    previewConfig && typeof previewConfig.iteration !== 'undefined'
+      ? previewConfig.iteration
+      : Number.NaN
+  );
+  const iteration = Number.isFinite(previewIteration)
+    ? Math.max(1, Math.trunc(previewIteration))
+    : parseInt(q.get('i') || '1', 10);
+  const isCapture =
+    (previewConfig && previewConfig.isCapture === true) || q.get('c') === 'true';
 
   window.$bootloader = {
     version: VERSION,
     hash: normalizedSeed,
     rnd,
-    iteration: parseInt(q.get('i') || '1', 10),
-    isCapture: q.get('c') === 'true',
+    iteration,
+    isCapture,
 
     setFeatures(obj) {
       if (obj === undefined || obj === null || typeof obj !== 'object' || Array.isArray(obj)) return;

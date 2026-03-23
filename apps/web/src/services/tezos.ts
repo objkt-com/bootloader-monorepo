@@ -28,3 +28,12 @@ export {
   setGenericWebGeneratorSale as setGenericWebSale,
   updateGenericWebGeneratorContract as updateGenericWebGenerator,
 } from "@/bootloaders/generic-web/tezos";
+
+export {
+  createP5JsGeneratorContract as createP5JsGenerator,
+  deleteP5JsGeneratorContract as deleteP5JsGenerator,
+  mintP5JsToken as mintP5Js,
+  regenerateP5JsToken as regenerateP5Js,
+  setP5JsSale,
+  updateP5JsGeneratorContract as updateP5JsGenerator,
+} from "@/bootloaders/p5-js/tezos";

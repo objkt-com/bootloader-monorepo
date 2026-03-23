@@ -15,9 +15,11 @@ import { useToken, useTokenFeatures } from "@/hooks/use-tokens";
 import { useGeneratorMetadata } from "@/hooks/use-generators";
 import { useWallet } from "@/hooks/use-wallet";
 import { clearTokenVersionCache } from "@/services/objkt";
-import { CONFIG } from "@/config";
+import { CONFIG, getNetworkCode } from "@/config";
 import { useTheme } from "@/hooks/use-theme";
+import { parseGenericWebArtifactUri } from "@/bootloaders/generic-web/artifact-uri";
 import { buildGenericWebProjectUrl } from "@/bootloaders/generic-web/url";
+import { fetchP5SketchSource } from "@/bootloaders/p5-js/template";
 
 import {
   AlertDialog,
@@ -51,9 +53,13 @@ export function TokenDetailPage() {
   const [showFullscreen, setShowFullscreen] = useState(false);
   const [mobileView, setMobileView] = useState<"code" | "preview">("preview");
   const [showNewVersionPreview, setShowNewVersionPreview] = useState(false);
+  const [tokenCode, setTokenCode] = useState<string | null>(null);
+  const [isTokenCodeLoading, setIsTokenCodeLoading] = useState(false);
+  const effectiveBootloaderId =
+    bootloaderId || token?.generator?.bootloaderId || undefined;
 
-  const bootloader = token?.generator
-    ? getBootloader(token.generator.bootloaderId)
+  const bootloader = effectiveBootloaderId
+    ? getBootloader(effectiveBootloaderId)
     : null;
 
   // Check if current user is the owner
@@ -75,6 +81,80 @@ export function TokenDetailPage() {
       return () => document.removeEventListener("keydown", handleEscapeKey);
     }
   }, [showFullscreen]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadTokenCode() {
+      if (!token?.generator) return;
+      if (effectiveBootloaderId !== "p5-js") {
+        setTokenCode(null);
+        return;
+      }
+
+      const parsedFromArtifactUri = token.artifactUri
+        ? parseGenericWebArtifactUri(token.artifactUri)
+        : null;
+      const cid =
+        token.artifactCid ||
+        parsedFromArtifactUri?.cid ||
+        token.generator.cid;
+      if (!cid) {
+        setTokenCode(null);
+        return;
+      }
+
+      try {
+        setIsTokenCodeLoading(true);
+        const source = await fetchP5SketchSource(cid);
+        if (!cancelled) {
+          setTokenCode(source);
+        }
+      } catch (loadError) {
+        console.warn("Failed to load p5 token sketch source:", loadError);
+        if (!cancelled) {
+          setTokenCode(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsTokenCodeLoading(false);
+        }
+      }
+    }
+
+    void loadTokenCode();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    effectiveBootloaderId,
+    token?.artifactCid,
+    token?.artifactUri,
+    token?.generator,
+    token?.generator?.cid,
+  ]);
+
+  useEffect(() => {
+    if (!tokenId || !effectiveBootloaderId || effectiveBootloaderId === "svg-js") {
+      return;
+    }
+
+    const version =
+      typeof token?.version === "number" && Number.isFinite(token.version)
+        ? token.version
+        : 1;
+    const url = new URL(
+      `${CONFIG.sandboxWorkerUrl}/${effectiveBootloaderId}/v1/thumbnail/${tokenId}`
+    );
+    url.searchParams.set("n", getNetworkCode());
+    url.searchParams.set("v", String(version));
+    url.searchParams.set("sync_features", "1");
+
+    void fetch(url.toString(), {
+      headers: { accept: "image/png" },
+    }).catch(() => undefined);
+  }, [effectiveBootloaderId, token?.version, tokenId]);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -160,7 +240,7 @@ export function TokenDetailPage() {
   const generator = token.generator;
   const ViewerComponent = bootloader.ViewerComponent;
   const TokenDetailViewComponent = bootloader.TokenDetailViewComponent;
-  const hasSvgCode = bootloader.features.hasCodeEditor && generator.code;
+  const hasSvgCode = effectiveBootloaderId === "svg-js" && Boolean(generator.code);
 
   // Check if regeneration is possible (newer version available)
   const canRegenerate = (generator.version ?? 1) > (token.version ?? 1);
@@ -250,6 +330,8 @@ export function TokenDetailPage() {
             token={token}
             generator={generator}
             ViewerComponent={ViewerComponent}
+            code={generator.code}
+            isCodeLoading={false}
             copied={copied}
             tokenArtifactUrl={tokenArtifactUrl}
             newVersionPreviewUrl={newVersionPreviewUrl}
@@ -269,6 +351,8 @@ export function TokenDetailPage() {
               token={token}
               generator={generator}
               ViewerComponent={ViewerComponent}
+              code={effectiveBootloaderId === "p5-js" ? tokenCode || undefined : generator.code}
+              isCodeLoading={effectiveBootloaderId === "p5-js" ? isTokenCodeLoading : false}
               copied={copied}
               tokenArtifactUrl={tokenArtifactUrl}
               newVersionPreviewUrl={newVersionPreviewUrl}
@@ -595,7 +679,8 @@ export function TokenDetailPage() {
                   src={tokenArtifactUrl}
                   title={`${generator.name} #${token.iteration}`}
                   className="w-full h-full border-0"
-                  sandbox="allow-scripts"
+                  allow="accelerometer; gyroscope; magnetometer"
+                  sandbox="allow-scripts allow-same-origin"
                 />
               ) : (
                 <ViewerComponent

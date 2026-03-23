@@ -51,7 +51,7 @@ export function MintSuccessModal({
   // For SVG-JS, we use the artifactUri directly (no seed needed)
   // For generic-web, we use the seed from operation results or fetch from chain
   const isSvgJs = generator.bootloaderId === 'svg-js'
-  const isGenericWeb = generator.bootloaderId === 'generic-web'
+  const isWebProjectBootloader = generator.bootloaderId !== 'svg-js'
 
   // Update seed when seedFromMint prop changes
   useEffect(() => {
@@ -111,11 +111,11 @@ export function MintSuccessModal({
     }
     // Avoid double render for generic-web: wait for the real chain seed
     // instead of eagerly falling back to entropy.
-    if (!seed && (!isGenericWeb || isPreview)) {
+    if (!seed && (!isWebProjectBootloader || isPreview)) {
       const cleanHex = entropy.startsWith('0x') ? entropy.slice(2) : entropy
       setSeed(cleanHex)
     }
-  }, [isOpen, seedFromMint, entropy, seed, isGenericWeb, isPreview])
+  }, [isOpen, seedFromMint, entropy, seed, isWebProjectBootloader, isPreview])
 
   useEffect(() => {
     if (isOpen) {
@@ -218,7 +218,7 @@ export function MintSuccessModal({
   const handleShareOnX = () => {
     const tokenUrl = `https://bootloader.art/token/${generator.bootloaderId}/${tokenId}`
     const tweetText =
-      generator.bootloaderId === 'generic-web'
+      generator.bootloaderId !== 'svg-js'
         ? `I just minted "${tokenName}" by ${displayAuthor}. A long-form generative artwork via @bootloader_art ${tokenUrl}`
         : `I just minted "${tokenName}" by ${displayAuthor}. A long-form generative on-chain artwork via @bootloader_art ${tokenUrl}`
     const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`

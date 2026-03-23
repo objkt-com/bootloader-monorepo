@@ -33,6 +33,7 @@ import {
 } from "./auth-token";
 import {
   BOOTLOADER_IDS,
+  getSharedBootloaderCatalogEntry,
   isSharedBootloaderId,
   type SharedBootloaderId,
 } from "../../shared/bootloaders/catalog";
@@ -96,6 +97,115 @@ class HttpError extends Error {
 
 function parseBootloaderId(value: string): SharedBootloaderId | null {
   return isSharedBootloaderId(value) ? value : null;
+}
+
+function ensureTaquitoRuntimeGlobals(): void {
+  if (!(globalThis as any).global) {
+    (globalThis as any).global = globalThis;
+  }
+
+  if (!(globalThis as any).process) {
+    (globalThis as any).process = {
+      env: {},
+      argv: [],
+      version: "",
+      versions: {},
+      platform: "worker",
+      release: { name: "node" },
+      cwd: () => "/",
+      nextTick: (cb: (...args: any[]) => void, ...args: any[]) => {
+        queueMicrotask(() => cb(...args));
+      },
+    };
+  }
+}
+
+function utf8ToHex(value: string): string {
+  return Array.from(new TextEncoder().encode(value), (byte) =>
+    byte.toString(16).padStart(2, "0")
+  ).join("");
+}
+
+let artifactSignerPromise: Promise<{ signer: any; packer: any }> | null = null;
+
+async function getArtifactSigner(privateKey: string): Promise<{
+  signer: any;
+  packer: any;
+}> {
+  if (!artifactSignerPromise) {
+    artifactSignerPromise = (async () => {
+      ensureTaquitoRuntimeGlobals();
+
+      const [taquitoModule, signerModule] = await Promise.all([
+        import("@taquito/taquito"),
+        import("@taquito/signer"),
+      ]);
+
+      const MichelCodecPacker =
+        (taquitoModule as any).MichelCodecPacker ??
+        (taquitoModule as any).default?.MichelCodecPacker ??
+        (taquitoModule as any).default?.default?.MichelCodecPacker;
+      const InMemorySigner =
+        (signerModule as any).InMemorySigner ??
+        (signerModule as any).default?.InMemorySigner ??
+        (signerModule as any).default?.default?.InMemorySigner;
+
+      if (!MichelCodecPacker || !InMemorySigner?.fromSecretKey) {
+        throw new Error("Artifact signer dependencies unavailable in runtime");
+      }
+
+      return {
+        signer: await InMemorySigner.fromSecretKey(privateKey),
+        packer: new MichelCodecPacker(),
+      };
+    })();
+  }
+
+  return artifactSignerPromise;
+}
+
+async function signBootloaderArtifact(params: {
+  privateKey: string;
+  spec: string;
+  artifactUri: string;
+  author: string;
+}): Promise<{ signature: string; publicKey: string; packed: string }> {
+  const { signer, packer } = await getArtifactSigner(params.privateKey);
+  const packed = (
+    await packer.packData({
+      type: {
+        prim: "pair",
+        args: [
+          { prim: "bytes" },
+          {
+            prim: "pair",
+            args: [{ prim: "bytes" }, { prim: "address" }],
+          },
+        ],
+      },
+      data: {
+        prim: "Pair",
+        args: [
+          { bytes: utf8ToHex(params.spec) },
+          {
+            prim: "Pair",
+            args: [
+              { bytes: utf8ToHex(params.artifactUri) },
+              { string: params.author },
+            ],
+          },
+        ],
+      },
+    })
+  ).packed;
+
+  const signed = await signer.sign(packed);
+  const publicKey = await signer.publicKey();
+  return {
+    signature: signed.prefixSig,
+    publicKey,
+    packed,
+  };
 }
 
 function readBearerToken(c: any): string | null {
@@ -317,15 +427,82 @@ app.patch("/auth/user/:userId", async (c) => {
   }
 });
 
-// Manually trigger generic-web indexer for a specific token.
+app.post("/:bootloader/v1/artifacts/sign", async (c) => {
+  const bootloader = parseBootloaderId(c.req.param("bootloader"));
+  const network = (c.req.query("network") || "shadownet") as
+    | "mainnet"
+    | "shadownet";
+
+  if (!bootloader) {
+    return c.json({ error: "Invalid bootloader" }, 400);
+  }
+
+  if (network !== "mainnet" && network !== "shadownet") {
+    return c.json({ error: "Invalid network" }, 400);
+  }
+
+  try {
+    const authUser = await getAuthenticatedUser(c);
+    const body = await c.req
+      .json<{ artifactUri?: string; author?: string; chainId?: string }>()
+      .catch(() => null);
+
+    const artifactUri = body?.artifactUri?.trim();
+    const author = (body?.author?.trim() || authUser.address).trim();
+    if (!artifactUri) {
+      return c.json({ error: "Missing artifactUri" }, 400);
+    }
+
+    if (author !== authUser.address && !isAdmin(authUser)) {
+      return c.json({ error: "Forbidden" }, 403);
+    }
+
+    const privateKey = (c.env.ARTIFACT_SIGNER_PRIVATE_KEY || "").trim();
+    if (!privateKey) {
+      return c.json({ error: "Artifact signer is not configured" }, 503);
+    }
+
+    const spec = getSharedBootloaderCatalogEntry(bootloader).spec;
+    const signed = await signBootloaderArtifact({
+      privateKey,
+      spec,
+      artifactUri,
+      author,
+    });
+
+    return c.json({
+      bootloader,
+      network,
+      artifactUri,
+      author,
+      spec,
+      signature: signed.signature,
+      publicKey: signed.publicKey,
+      packed: signed.packed,
+    });
+  } catch (error) {
+    if (error instanceof HttpError) {
+      return c.json({ error: error.message }, error.status);
+    }
+    console.error("[artifacts/sign] Error:", error);
+    return c.json({ error: "Failed to sign artifact" }, 500);
+  }
+});
+
+// Manually trigger the web-project indexer for a specific token.
 // Used by frontend immediately after mint to reduce lag before traits/metadata appear.
-app.post("/generic-web/v1/indexer/tokens/:id/trigger", async (c) => {
+app.post("/:bootloader/v1/indexer/tokens/:id/trigger", async (c) => {
+  const bootloader = parseBootloaderId(c.req.param("bootloader"));
   const tokenId = Number(c.req.param("id"));
   const network = (c.req.query("network") || "shadownet") as
     | "mainnet"
     | "shadownet";
   const wait = c.req.query("wait") === "1";
   const dryRun = c.req.query("dryRun") === "1";
+
+  if (!bootloader || (bootloader !== "generic-web" && bootloader !== "p5-js")) {
+    return c.json({ error: "Invalid bootloader" }, 400);
+  }
 
   if (Number.isNaN(tokenId) || tokenId < 0) {
     return c.json({ error: "Invalid token ID" }, 400);
@@ -365,6 +542,7 @@ app.post("/generic-web/v1/indexer/tokens/:id/trigger", async (c) => {
         accepted: true,
         tokenId,
         network,
+        bootloader,
         summary,
       });
     }
@@ -386,6 +564,7 @@ app.post("/generic-web/v1/indexer/tokens/:id/trigger", async (c) => {
       accepted: true,
       tokenId,
       network,
+      bootloader,
       queued: true,
     });
   } catch (error) {
@@ -582,7 +761,7 @@ app.post("/:bootloader/v1/generators/:id/tokens/search", async (c) => {
       bootloader
     );
     const tokens =
-      bootloader === "generic-web"
+      isWebProjectBootloader(bootloader)
         ? await Promise.all(
             result.tokens.map(async (token) => {
               const queueInfo = await fetchGenericWebTokenQueueInfo(
@@ -1428,6 +1607,30 @@ app.get("/ipfs/:cid/*", async (c) => {
   return new Response(object.body, { headers });
 });
 
+app.get("/:bootloader/v1/artifacts/:cid/sketch", async (c) => {
+  const bootloader = parseBootloaderId(c.req.param("bootloader"));
+  const cid = c.req.param("cid")?.trim();
+
+  if (!bootloader || bootloader !== "p5-js") {
+    return c.json({ error: "Invalid bootloader" }, 400);
+  }
+
+  if (!cid) {
+    return c.json({ error: "Missing artifact CID" }, 400);
+  }
+
+  const key = `${cid}/sketch.js`;
+  const object = await c.env.R2_SANDBOX.get(key);
+  if (!object) {
+    return c.json({ error: "Sketch not found" }, 404);
+  }
+
+  const headers = new Headers();
+  headers.set("content-type", "application/javascript; charset=utf-8");
+  headers.set("cache-control", "public, max-age=31536000, immutable");
+  return new Response(object.body, { headers });
+});
+
 // Session file serving
 app.get("/sessions/:sessionId/*", async (c) => {
   const sessionId = c.req.param("sessionId");
@@ -1470,6 +1673,12 @@ const TRANSPARENT_PNG = decodeBase64(
 );
 
 type BootloaderType = SharedBootloaderId;
+
+function isWebProjectBootloader(
+  bootloader: BootloaderType
+): bootloader is "generic-web" | "p5-js" {
+  return bootloader === "generic-web" || bootloader === "p5-js";
+}
 
 const TZKT_API_BY_NETWORK: Record<"mainnet" | "shadownet", string> = {
   mainnet: "https://api.tzkt.io",
@@ -1560,7 +1769,7 @@ async function handleThumbnailRequest(
   if (
     resolvedVersion == null &&
     type === "thumbnail" &&
-    bootloader === "generic-web" &&
+    isWebProjectBootloader(bootloader) &&
     Number.isFinite(tokenIdNumber)
   ) {
     const queueInfo = await fetchGenericWebTokenQueueInfo(
@@ -1580,7 +1789,7 @@ async function handleThumbnailRequest(
     url.searchParams.get("sync_features") === "1" ||
     url.searchParams.get("sf") === "1";
   const forceFeatureRefresh =
-    isTokenThumbnail && storeFeaturesSync && bootloader === "generic-web";
+    isTokenThumbnail && storeFeaturesSync && isWebProjectBootloader(bootloader);
 
   const persistFeatures = async (
     featuresJson: string | null,
@@ -1620,7 +1829,7 @@ async function handleThumbnailRequest(
 
   // For generic-web generator thumbnails, look up the stored thumbnail seed
   let thumbnailSeed: string | null = null;
-  if (type === "generator-thumbnail" && bootloader === "generic-web") {
+  if (type === "generator-thumbnail" && isWebProjectBootloader(bootloader)) {
     try {
       const generatorService = new GeneratorService(c.env.DB);
       const dbNetwork = tokenNetwork;
@@ -1656,7 +1865,7 @@ async function handleThumbnailRequest(
     // For generic-web generator thumbnails, use the stored thumbnail seed
     if (
       type === "generator-thumbnail" &&
-      bootloader === "generic-web" &&
+      isWebProjectBootloader(bootloader) &&
       thumbnailSeed
     ) {
       targetUrl.searchParams.set("s", thumbnailSeed);
@@ -1951,7 +2160,7 @@ async function storeTokenFeatures(
   params: {
     tokenId: number;
     network: "mainnet" | "shadownet";
-    bootloader: "svg-js" | "generic-web";
+    bootloader: "svg-js" | "generic-web" | "p5-js";
     featuresJson: string;
   }
 ): Promise<void> {
@@ -1968,7 +2177,7 @@ async function storeTokenFeatures(
     let seed: string | null = null;
     let ownerAddress: string | null = null;
 
-    if (params.bootloader === "generic-web") {
+    if (isWebProjectBootloader(params.bootloader)) {
       const queueInfo = await fetchGenericWebTokenQueueInfo(
         params.network,
         params.tokenId,
@@ -2160,7 +2369,7 @@ export class RenderCoordinator {
       });
 
       // For svg-js, we wait for the page to load; for generic-web, wait for capture marker
-      if (bootloader === "generic-web") {
+      if (isWebProjectBootloader(bootloader)) {
         params.set(
           "wait_for_selector",
           '#capture-marker[data-capture-ready="true"]'
@@ -2229,7 +2438,7 @@ export class RenderCoordinator {
 
       // Extract features from content URL (for generic-web tokens)
       const isGenericWebTokenThumbnail =
-        type === "thumbnail" && bootloader === "generic-web";
+        type === "thumbnail" && isWebProjectBootloader(bootloader);
       let features: Record<string, unknown> | null = null;
       let featureExtractionReady = false;
       const contentUrl = json.content?.url ?? json.metadata?.content_url;

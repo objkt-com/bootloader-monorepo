@@ -57,6 +57,7 @@ The worker includes a cron-driven generic-web metadata indexer (staging only, sh
 ### Required secrets
 
 - `AUTH_TOKEN_SECRET` (required for wallet-authenticated API bearer tokens)
+- `ARTIFACT_SIGNER_PRIVATE_KEY` (Tezos key used to sign published artifact URIs)
 - `INDEXER_PRIVATE_KEY` (Tezos key used to sign `set_offchain_metadata`)
 - `FILEBASE_ACCESS_KEY`
 - `FILEBASE_SECRET_KEY`

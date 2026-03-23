@@ -43,7 +43,8 @@ interface GenericWebCreatorProps {
 }
 
 export function GenericWebCreator({ className }: GenericWebCreatorProps) {
-  const { isConnected, tezos, user, authToken } = useWallet();
+  const { connect, isConnected, isConnecting, tezos, user, authToken } =
+    useWallet();
   const navigate = useNavigate();
   const primarySaleFeePercent = getPrimarySaleFeePercent("generic-web");
 
@@ -188,18 +189,22 @@ export function GenericWebCreator({ className }: GenericWebCreatorProps) {
   const completedRenders = renderList.filter((job) => job.state === "complete");
   const selectedThumbnailJob =
     selectedThumbnail ? renderJobs[selectedThumbnail] : undefined;
+  const allowLocalThumbnailFallback = import.meta.env.DEV;
   const hasValidThumbnailSelection = Boolean(
     selectedThumbnailJob &&
       selectedThumbnailJob.state === "complete" &&
       selectedThumbnailJob.result?.thumbnailKey &&
       selectedThumbnailJob.seed
   );
+  const canPublishWithoutThumbnail =
+    allowLocalThumbnailFallback && Boolean(cid && name.trim());
+  const canPublish = hasValidThumbnailSelection || canPublishWithoutThumbnail;
 
   // Publish generator on-chain
   const handlePublish = useCallback(async () => {
     if (!tezos || !cid || !name.trim() || !user?.id || !authToken) return;
 
-    if (!hasValidThumbnailSelection || !selectedThumbnailJob?.seed) {
+    if (!canPublish) {
       setPublishError("Generate renders and select a valid thumbnail before publishing.");
       return;
     }
@@ -208,7 +213,7 @@ export function GenericWebCreator({ className }: GenericWebCreatorProps) {
     setPublishError(null);
 
     try {
-      const thumbnailSeed = selectedThumbnailJob.seed;
+      const thumbnailSeed = selectedThumbnailJob?.seed || seed;
 
       // Create metadata JSON with descriptions and thumbnail seed
       const metadata: {
@@ -234,7 +239,8 @@ export function GenericWebCreator({ className }: GenericWebCreatorProps) {
         tezos,
         name.trim(),
         cid,
-        metadataCid
+        metadataCid,
+        authToken
       );
 
       if (result.success && result.generatorId) {
@@ -284,9 +290,19 @@ export function GenericWebCreator({ className }: GenericWebCreatorProps) {
     user,
     authToken,
     navigate,
+    canPublish,
     hasValidThumbnailSelection,
     selectedThumbnailJob,
+    seed,
   ]);
+
+  const handlePublishAction = useCallback(async () => {
+    if (!isConnected) {
+      await connect();
+      return;
+    }
+    await handlePublish();
+  }, [connect, handlePublish, isConnected]);
 
   const isMobile = useIsMobile();
 
@@ -461,20 +477,22 @@ export function GenericWebCreator({ className }: GenericWebCreatorProps) {
               <Button
                 className="w-full"
                 disabled={
-                  !isConnected ||
                   !cid ||
                   !name.trim() ||
                   isPublishing ||
-                  !hasValidThumbnailSelection
+                  !canPublish ||
+                  isConnecting
                 }
-                onClick={handlePublish}
+                onClick={() => {
+                  void handlePublishAction();
+                }}
               >
-                {isPublishing ? (
+                {isPublishing || isConnecting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Publishing...
+                    {isPublishing ? "Publishing..." : "Connecting..."}
                   </>
-                ) : !hasValidThumbnailSelection ? (
+                ) : !canPublish ? (
                   "Select a thumbnail to publish"
                 ) : !isConnected ? (
                   "Connect wallet to publish"
@@ -489,10 +507,16 @@ export function GenericWebCreator({ className }: GenericWebCreatorProps) {
                 Publishing creates your generator on-chain. You'll be able to
                 set up pricing and editions right after.
               </p>
-              {!hasValidThumbnailSelection && (
+              {!canPublish && (
                 <p className="text-xs text-muted-foreground">
                   A completed render must be selected as the generator thumbnail
                   before publishing.
+                </p>
+              )}
+              {allowLocalThumbnailFallback && !hasValidThumbnailSelection && (
+                <p className="text-xs text-muted-foreground">
+                  Local dev: publishing falls back to the current preview seed if
+                  no thumbnail render is selected.
                 </p>
               )}
               <p className="text-xs text-muted-foreground">

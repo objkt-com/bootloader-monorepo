@@ -29,16 +29,56 @@ def generic_web():
     _v_eq = sp.bytes("0x763D")  # "v="
     _n_eq = sp.bytes("0x6E3D")  # "n="
 
+    t_bootloader_spec: type = sp.record(
+        active=sp.bool,
+        signer=sp.option[sp.key],
+    )
+
+    t_sale: type = sp.record(
+        paused=sp.bool,
+        start_time=sp.option[sp.timestamp],
+        price=sp.mutez,
+        editions=sp.nat,
+        max_per_wallet=sp.option[sp.nat],
+    )
+
+    t_token_extra: type = sp.record(
+        generator_id=sp.nat,
+        generator_version=sp.nat,
+        offchain_metadata_updated=sp.bool,
+        params=sp.bytes,
+        raw_seed=sp.option[sp.bytes],
+        iteration_number=sp.nat,
+        rng_contract=sp.address,
+    )
+
+    t_generator: type = sp.record(
+        author=sp.address,
+        name=sp.bytes,
+        created=sp.timestamp,
+        last_update=sp.timestamp,
+        bootloader_spec_id=sp.bytes,
+        artifact_uri=sp.bytes,
+        metadata_cid=sp.bytes,
+        n_tokens=sp.nat,
+        version=sp.nat,
+        flag=sp.nat,
+        rng_contract=sp.address,
+        reserved_editions=sp.nat,
+        allow_bl_metadata_update=sp.bool,
+        sale=sp.option[t_sale],
+    )
+
     def build_artifact_uri(
         params: sp.record(
-            artifact_cid=sp.bytes,
+            artifact_uri=sp.bytes,
             seed_hex=sp.bytes,
             params=sp.bytes,
             iteration_number=sp.nat,
         ),
     ) -> sp.bytes:
         artifact_uri = (
-            params.artifact_cid
+            params.artifact_uri
             + _q
             + _s_eq
             + params.seed_hex
@@ -92,23 +132,11 @@ def generic_web():
             self.data.treasury = NULL_ADDRESS
             self.data.token_extra = sp.cast(
                 sp.big_map({}),
-                sp.big_map[
-                    sp.nat,
-                    sp.record(
-                        generator_id=sp.nat,
-                        generator_version=sp.nat,
-                        offchain_metadata_updated=sp.bool,
-                        params=sp.bytes,
-                        raw_seed=sp.option[sp.bytes],
-                        iteration_number=sp.nat,
-                    ),
-                ],
+                sp.big_map[sp.nat, t_token_extra],
             )
             self.data.platform_fee_bps = sp.nat(1500)
             self.data.network = sp.bytes("0x73")  # "s" for shadownet, "m" for mainnet
-            self.data.thumbnail_prefix = sp.bytes(
-                "0x68747470733a2f2f6d656469612e736861646f776e65742e626f6f746c6f616465722e6172742f67656e657269632d7765622f76312f7468756d626e61696c2f"
-            )  # "https://media.shadownet.bootloader.art/generic-web/v1/thumbnail/" <- drop shadownet for mainnet
+            self.data.thumbnail_prefix = sp.bytes("0x")
             self.data.rng_contracts = sp.cast(
                 sp.big_map({}), sp.big_map[sp.address, sp.unit]
             )
@@ -118,34 +146,86 @@ def generic_web():
             self.data.generator_mints = sp.cast(
                 sp.big_map({}), sp.big_map[sp.pair[sp.nat, sp.address], sp.nat]
             )
+            self.data.bootloader_specs = sp.cast(
+                sp.big_map({}), sp.big_map[sp.bytes, t_bootloader_spec]
+            )
             self.data.generators = sp.cast(
                 sp.big_map({}),
-                sp.big_map[
-                    sp.nat,
-                    sp.record(
-                        author=sp.address,
-                        name=sp.bytes,
-                        created=sp.timestamp,
-                        last_update=sp.timestamp,
-                        artifact_cid=sp.bytes,
-                        metadata_cid=sp.bytes,
-                        n_tokens=sp.nat,
-                        version=sp.nat,
-                        flag=sp.nat,
-                        rng_contract=sp.address,
-                        reserved_editions=sp.nat,
-                        allow_bl_metadata_update=sp.bool,
-                        sale=sp.option[
-                            sp.record(
-                                paused=sp.bool,
-                                start_time=sp.option[sp.timestamp],
-                                price=sp.mutez,
-                                editions=sp.nat,
-                                max_per_wallet=sp.option[sp.nat],
-                            )
-                        ],
+                sp.big_map[sp.nat, t_generator],
+            )
+
+        @sp.private(with_storage="read-only")
+        def _assert_valid_artifact(self, params):
+            spec = self.data.bootloader_specs.get(
+                params.bootloader_spec_id, error="BOOTLOADER_SPEC_NOT_FOUND"
+            )
+            assert spec.active, "BOOTLOADER_SPEC_DISABLED"
+            match spec.signer:
+                case Some(signer):
+                    assert params.artifact_signature.is_some(), (
+                        "MISSING_ARTIFACT_SIGNATURE"
+                    )
+                    message = sp.pack(
+                        (
+                            params.bootloader_spec_id,
+                            (params.artifact_uri, params.author),
+                        )
+                    )
+                    assert sp.check_signature(
+                        signer,
+                        params.artifact_signature.unwrap_some(),
+                        message,
+                    ), "INVALID_ARTIFACT_SIGNATURE"
+                case None:
+                    pass
+
+        @sp.private(with_storage="read-write", with_operations=True)
+        def _mint_pending(self, params):
+            generator = self.data.generators[params.generator_id]
+            token_id = self.data.next_token_id
+            iteration_number = generator.n_tokens + 1
+
+            self.data.token_metadata[token_id] = sp.record(
+                token_id=token_id,
+                token_info={
+                    "name": build_name(
+                        sp.record(
+                            name=generator.name,
+                            iteration_number=iteration_number,
+                        )
                     ),
-                ],
+                    "_artifactUri": build_artifact_uri(
+                        sp.record(
+                            artifact_uri=generator.artifact_uri,
+                            seed_hex=bytes_utils.to_hex_ascii(EMPTY_SEED),
+                            params=params.params,
+                            iteration_number=iteration_number,
+                        )
+                    ),
+                },
+            )
+
+            self.data.ledger[token_id] = params.recipient
+            self.data.token_extra[token_id] = sp.record(
+                generator_id=params.generator_id,
+                raw_seed=None,
+                params=params.params,
+                generator_version=generator.version,
+                iteration_number=iteration_number,
+                offchain_metadata_updated=False,
+                rng_contract=generator.rng_contract,
+            )
+            self.data.generators[params.generator_id].n_tokens += 1
+            self.data.next_token_id += 1
+            contract = sp.contract(
+                sp.record(token_id=sp.nat, entropy=sp.bytes),
+                generator.rng_contract,
+                entrypoint="request_entropy",
+            ).unwrap_some()
+            sp.transfer(
+                sp.record(token_id=token_id, entropy=params.entropy),
+                sp.mutez(0),
+                contract,
             )
 
         @sp.entrypoint
@@ -165,22 +245,44 @@ def generic_web():
             self.data.network = network
 
         @sp.entrypoint
+        def set_bootloader_spec(
+            self, spec_id: sp.bytes, active: sp.bool, signer: sp.option[sp.key]
+        ):
+            assert sp.sender == self.data.administrator, "ONLY_ADMIN"
+            self.data.bootloader_specs[spec_id] = sp.record(
+                active=active,
+                signer=signer,
+            )
+
+        @sp.entrypoint
         def create_generator(
             self,
             name: sp.bytes,
-            artifact_cid: sp.bytes,
+            bootloader_spec_id: sp.bytes,
+            artifact_uri: sp.bytes,
             metadata_cid: sp.bytes,
             rng_contract: sp.address,
             reserved_editions: sp.nat,
             allow_bl_metadata_update: sp.bool,
+            artifact_signature: sp.option[sp.signature],
         ):
             assert rng_contract in self.data.rng_contracts, "INVALID_RNG_CONTRACT"
+            self._assert_valid_artifact(
+                sp.record(
+                    bootloader_spec_id=bootloader_spec_id,
+                    artifact_uri=artifact_uri,
+                    artifact_signature=artifact_signature,
+                    author=sp.sender,
+                )
+            )
+
             self.data.generators[self.data.next_generator_id] = sp.record(
                 author=sp.sender,
                 name=name,
                 created=sp.now,
                 last_update=sp.now,
-                artifact_cid=artifact_cid,
+                bootloader_spec_id=bootloader_spec_id,
+                artifact_uri=artifact_uri,
                 metadata_cid=metadata_cid,
                 n_tokens=0,
                 version=1,
@@ -198,11 +300,13 @@ def generic_web():
             self,
             generator_id: sp.nat,
             name: sp.bytes,
-            artifact_cid: sp.bytes,
+            bootloader_spec_id: sp.bytes,
+            artifact_uri: sp.bytes,
             rng_contract: sp.address,
             reserved_editions: sp.nat,
             allow_bl_metadata_update: sp.bool,
             metadata_cid: sp.bytes,
+            artifact_signature: sp.option[sp.signature],
         ):
             generator = self.data.generators.get(
                 generator_id, error="GENERATOR_NOT_FOUND"
@@ -210,15 +314,28 @@ def generic_web():
             assert sp.sender == generator.author, "ONLY_AUTHOR"
             assert rng_contract in self.data.rng_contracts, "INVALID_RNG_CONTRACT"
 
-            # if generator has sale configured. Ensure reserved_editions are not more than remaining capacity
             match generator.sale:
                 case Some(sale):
                     assert generator.n_tokens + reserved_editions <= sale.editions, (
                         "RESERVE_EXCEEDS_CAPACITY"
                     )
 
+            content_changed = (
+                artifact_uri != generator.artifact_uri
+                or bootloader_spec_id != generator.bootloader_spec_id
+            )
+            if content_changed:
+                self._assert_valid_artifact(
+                    sp.record(
+                        bootloader_spec_id=bootloader_spec_id,
+                        artifact_uri=artifact_uri,
+                        artifact_signature=artifact_signature,
+                        author=sp.sender,
+                    )
+                )
+
             new_version = generator.version
-            if artifact_cid != generator.artifact_cid:
+            if content_changed:
                 new_version += 1
 
             self.data.generators[generator_id] = sp.record(
@@ -226,7 +343,8 @@ def generic_web():
                 created=generator.created,
                 last_update=sp.now,
                 author=sp.sender,
-                artifact_cid=artifact_cid,
+                bootloader_spec_id=bootloader_spec_id,
+                artifact_uri=artifact_uri,
                 n_tokens=generator.n_tokens,
                 version=new_version,
                 flag=generator.flag,
@@ -256,10 +374,8 @@ def generic_web():
         ):
             generator = self.data.generators[generator_id]
             assert sp.sender == generator.author, "ONLY_AUTHOR"
-            # only allow reducing edition size
             match generator.sale:
                 case Some(sale):
-                    # but only if no tokens were minted yet
                     if generator.n_tokens > 0:
                         assert editions <= sale.editions, "NO_ED_INCREMENT"
             assert editions >= generator.n_tokens + generator.reserved_editions, (
@@ -320,7 +436,7 @@ def generic_web():
                     ),
                     "artifactUri": build_artifact_uri(
                         sp.record(
-                            artifact_cid=generator.artifact_cid,
+                            artifact_uri=generator.artifact_uri,
                             seed_hex=bytes_utils.to_hex_ascii(
                                 token_extra.raw_seed.unwrap_some()
                             ),
@@ -360,44 +476,12 @@ def generic_web():
             self.data.generators[generator_id].reserved_editions = sp.as_nat(
                 generator.reserved_editions - 1
             )
-
-            token_id = self.data.next_token_id
-
-            self.data.token_metadata[token_id] = sp.record(
-                token_id=token_id,
-                token_info={
-                    "name": build_name(
-                        sp.record(
-                            name=generator.name, iteration_number=generator.n_tokens + 1
-                        )
-                    ),
-                    "_artifactUri": build_artifact_uri(
-                        sp.record(
-                            artifact_cid=generator.artifact_cid,
-                            seed_hex=bytes_utils.to_hex_ascii(EMPTY_SEED),
-                            params=params,
-                            iteration_number=generator.n_tokens + 1,
-                        )
-                    ),
-                },
-            )
-
-            self.data.ledger[token_id] = recipient
-            self.data.token_extra[token_id] = sp.record(
-                generator_id=generator_id,
-                raw_seed=None,
-                params=params,
-                generator_version=generator.version,
-                iteration_number=generator.n_tokens + 1,
-                offchain_metadata_updated=False,
-            )
-            self.data.generators[generator_id].n_tokens += 1
-            self.data.next_token_id += 1
-            self._request_entropy(
+            self._mint_pending(
                 sp.record(
-                    token_id=token_id,
+                    generator_id=generator_id,
+                    recipient=recipient,
                     entropy=entropy,
-                    rng_contract=generator.rng_contract,
+                    params=params,
                 )
             )
 
@@ -418,7 +502,6 @@ def generic_web():
                         generator.n_tokens + generator.reserved_editions < sale.editions
                     ), "PUBLIC_SOLD_OUT"
 
-                    # enforce (optional) max per wallet
                     minted_key = (generator_id, sp.sender)
                     n_minted = self.data.generator_mints.get(minted_key, default=0)
                     match sale.max_per_wallet:
@@ -436,43 +519,12 @@ def generic_web():
                         if rest > sp.mutez(0):
                             sp.send(generator.author, rest)
 
-                    token_id = self.data.next_token_id
-                    self.data.token_metadata[token_id] = sp.record(
-                        token_id=token_id,
-                        token_info={
-                            "name": build_name(
-                                sp.record(
-                                    name=generator.name,
-                                    iteration_number=generator.n_tokens + 1,
-                                )
-                            ),
-                            "_artifactUri": build_artifact_uri(
-                                sp.record(
-                                    artifact_cid=generator.artifact_cid,
-                                    seed_hex=bytes_utils.to_hex_ascii(EMPTY_SEED),
-                                    params=params,
-                                    iteration_number=generator.n_tokens + 1,
-                                )
-                            ),
-                        },
-                    )
-
-                    self.data.ledger[token_id] = sp.sender
-                    self.data.token_extra[token_id] = sp.record(
-                        generator_id=generator_id,
-                        raw_seed=None,
-                        params=params,
-                        generator_version=generator.version,
-                        iteration_number=generator.n_tokens + 1,
-                        offchain_metadata_updated=False,
-                    )
-                    self.data.generators[generator_id].n_tokens += 1
-                    self.data.next_token_id += 1
-                    self._request_entropy(
+                    self._mint_pending(
                         sp.record(
-                            token_id=token_id,
+                            generator_id=generator_id,
+                            recipient=sp.sender,
                             entropy=entropy,
-                            rng_contract=generator.rng_contract,
+                            params=params,
                         )
                     )
                 case None:
@@ -482,7 +534,6 @@ def generic_web():
         def set_offchain_metadata(
             self, params: sp.record(token_id=sp.nat, metadata_cid=sp.bytes)
         ):
-            # used to set offchain metadata (description, attributes, tags etc.).
             token_extra = self.data.token_extra[params.token_id]
             generator = self.data.generators[token_extra.generator_id]
             assert (
@@ -504,8 +555,8 @@ def generic_web():
             assert len(params.entropy) == 32, "INVALID_SEED_LENGTH"
             token_extra = self.data.token_extra[params.token_id]
             assert token_extra.raw_seed.is_none(), "SEED_SET"
+            assert sp.sender == token_extra.rng_contract, "INVALID_RNG_CONTRACT"
             generator = self.data.generators[token_extra.generator_id]
-            assert sp.sender == generator.rng_contract, "INVALID_RNG_CONTRACT"
 
             self.data.token_metadata[params.token_id] = sp.record(
                 token_id=params.token_id,
@@ -518,7 +569,7 @@ def generic_web():
                     ),
                     "artifactUri": build_artifact_uri(
                         sp.record(
-                            artifact_cid=generator.artifact_cid,
+                            artifact_uri=generator.artifact_uri,
                             seed_hex=bytes_utils.to_hex_ascii(params.entropy),
                             params=token_extra.params,
                             iteration_number=token_extra.iteration_number,
@@ -527,7 +578,7 @@ def generic_web():
                     "thumbnailUri": build_thumbnail_uri(
                         sp.record(
                             token_id=params.token_id,
-                            version=1,
+                            version=token_extra.generator_version,
                             network=self.data.network,
                             thumbnail_prefix=self.data.thumbnail_prefix,
                         )
@@ -548,19 +599,6 @@ def generic_web():
             token_metadata = self.data.token_metadata[params.token_id]
             token_metadata.token_info["thumbnailUri"] = params.thumbnail_cid
             self.data.token_metadata[params.token_id] = token_metadata
-
-        @sp.private(with_storage="read-only", with_operations=True)
-        def _request_entropy(self, params):
-            contract = sp.contract(
-                sp.record(token_id=sp.nat, entropy=sp.bytes),
-                params.rng_contract,
-                entrypoint="request_entropy",
-            ).unwrap_some()
-            sp.transfer(
-                sp.record(token_id=params.token_id, entropy=params.entropy),
-                sp.mutez(0),
-                contract,
-            )
 
         @sp.onchain_view()
         def get_generator_id(self, token_id: sp.nat) -> sp.nat:

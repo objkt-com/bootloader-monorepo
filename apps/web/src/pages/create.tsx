@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { ArrowRight, Upload, Code, Gamepad2 } from "lucide-react";
 import { getBootloader, getActiveBootloaders } from "@/lib/bootloader-registry";
@@ -11,14 +12,22 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { BootloaderId } from "@/types/bootloader";
+import { useCreateLayout } from "@/layouts/create-layout";
 
 export function CreatePage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { setHeader } = useCreateLayout();
   const bootloaderParam = searchParams.get("bootloader") as BootloaderId | null;
 
   const bootloader = bootloaderParam ? getBootloader(bootloaderParam) : null;
   const activeBootloaders = getActiveBootloaders();
+
+  useEffect(() => {
+    if (!bootloader) {
+      setHeader({ title: "Create Generator", onBack: null });
+    }
+  }, [bootloader, setHeader]);
 
   // If a valid bootloader is selected and active, show its creator
   if (bootloader && bootloader.status === "active") {

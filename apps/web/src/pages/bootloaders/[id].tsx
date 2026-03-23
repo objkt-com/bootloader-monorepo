@@ -54,6 +54,25 @@ function CodeBlock({
   );
 }
 
+function CreateBootloaderButton({
+  bootloaderId,
+  label = "Create Generator",
+}: {
+  bootloaderId: BootloaderId;
+  label?: string;
+}) {
+  return (
+    <div className="mb-8">
+      <Button asChild>
+        <Link to={`/create?bootloader=${bootloaderId}`}>
+          {label}
+          <ArrowRight className="ml-2 h-4 w-4" />
+        </Link>
+      </Button>
+    </div>
+  );
+}
+
 function GenericWebDocs() {
   return (
     <div className="space-y-12">
@@ -69,6 +88,8 @@ function GenericWebDocs() {
           Zip uploads are capped at <strong className="text-foreground">50 MB</strong> for now,
           and parameter payloads are disabled in this rollout.
         </div>
+
+        <CreateBootloaderButton bootloaderId="generic-web" />
 
         <div className="mb-4">
           <h3 className="text-lg font-semibold">Bootloader Snippet</h3>
@@ -779,6 +800,10 @@ function SvgJsDocs() {
             <strong>Storage:</strong> Fully on-chain (~24KB max)
           </span>
         </div>
+
+        <div className="mt-6">
+          <CreateBootloaderButton bootloaderId="svg-js" />
+        </div>
       </section>
 
       {/* How It Works */}
@@ -1013,8 +1038,391 @@ for (let i = 0; i < 5; i++) {
   );
 }
 
+function P5JsDocs() {
+  return (
+    <div className="space-y-12">
+      <section>
+        <h2 className="text-2xl font-bold mb-4">Quick Start</h2>
+        <p className="text-muted-foreground mb-6 max-w-3xl">
+          The p5.js bootloader is for artists who want to work in a way that
+          feels familiar from the p5.js editor: write the sketch, see the
+          result, and publish it without rebuilding the project in another
+          format. As part of the p5.js 2.x collaboration with the Processing
+          Foundation, bootloader packages the runtime around the sketch and
+          publishes it as an IPFS artifact that can be updated later.
+        </p>
+        <div className="mb-6 border border-yellow-500/40 bg-yellow-500/10 p-4 text-sm text-muted-foreground">
+          This flow is built for p5.js 2.x and packages the p5.js runtime and
+          p5.sound directly into the published artifact. If you want a broader
+          browser-based setup with other web technologies or a more open project
+          structure, the{" "}
+          <Link to="/bootloaders/generic-web" className="text-foreground underline underline-offset-4">
+            generic-web bootloader
+          </Link>{" "}
+          is the better fit.
+        </div>
+
+        <CreateBootloaderButton
+          bootloaderId="p5-js"
+          label="Create p5.js Generator"
+        />
+
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+          <div className="flex items-start gap-4 p-4 border">
+            <Code className="h-8 w-8 text-muted-foreground flex-shrink-0 mt-1" />
+            <div>
+              <h3 className="font-medium mb-1">Write the sketch</h3>
+              <p className="text-sm text-muted-foreground">
+                The editor is focused on `sketch.js`, so the artwork stays close
+                to a normal p5 workflow.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-4 p-4 border">
+            <Sparkles className="h-8 w-8 text-muted-foreground flex-shrink-0 mt-1" />
+            <div>
+              <h3 className="font-medium mb-1">Render a cover image</h3>
+              <p className="text-sm text-muted-foreground">
+                Before publishing, render a few variations and choose the image
+                that introduces the generator.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-4 p-4 border">
+            <Lightbulb className="h-8 w-8 text-muted-foreground flex-shrink-0 mt-1" />
+            <div>
+              <h3 className="font-medium mb-1">Show the source with the artwork</h3>
+              <p className="text-sm text-muted-foreground">
+                On bootloader, p5 generator and token pages display the
+                published <code>sketch.js</code> next to the artwork.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-4 p-4 border">
+            <RefreshCw className="h-8 w-8 text-muted-foreground flex-shrink-0 mt-1" />
+            <div>
+              <h3 className="font-medium mb-1">Keep updating</h3>
+              <p className="text-sm text-muted-foreground">
+                Generators are updateable. You can come back later and publish a
+                new version of the code and metadata.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 className="text-2xl font-bold mb-4">What Gets Published</h2>
+        <p className="text-muted-foreground mb-6">
+          When you publish from the p5 editor, bootloader assembles a full web
+          artifact around your sketch and uploads it to IPFS.
+        </p>
+
+        <div className="bg-muted p-4 mb-6 font-mono text-sm">
+          <div className="text-muted-foreground">your-project/</div>
+          <div className="pl-4">
+            ├── <span className="text-primary">index.html</span>{" "}
+            <span className="text-muted-foreground">← generated entrypoint</span>
+          </div>
+          <div className="pl-4">
+            ├── <span className="text-primary">manifest.json</span>{" "}
+            <span className="text-muted-foreground">← generated capture config</span>
+          </div>
+          <div className="pl-4">
+            ├── <span className="text-primary">bootloader.js</span>{" "}
+            <span className="text-muted-foreground">← runtime API</span>
+          </div>
+          <div className="pl-4">
+            ├── <span className="text-primary">bootloader-p5.js</span>{" "}
+            <span className="text-muted-foreground">← p5 bridge</span>
+          </div>
+          <div className="pl-4">
+            ├── <span className="text-primary">sketch.js</span>{" "}
+            <span className="text-muted-foreground">← your code</span>
+          </div>
+          <div className="pl-4">
+            └── libs/
+          </div>
+          <div className="pl-8">├── p5.min.js</div>
+          <div className="pl-8">└── p5.sound.min.js</div>
+        </div>
+
+        <p className="text-sm text-muted-foreground">
+          In the browser flow, you only edit `sketch.js`. Bootloader takes care
+          of the rest.
+        </p>
+      </section>
+
+      <section>
+        <h2 className="text-2xl font-bold mb-4">The p5 Bootloader Interface</h2>
+        <p className="text-muted-foreground mb-6">
+          Inside `sketch.js`, bootloader exposes a global{" "}
+          <code className="px-1.5 py-0.5 bg-muted rounded-sm text-sm">
+            $bootloader
+          </code>{" "}
+          object. In addition, p5’s{" "}
+          <code className="px-1 bg-muted rounded-sm text-xs">random()</code>,
+          <code className="px-1 bg-muted rounded-sm text-xs ml-1">noise()</code>,
+          and runtime-level randomness are seeded automatically from the token
+          hash.
+        </p>
+
+        <div className="mb-6 border-l-4 border-yellow-500 pl-4 py-2">
+          <h3 className="font-semibold mb-1">Deterministic p5 runtime</h3>
+          <p className="text-sm text-muted-foreground">
+            Before <code className="px-1 bg-muted rounded-sm text-xs">setup()</code>{" "}
+            runs, bootloader seeds p5&apos;s native{" "}
+            <code className="px-1 bg-muted rounded-sm text-xs">random()</code>{" "}
+            and{" "}
+            <code className="px-1 bg-muted rounded-sm text-xs">noise()</code>{" "}
+            functions from the token hash. It also seeds{" "}
+            <code className="px-1 bg-muted rounded-sm text-xs">Math.random()</code>,
+            so library code that depends on it, including p5.sound code paths
+            that use random values internally, stays tied to the same token
+            seed.
+          </p>
+        </div>
+
+        <div className="space-y-6">
+          <div>
+            <h3 className="text-lg font-semibold mb-4">Relevant properties</h3>
+            <div className="border divide-y">
+              <div className="p-4">
+                <code className="text-primary font-medium">$bootloader.hash</code>
+                <span className="text-muted-foreground ml-2">: string</span>
+                <p className="text-sm text-muted-foreground mt-1">
+                  The 64-character seed for the current token. Same seed, same
+                  result.
+                </p>
+              </div>
+              <div className="p-4">
+                <code className="text-primary font-medium">$bootloader.iteration</code>
+                <span className="text-muted-foreground ml-2">: number</span>
+                <p className="text-sm text-muted-foreground mt-1">
+                  The token edition number. Use it if the piece needs
+                  edition-aware behavior.
+                </p>
+              </div>
+              <div className="p-4">
+                <code className="text-primary font-medium">$bootloader.isCapture</code>
+                <span className="text-muted-foreground ml-2">: boolean</span>
+                <p className="text-sm text-muted-foreground mt-1">
+                  True while the system is rendering a thumbnail or preview
+                  capture.
+                </p>
+              </div>
+              <div className="p-4">
+                <code className="text-primary font-medium">$bootloader.rnd()</code>
+                <span className="text-muted-foreground ml-2">: number</span>
+                <p className="text-sm text-muted-foreground mt-1">
+                  A seeded random helper that stays in sync with the token seed.
+                  Useful when you want explicit control outside the normal p5
+                  helpers.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-lg font-semibold mb-4">Relevant methods</h3>
+            <div className="border divide-y">
+              <div className="p-4">
+                <code className="text-primary font-medium">$bootloader.setFeatures(obj)</code>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Publish token traits from the sketch. These are shown as token
+                  features and used for filtering.
+                </p>
+              </div>
+              <div className="p-4">
+                <code className="text-primary font-medium">$bootloader.capture()</code>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Signal that the sketch is ready to be captured. The packaged
+                  p5 manifest uses trigger-based capture, so this call matters
+                  for previews and thumbnails.
+                </p>
+              </div>
+              <div className="p-4">
+                <code className="text-primary font-medium">$bootloader.rnd.reset()</code>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Reset the helper RNG to its initial state if you need the same
+                  sequence again.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 className="text-2xl font-bold mb-4">Minimal `sketch.js` Example</h2>
+        <p className="text-muted-foreground mb-6">
+          This is the kind of code you write in the editor. The surrounding
+          HTML, manifest, and runtime files are packaged automatically.
+        </p>
+
+        <CodeBlock
+          language="javascript"
+          code={`let dots = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSL, 360, 100, 100, 1);
+  noLoop();
+
+  dots = Array.from({ length: 24 }, () => ({
+    x: random(width),
+    y: random(height),
+    size: random(24, 120),
+    hue: random(360),
+  }));
+
+  $bootloader.setFeatures({
+    Dots: dots.length,
+    PrimaryHue: round(dots[0].hue),
+  });
+}
+
+function draw() {
+  background(248);
+  noStroke();
+
+  for (const dot of dots) {
+    fill(dot.hue, 80, 55, 0.8);
+    circle(dot.x, dot.y, dot.size);
+  }
+
+  if ($bootloader.isCapture) {
+    $bootloader.capture();
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  redraw();
+}`}
+        />
+      </section>
+
+      <section>
+        <h2 className="text-2xl font-bold mb-4">Updating a Generator</h2>
+        <p className="text-muted-foreground mb-6">
+          The p5 bootloader is meant for projects that can keep moving after the
+          initial release. Updating a generator publishes a new artifact version
+          instead of forcing you into a one-time upload.
+        </p>
+
+        <div className="space-y-4">
+          <div className="border-l-4 border-yellow-500 pl-4 py-2">
+            <h3 className="font-semibold mb-1">Update the sketch code</h3>
+            <p className="text-sm text-muted-foreground">
+              You can revise the p5 sketch itself and publish a new version
+              later.
+            </p>
+          </div>
+          <div className="border-l-4 border-yellow-500 pl-4 py-2">
+            <h3 className="font-semibold mb-1">Update descriptions and cover image</h3>
+            <p className="text-sm text-muted-foreground">
+              The generator title, descriptions, and selected preview image can
+              evolve with the work.
+            </p>
+          </div>
+          <div className="border-l-4 border-yellow-500 pl-4 py-2">
+            <h3 className="font-semibold mb-1">Keep the seed-based logic intact</h3>
+            <p className="text-sm text-muted-foreground">
+              The code version can change while the seeded structure of the
+              project stays collectible and repeatable.
+            </p>
+          </div>
+          <div className="border-l-4 border-yellow-500 pl-4 py-2">
+            <h3 className="font-semibold mb-1">Collectors choose when to move forward</h3>
+            <p className="text-sm text-muted-foreground">
+              Publishing an update does not force existing tokens onto the new
+              version. Collectors decide whether they want to regenerate into a
+              newer version of the generator.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+          <Lightbulb className="h-6 w-6 text-yellow-500" />
+          Good Practices
+        </h2>
+        <div className="space-y-4">
+          <div className="border-l-4 border-yellow-500 pl-4 py-2">
+            <h3 className="font-semibold mb-1">Keep the sketch responsive</h3>
+            <p className="text-sm text-muted-foreground">
+              The work appears in multiple contexts, from square previews to
+              larger artwork views.
+            </p>
+          </div>
+          <div className="border-l-4 border-yellow-500 pl-4 py-2">
+            <h3 className="font-semibold mb-1">Treat the environment as deterministic</h3>
+            <p className="text-sm text-muted-foreground">
+              The same token seed should resolve to the same artwork every time
+              it is rendered.
+            </p>
+          </div>
+          <div className="border-l-4 border-yellow-500 pl-4 py-2">
+            <h3 className="font-semibold mb-1">Use token features intentionally</h3>
+            <p className="text-sm text-muted-foreground">
+              If you expose features from the sketch, choose names that will
+              still make sense to collectors later.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 className="text-2xl font-bold mb-4">Official p5.js References</h2>
+        <p className="text-muted-foreground mb-6">
+          For the p5 language and library API itself, use the official
+          documentation maintained by the Processing Foundation.
+        </p>
+        <div className="space-y-3">
+          <a
+            href="https://p5js.org/"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 text-primary hover:underline"
+          >
+            p5js.org
+            <ArrowRight className="h-4 w-4" />
+          </a>
+          <br />
+          <a
+            href="https://p5js.org/reference/"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 text-primary hover:underline"
+          >
+            p5.js reference
+            <ArrowRight className="h-4 w-4" />
+          </a>
+        </div>
+      </section>
+
+      <section className="text-center py-8 border-t">
+        <h2 className="text-2xl font-bold mb-4">Ready to Create?</h2>
+        <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+          Start in the editor, render a cover image, publish to IPFS, and keep
+          the option to update the generator later.
+        </p>
+        <Button asChild size="lg">
+          <Link to="/create?bootloader=p5-js">
+            Create p5.js Generator
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Link>
+        </Button>
+      </section>
+    </div>
+  );
+}
+
 const bootloaderDocsRegistry: Record<BootloaderId, ComponentType> = {
   "generic-web": GenericWebDocs,
+  "p5-js": P5JsDocs,
   "svg-js": SvgJsDocs,
 };
 

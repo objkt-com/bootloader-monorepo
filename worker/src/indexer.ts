@@ -5,13 +5,17 @@ import {
 } from "./services";
 import { storeJsonToIpfs } from "./ipfs-json";
 import type { Bindings } from "./types";
+import {
+  SHARED_BOOTLOADER_CATALOG,
+  type SharedBootloaderId,
+} from "../../shared/bootloaders/catalog";
 
 const SHADOWNET_NETWORK = "shadownet" as const;
 const SHADOWNET_NETWORK_CODE = "s";
 const DEFAULT_SHADOWNET_TZKT_API = "https://api.shadownet.tzkt.io";
 const DEFAULT_SHADOWNET_RPC_URL = "https://rpc.shadownet.teztnets.com";
 const DEFAULT_SHADOWNET_GENERIC_WEB_CONTRACT =
-  "KT1MkVTbYNJ6hkJKWSukLBgPaXtkHFKugK6v";
+  "KT1XivGXG8XawFFwWMEjbuuEN9Yx2TtiBCY8";
 const TOKEN_SCOPED_QUEUE_MIN_RETRIES = 24;
 const FEATURE_WARMUP_MAX_ATTEMPTS = 3;
 const ONCHAIN_SEND_MAX_ATTEMPTS = 4;
@@ -100,6 +104,16 @@ export interface RunIndexerOptions {
   limit?: number;
   dryRun?: boolean;
   tokenId?: number;
+}
+
+function resolveWebProjectBootloaderId(
+  generatorValue: Record<string, unknown>
+): SharedBootloaderId {
+  const spec = decodeHexToText(generatorValue.bootloader_spec_id).trim();
+  const match = Object.values(SHARED_BOOTLOADER_CATALOG).find(
+    (entry) => entry.spec === spec
+  );
+  return match?.id || "generic-web";
 }
 
 export async function runGenericWebMetadataIndexer(
@@ -250,6 +264,7 @@ export async function runGenericWebMetadataIndexer(
       }
 
       const { generatorValue, artifactUri } = readyTokenData;
+      const resolvedBootloader = resolveWebProjectBootloaderId(generatorValue);
       const resolvedGeneratorVersion =
         toNat(generatorValue.version) ?? generatorVersion;
       const queueUpdatedAtMs = await resolveQueueUpdatedAtMs(
@@ -274,14 +289,14 @@ export async function runGenericWebMetadataIndexer(
       const existingToken = await tokenService.getToken(
         tokenId,
         SHADOWNET_NETWORK,
-        "generic-web"
+        resolvedBootloader
       );
       if (!existingToken) {
         await tokenService.storeToken({
           id: tokenId,
           generatorId,
           network: SHADOWNET_NETWORK,
-          bootloader: "generic-web",
+          bootloader: resolvedBootloader,
           seed: rawSeed,
           iteration,
         });
@@ -296,14 +311,24 @@ export async function runGenericWebMetadataIndexer(
         queueUpdatedAtMs ?? 0
       );
       try {
-        await triggerFeatureExtraction(config, tokenId, resolvedGeneratorVersion);
+        await triggerFeatureExtraction(
+          config,
+          tokenId,
+          resolvedGeneratorVersion,
+          resolvedBootloader
+        );
         console.log(
           "[indexer] feature extraction warmup completed",
-          JSON.stringify({ tokenId, generatorVersion: resolvedGeneratorVersion })
+          JSON.stringify({
+            tokenId,
+            generatorVersion: resolvedGeneratorVersion,
+            bootloader: resolvedBootloader,
+          })
         );
       } catch (error) {
         console.warn("[indexer] feature extraction warmup failed", {
           tokenId,
+          bootloader: resolvedBootloader,
           error,
         });
       }
@@ -314,6 +339,7 @@ export async function runGenericWebMetadataIndexer(
         tokenId,
         attributesFreshAfterMs,
         perTokenRetryBudget,
+        resolvedBootloader,
         {
           generatorId,
           iteration: iteration ?? null,
@@ -349,7 +375,7 @@ export async function runGenericWebMetadataIndexer(
       const generatorMeta = await generatorService.getGenerator(
         generatorId,
         SHADOWNET_NETWORK,
-        "generic-web"
+        resolvedBootloader
       );
 
       const metadataPayload = buildMetadataPayload({
@@ -798,7 +824,9 @@ async function waitForTokenMetadataToMatchGenerator(
         tokenInfo.artifact_uri ??
         tokenInfo._artifact_uri
     );
-    const expectedArtifactCid = decodeHexToText(generatorValue.artifact_cid).trim();
+    const expectedArtifactCid = decodeHexToText(
+      generatorValue.artifact_uri ?? generatorValue.artifact_cid
+    ).trim();
     const matchesGenerator =
       Boolean(artifactUri) &&
       Boolean(expectedArtifactCid) &&
@@ -844,10 +872,11 @@ async function waitForTokenMetadataToMatchGenerator(
 async function triggerFeatureExtraction(
   config: IndexerConfig,
   tokenId: number,
-  version: number
+  version: number,
+  bootloader: SharedBootloaderId
 ): Promise<void> {
   const url = new URL(
-    `/generic-web/v1/thumbnail/${tokenId}`,
+    `/${bootloader}/v1/thumbnail/${tokenId}`,
     config.workerBaseUrl
   );
   url.searchParams.set("n", SHADOWNET_NETWORK_CODE);
@@ -893,6 +922,7 @@ async function pollTokenAttributes(
   tokenId: number,
   minUpdatedAtMs: number,
   retries: number,
+  bootloader: SharedBootloaderId,
   expectedState: ExpectedTokenState
 ): Promise<Array<{ name: string; value: string | number | boolean }> | null> {
   const settleDelayMs = Math.max(config.attributeRetryDelayMs, 500);
@@ -901,7 +931,7 @@ async function pollTokenAttributes(
     const token = await tokenService.getTokenWithAttributes(
       tokenId,
       SHADOWNET_NETWORK,
-      "generic-web"
+      bootloader
     );
     const tokenUpdatedAtMs = token?.updatedAt ? Date.parse(token.updatedAt) : NaN;
     const hasFreshTokenRow =
@@ -949,7 +979,7 @@ async function pollTokenAttributes(
       const settledToken = await tokenService.getTokenWithAttributes(
         tokenId,
         SHADOWNET_NETWORK,
-        "generic-web"
+        bootloader
       );
       const settledAttrs = mapAttributeEntries(settledToken?.attributes || []);
       const settledUpdatedAtMs = settledToken?.updatedAt

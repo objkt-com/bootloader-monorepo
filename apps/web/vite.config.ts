@@ -51,40 +51,15 @@ export default defineConfig(({ mode }) => ({
         target: 'http://localhost:8787',
         changeOrigin: true,
       },
-      // Thumbnail routes - namespaced
-      '/svg-js/v1/thumbnail': {
+      '/svg-js/v1': {
         target: 'http://localhost:8787',
         changeOrigin: true,
       },
-      '/svg-js/v1/generator-thumbnail': {
+      '/generic-web/v1': {
         target: 'http://localhost:8787',
         changeOrigin: true,
       },
-      '/svg-js/v1/tokens': {
-        target: 'http://localhost:8787',
-        changeOrigin: true,
-      },
-      '/svg-js/v1/generators': {
-        target: 'http://localhost:8787',
-        changeOrigin: true,
-      },
-      '/generic-web/v1/thumbnail': {
-        target: 'http://localhost:8787',
-        changeOrigin: true,
-      },
-      '/generic-web/v1/generator-thumbnail': {
-        target: 'http://localhost:8787',
-        changeOrigin: true,
-      },
-      '/generic-web/v1/tokens': {
-        target: 'http://localhost:8787',
-        changeOrigin: true,
-      },
-      '/generic-web/v1/generators': {
-        target: 'http://localhost:8787',
-        changeOrigin: true,
-      },
-      '/generic-web/v1/indexer': {
+      '/p5-js/v1': {
         target: 'http://localhost:8787',
         changeOrigin: true,
       },

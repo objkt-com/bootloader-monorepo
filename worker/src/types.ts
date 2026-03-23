@@ -178,6 +178,7 @@ export interface Bindings {
   FILEBASE_SECRET_KEY?: string;
   FILEBASE_BUCKET?: string;
   FILEBASE_ENDPOINT?: string;
+  ARTIFACT_SIGNER_PRIVATE_KEY?: string;
   INDEXER_ENABLED?: string;
   INDEXER_DRY_RUN?: string;
   INDEXER_PRIVATE_KEY?: string;

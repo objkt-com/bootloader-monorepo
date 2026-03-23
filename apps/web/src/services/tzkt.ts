@@ -54,8 +54,8 @@ class TzKTService {
     generatorId: string,
     bootloaderId?: BootloaderId
   ): Promise<Generator | null> {
-    if (bootloaderId === 'generic-web') {
-      return this.getGenericWebGenerator(generatorId)
+    if (bootloaderId === 'generic-web' || bootloaderId === 'p5-js') {
+      return this.getGenericWebGenerator(generatorId, bootloaderId)
     }
     if (bootloaderId === 'svg-js') {
       return this.getGenerator(generatorId)
@@ -73,11 +73,19 @@ class TzKTService {
     return getSvgJsGenerator(this.client, this.svgJsContractAddress, generatorId)
   }
 
-  async getGenericWebGenerator(generatorId: string): Promise<Generator | null> {
+  async getGenericWebGenerator(
+    generatorId: string,
+    bootloaderId?: BootloaderId
+  ): Promise<Generator | null> {
     if (!this.genericWebContractAddress) {
       return null
     }
-    return getGenericWebGenerator(this.client, this.genericWebContractAddress, generatorId)
+    return getGenericWebGenerator(
+      this.client,
+      this.genericWebContractAddress,
+      generatorId,
+      bootloaderId
+    )
   }
 
   async getGeneratorMints(
@@ -86,7 +94,7 @@ class TzKTService {
     limit = 10,
     generator?: Generator
   ): Promise<Token[]> {
-    if (bootloaderId === 'generic-web') {
+    if (bootloaderId === 'generic-web' || bootloaderId === 'p5-js') {
       return this.getGenericWebGeneratorMints(generatorId, limit, generator)
     }
     return getSvgJsGeneratorMints(
@@ -125,8 +133,8 @@ class TzKTService {
   }
 
   async getToken(tokenId: string, bootloaderId?: BootloaderId): Promise<Token | null> {
-    if (bootloaderId === 'generic-web') {
-      return this.getGenericWebToken(tokenId)
+    if (bootloaderId === 'generic-web' || bootloaderId === 'p5-js') {
+      return this.getGenericWebToken(tokenId, bootloaderId)
     }
     if (bootloaderId === 'svg-js') {
       return this.getSvgJsToken(tokenId)
@@ -144,11 +152,19 @@ class TzKTService {
     return getSvgJsToken(this.client, this.svgJsContractAddress, tokenId)
   }
 
-  async getGenericWebToken(tokenId: string): Promise<Token | null> {
+  async getGenericWebToken(
+    tokenId: string,
+    bootloaderId?: BootloaderId
+  ): Promise<Token | null> {
     if (!this.genericWebContractAddress) {
       return null
     }
-    return getGenericWebToken(this.client, this.genericWebContractAddress, tokenId)
+    return getGenericWebToken(
+      this.client,
+      this.genericWebContractAddress,
+      tokenId,
+      bootloaderId
+    )
   }
 
   async getFragments(): Promise<string[]> {

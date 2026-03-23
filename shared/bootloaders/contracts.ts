@@ -19,11 +19,21 @@ export const SHARED_BOOTLOADER_CONTRACTS: Record<
   },
   "generic-web": {
     artifactContract: {
-      shadownet: "KT1MkVTbYNJ6hkJKWSukLBgPaXtkHFKugK6v",
+      shadownet: "KT1XivGXG8XawFFwWMEjbuuEN9Yx2TtiBCY8",
       mainnet: "",
     },
     rngContract: {
-      shadownet: "KT1Mub11JnyhBA8huycUekE26DFB5VW4SDqh",
+      shadownet: "KT1B5hbpdGcspvLKANU4ABU3LakMtwNBEuuR",
+      mainnet: "",
+    },
+  },
+  "p5-js": {
+    artifactContract: {
+      shadownet: "KT1XivGXG8XawFFwWMEjbuuEN9Yx2TtiBCY8",
+      mainnet: "",
+    },
+    rngContract: {
+      shadownet: "KT1B5hbpdGcspvLKANU4ABU3LakMtwNBEuuR",
       mainnet: "",
     },
   },

@@ -3,14 +3,10 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import vm from "node:vm";
 
-const bootWeb = await import("../../tmp/bootloader-tests/shared/bootloaders/boot-web.js");
-const bootWebParams = await import(
-  "../../tmp/bootloader-tests/shared/bootloaders/boot-web-params.js"
-);
-const catalog = await import("../../tmp/bootloader-tests/shared/bootloaders/catalog.js");
-const contracts = await import(
-  "../../tmp/bootloader-tests/shared/bootloaders/contracts.js"
-);
+const bootWeb = await import("../../tmp/bootloader-tests/boot-web.js");
+const bootWebParams = await import("../../tmp/bootloader-tests/boot-web-params.js");
+const catalog = await import("../../tmp/bootloader-tests/catalog.js");
+const contracts = await import("../../tmp/bootloader-tests/contracts.js");
 const seedHex = await import("../../tmp/bootloader-tests/seed-hex.js");
 
 test("boot:web manifest accepts omitted entry and resolves defaults", () => {
@@ -107,11 +103,19 @@ test("shared contract map resolves known contracts", () => {
   );
   assert.equal(
     contracts.getSharedBootloaderArtifactContract("generic-web", "shadownet"),
-    "KT1MkVTbYNJ6hkJKWSukLBgPaXtkHFKugK6v"
+    "KT1XivGXG8XawFFwWMEjbuuEN9Yx2TtiBCY8"
   );
   assert.equal(
     contracts.getSharedBootloaderRngContract("generic-web", "shadownet"),
-    "KT1Mub11JnyhBA8huycUekE26DFB5VW4SDqh"
+    "KT1B5hbpdGcspvLKANU4ABU3LakMtwNBEuuR"
+  );
+  assert.equal(
+    contracts.getSharedBootloaderArtifactContract("p5-js", "shadownet"),
+    "KT1XivGXG8XawFFwWMEjbuuEN9Yx2TtiBCY8"
+  );
+  assert.equal(
+    contracts.getSharedBootloaderRngContract("p5-js", "shadownet"),
+    "KT1B5hbpdGcspvLKANU4ABU3LakMtwNBEuuR"
   );
   assert.equal(contracts.getSharedBootloaderRngContract("svg-js", "mainnet"), "");
 });

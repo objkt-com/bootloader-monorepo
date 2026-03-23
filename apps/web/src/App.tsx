@@ -1,6 +1,7 @@
 import { Routes, Route } from 'react-router-dom'
 import { RootLayout } from '@/layouts/root-layout'
 import { CreateLayout } from '@/layouts/create-layout'
+import { EditorLayout } from '@/layouts/editor-layout'
 import { HomePage } from '@/pages/home'
 import { ExplorePage } from '@/pages/explore'
 import { ActivityPage } from '@/pages/activity'
@@ -9,6 +10,7 @@ import { BootloaderDetailPage } from '@/pages/bootloaders/[id]'
 import { CreatePage } from '@/pages/create'
 import { GeneratorDetailPage } from '@/pages/generator/[id]'
 import { BootloaderGeneratorEditPage } from '@/pages/generator/edit/router'
+import { P5JsEditPage } from '@/bootloaders/p5-js/edit-page'
 import { TokenDetailPage } from '@/pages/token/[id]'
 import { ProfilePage } from '@/pages/profile/[id]'
 import { ResourcesPage } from '@/pages/resources'
@@ -25,6 +27,10 @@ export default function App() {
         <Route path="/embed/generator/:bootloader/:id" element={<EmbedGeneratorPage />} />
         <Route path="/embed/token/:bootloader/:tokenId" element={<EmbedTokenPage />} />
         <Route path="/player/:kind/:bootloader/:id" element={<PlayerPage />} />
+
+        <Route path="/generator/p5-js/:id/edit" element={<EditorLayout />}>
+          <Route index element={<P5JsEditPage />} />
+        </Route>
 
         {/* Routes with standard layout */}
         <Route element={<RootLayout />}>

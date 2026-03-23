@@ -75,14 +75,16 @@ export function GenericWebTokenDetailView({
               src={newVersionPreviewUrl}
               title={`${generator.name} #${token.iteration} - v${generator.version} Preview`}
               className="absolute inset-0 w-full h-full border-0"
-              sandbox="allow-scripts"
+              allow="accelerometer; gyroscope; magnetometer"
+              sandbox="allow-scripts allow-same-origin"
             />
           ) : tokenArtifactUrl ? (
             <iframe
               src={tokenArtifactUrl}
               title={`${generator.name} #${token.iteration}`}
               className="absolute inset-0 w-full h-full border-0"
-              sandbox="allow-scripts"
+              allow="accelerometer; gyroscope; magnetometer"
+              sandbox="allow-scripts allow-same-origin"
             />
           ) : (
             <ViewerComponent

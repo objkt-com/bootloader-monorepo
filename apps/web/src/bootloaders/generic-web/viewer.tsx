@@ -42,6 +42,7 @@ export function GenericWebViewer({
       src={previewUrl}
       title={generator.name}
       className={cn('preview-frame', className)}
+      allow="accelerometer; gyroscope; magnetometer"
       sandbox="allow-scripts allow-same-origin"
       onLoad={() => onReady?.()}
       onError={() => onError?.(new Error('Failed to load preview'))}

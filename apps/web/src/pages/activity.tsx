@@ -115,6 +115,8 @@ export function ActivityPage() {
                   <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                     {event.bootloaderId === "generic-web"
                       ? "web"
+                      : event.bootloaderId === "p5-js"
+                      ? "p5"
                       : event.bootloaderId}
                   </Badge>
                 </div>

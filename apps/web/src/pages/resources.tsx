@@ -34,23 +34,23 @@ export function ResourcesPage() {
       </div>
 
       {/* Quick Links - Bootloaders */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <Link to="/bootloaders/svg-js">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <Link to="/bootloaders/p5-js">
           <Card className="h-full hover:bg-accent transition-colors cursor-pointer">
             <CardHeader className="pb-2">
               <div className="flex items-center gap-2 mb-2">
-                <Code className="h-6 w-6" />
+                <Palette className="h-6 w-6" />
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <HardDrive className="h-3 w-3" />
-                  On-chain
+                  <Cloud className="h-3 w-3" />
+                  IPFS
                 </div>
               </div>
-              <CardTitle className="text-lg">SVG JavaScript</CardTitle>
+              <CardTitle className="text-lg">p5.js</CardTitle>
             </CardHeader>
             <CardContent>
               <CardDescription>
-                Fully on-chain generative art. Your code is stored directly on
-                Tezos. Perfect for lightweight, permanent artwork.
+                A dedicated p5.js 2.x workflow. Write `sketch.js`, preview it,
+                render a cover image, and publish a packaged IPFS artifact.
               </CardDescription>
             </CardContent>
           </Card>
@@ -71,7 +71,28 @@ export function ResourcesPage() {
             <CardContent>
               <CardDescription>
                 HTML, CSS, JS with any library. Use p5.js, three.js, canvas,
-                WebGL - the full power of the browser.
+                WebGL or any other browser-based setup.
+              </CardDescription>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link to="/bootloaders/svg-js">
+          <Card className="h-full hover:bg-accent transition-colors cursor-pointer">
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-2 mb-2">
+                <Code className="h-6 w-6" />
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <HardDrive className="h-3 w-3" />
+                  On-chain
+                </div>
+              </div>
+              <CardTitle className="text-lg">SVG JavaScript</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CardDescription>
+                Fully on-chain generative art. Your code is stored directly on
+                Tezos. Perfect for lightweight, permanent artwork.
               </CardDescription>
             </CardContent>
           </Card>
@@ -449,6 +470,14 @@ for (let i = 0; i < 50; i++) {
           <div className="border p-6">
             <h3 className="font-medium mb-4">Documentation</h3>
             <ul className="space-y-3">
+              <li>
+                <Link
+                  to="/bootloaders/p5-js"
+                  className="text-sm underline hover:text-foreground"
+                >
+                  p5.js Documentation
+                </Link>
+              </li>
               <li>
                 <Link
                   to="/bootloaders/svg-js"

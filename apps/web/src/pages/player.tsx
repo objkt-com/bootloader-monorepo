@@ -19,7 +19,11 @@ export function PlayerPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [mintState, setMintState] = useState<MintState>('idle')
   const [generatedSeed] = useState(() =>
-    randomHex(bootloader === 'generic-web' ? GENERIC_WEB_SEED_BYTES : SVG_JS_PLAYER_SEED_BYTES)
+    randomHex(
+      bootloader === 'generic-web' || bootloader === 'p5-js'
+        ? GENERIC_WEB_SEED_BYTES
+        : SVG_JS_PLAYER_SEED_BYTES
+    )
   )
 
   const isGenerator = kind === 'generator'
@@ -132,7 +136,9 @@ export function PlayerPage() {
     next.set(
       's',
       randomHex(
-        bootloader === 'generic-web' ? GENERIC_WEB_SEED_BYTES : SVG_JS_PLAYER_SEED_BYTES
+        bootloader === 'generic-web' || bootloader === 'p5-js'
+          ? GENERIC_WEB_SEED_BYTES
+          : SVG_JS_PLAYER_SEED_BYTES
       )
     )
     next.set('i', '0')

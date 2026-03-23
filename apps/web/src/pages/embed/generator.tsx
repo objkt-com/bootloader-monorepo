@@ -25,21 +25,26 @@ export function EmbedGeneratorPage() {
   const [generator, setGenerator] = useState<Generator | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const isWebProjectBootloader =
+    bootloader === "generic-web" || bootloader === "p5-js";
+  const generatorUsesManifest = generator
+    ? generator.bootloaderId !== "svg-js"
+    : false;
 
   const seed =
     searchParams.get("s") ||
-    (bootloader === "generic-web"
+    (isWebProjectBootloader
       ? GENERIC_WEB_PREVIEW_SEED
       : CONFIG.defaultPreviewSeed);
   const iteration = parseInt(searchParams.get("i") || "1", 10);
   const isCaptureMode = searchParams.get("c") === "true";
   const captureMode =
-    generator?.bootloaderId === "generic-web"
-      ? generator.manifest?.capture?.mode || "auto"
+    generatorUsesManifest
+      ? generator?.manifest?.capture?.mode || "auto"
       : "trigger";
   const captureDelayMs =
-    generator?.bootloaderId === "generic-web"
-      ? generator.manifest?.capture?.delayMs ?? 5000
+    generatorUsesManifest
+      ? generator?.manifest?.capture?.delayMs ?? 5000
       : 0;
 
   // Decode params for generic-web
@@ -74,7 +79,7 @@ export function EmbedGeneratorPage() {
         }
 
         let manifest = data.manifest;
-        if (data.bootloaderId === "generic-web" && data.cid) {
+        if (data.bootloaderId !== "svg-js" && data.cid) {
           try {
             const manifestRes = await fetch(
               `${CONFIG.sandboxWorkerUrl}/ipfs/${data.cid}/manifest.json`
@@ -134,7 +139,7 @@ export function EmbedGeneratorPage() {
     }
 
     if (
-      generator?.bootloaderId === "generic-web" &&
+      generatorUsesManifest &&
       captureMode === "trigger"
     ) {
       window.setTimeout(() => {

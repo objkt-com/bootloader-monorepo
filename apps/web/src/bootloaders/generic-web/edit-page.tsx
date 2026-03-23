@@ -231,6 +231,7 @@ export function GeneratorEditPage() {
 
   const selectedThumbnailJob =
     selectedThumbnail ? renderJobs[selectedThumbnail] : undefined;
+  const allowLocalThumbnailFallback = import.meta.env.DEV;
   const hasValidThumbnailSelection = Boolean(
     selectedThumbnailJob &&
       selectedThumbnailJob.state === "complete" &&
@@ -242,13 +243,17 @@ export function GeneratorEditPage() {
       generator?.cid &&
       newCid !== generator.cid
   );
+  const canSaveUploadedVersion =
+    !hasUploadedNewVersion ||
+    hasValidThumbnailSelection ||
+    allowLocalThumbnailFallback;
 
   // Handle save
   const handleSave = useCallback(async () => {
     if (!tezos || !generator || !id || !name.trim() || !user?.id || !authToken)
       return;
 
-    if (hasUploadedNewVersion && !hasValidThumbnailSelection) {
+    if (!canSaveUploadedVersion) {
       setSaveError(
         "Upload a new version, generate renders, and select a valid thumbnail before saving."
       );
@@ -265,7 +270,7 @@ export function GeneratorEditPage() {
       const effectiveThumbnailSeed =
         selectedThumbnailJob?.seed
           ? selectedThumbnailJob.seed
-          : thumbnailSeed.trim();
+          : thumbnailSeed.trim() || previewSeed;
 
       // Create metadata JSON with descriptions
       const metadataObj: {
@@ -295,7 +300,8 @@ export function GeneratorEditPage() {
         id,
         name.trim(),
         artifactCid,
-        metadataCid
+        metadataCid,
+        authToken
       );
 
       if (result.success) {
@@ -334,8 +340,10 @@ export function GeneratorEditPage() {
     newCid,
     generatorDescription,
     hasUploadedNewVersion,
+    canSaveUploadedVersion,
     hasValidThumbnailSelection,
     tokenDescription,
+    previewSeed,
     thumbnailSeed,
     selectedThumbnailJob,
     user,
@@ -872,7 +880,7 @@ export function GeneratorEditPage() {
                   !isConnected ||
                   !name.trim() ||
                   isSaving ||
-                  (hasUploadedNewVersion && !hasValidThumbnailSelection)
+                  !canSaveUploadedVersion
                 }
               >
                 {isSaving ? (
@@ -880,7 +888,7 @@ export function GeneratorEditPage() {
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Saving...
                   </>
-                ) : hasUploadedNewVersion && !hasValidThumbnailSelection ? (
+                ) : !canSaveUploadedVersion ? (
                   "Select a thumbnail to save"
                 ) : (
                   <>
@@ -890,12 +898,20 @@ export function GeneratorEditPage() {
                 )}
               </Button>
             </div>
-            {hasUploadedNewVersion && !hasValidThumbnailSelection && (
+            {!canSaveUploadedVersion && (
               <p className="text-xs text-muted-foreground">
                 A completed render must be selected as the thumbnail before a
                 new uploaded version can be saved.
               </p>
             )}
+            {allowLocalThumbnailFallback &&
+              hasUploadedNewVersion &&
+              !hasValidThumbnailSelection && (
+                <p className="text-xs text-muted-foreground">
+                  Local dev: saving falls back to the current preview seed if no
+                  thumbnail render is selected.
+                </p>
+              )}
           </div>
         </div>
       </div>

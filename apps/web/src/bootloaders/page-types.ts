@@ -24,6 +24,8 @@ export interface BootloaderTokenDetailViewProps {
   token: Token
   generator: Generator
   ViewerComponent: ComponentType<BootloaderViewerProps>
+  code?: string
+  isCodeLoading?: boolean
   copied: boolean
   tokenArtifactUrl: string | null
   newVersionPreviewUrl: string | null

@@ -109,7 +109,7 @@ const GENERATOR_PENDING_RETRY_DELAY_MS = 1500;
 const SVG_JS_PREVIEW_SEED_BYTES = 16;
 
 function generatePreviewSeed(bootloaderId?: string): string {
-  return bootloaderId === "generic-web"
+  return bootloaderId === "generic-web" || bootloaderId === "p5-js"
     ? generateGenericWebSeedHex()
     : randomHex(SVG_JS_PREVIEW_SEED_BYTES);
 }

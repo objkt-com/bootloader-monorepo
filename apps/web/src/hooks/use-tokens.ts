@@ -33,7 +33,7 @@ interface IndexedTokenSearchResponse {
   tokens?: Array<{
     id: number
     generatorId: number
-    bootloader: 'svg-js' | 'generic-web'
+    bootloader: 'svg-js' | 'generic-web' | 'p5-js'
     version?: number | null
     seed: string | null
     iteration: number | null
@@ -105,7 +105,7 @@ export function useGeneratorTokens(
         const mappedTokens: Token[] = (data.tokens || []).map((token) => ({
           id: String(token.id),
           generatorId: String(token.generatorId ?? generatorId),
-          bootloaderId: 'generic-web',
+          bootloaderId: token.bootloader || bootloaderId,
           owner: token.ownerAddress || '',
           seed: token.seed || '',
           iteration: token.iteration ?? token.id,

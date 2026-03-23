@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { getTokenThumbnailUrl } from '@/config'
 import { getBootloader } from '@/lib/bootloader-registry'
+import type { BootloaderId } from '@/types/bootloader'
 
 interface TokenCardProps {
   token: Token
@@ -14,7 +15,7 @@ interface TokenCardProps {
 
 // Storage type badge component - exported for use in other cards
 export function StorageBadge({ bootloaderId, className }: { bootloaderId: string; className?: string }) {
-  const bootloader = getBootloader(bootloaderId as 'svg-js' | 'generic-web')
+  const bootloader = getBootloader(bootloaderId as BootloaderId)
   if (!bootloader) return null
 
   const isOnchain = bootloader.features.storageType === 'onchain'

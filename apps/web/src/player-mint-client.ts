@@ -53,7 +53,7 @@ export async function mintFromGeneratorConfig(
   const contract = await toolkit.wallet.at(config.contractAddress)
   const entropy = randomEntropyHex()
   const mintPayload =
-    config.bootloader === 'generic-web'
+    config.bootloader === 'generic-web' || config.bootloader === 'p5-js'
       ? {
           generator_id: Number(config.generatorId),
           entropy,

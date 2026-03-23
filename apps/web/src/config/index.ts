@@ -56,6 +56,7 @@ export const CONFIG = {
   // Platform fee taken on primary mint sales (percentage)
   primarySaleFeePercent: {
     "generic-web": 15,
+    "p5-js": 15,
     "svg-js": 20,
   } as Record<BootloaderId, number>,
 };
@@ -103,13 +104,23 @@ export function getRngContractAddress() {
   return getSharedBootloaderRngContract("generic-web", CONFIG.network);
 }
 
+export function getRngContractAddressForBootloader(
+  bootloaderId: SharedBootloaderId
+): string {
+  return getSharedBootloaderRngContract(bootloaderId, CONFIG.network);
+}
+
 /**
  * Get the contract address for a specific bootloader type
  */
 export function getContractAddressForBootloader(
   bootloaderId: SharedBootloaderId | string
 ): string {
-  if (bootloaderId === "generic-web" || bootloaderId === "svg-js") {
+  if (
+    bootloaderId === "generic-web" ||
+    bootloaderId === "p5-js" ||
+    bootloaderId === "svg-js"
+  ) {
     return getSharedBootloaderArtifactContract(bootloaderId, CONFIG.network);
   }
   return getSharedBootloaderArtifactContract("svg-js", CONFIG.network);

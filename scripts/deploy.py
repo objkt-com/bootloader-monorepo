@@ -188,6 +188,16 @@ def deploy_generic_web(
         bootloader_deployer.clear_cache()
 
     bootloader_address = bootloader_deployer.deploy()
+    network_label = "shadownet" if network == Network.shadownet else "mainnet"
+    print(f"Generic-web/core contract: {bootloader_address}")
+    print(f"Randomiser contract: {randomiser_address}")
+    print()
+    print("Next step: configure bootloader specs on the deployed contract")
+    print(
+        "  uv run python scripts/configure_web_project_contract.py"
+        f" --network {network_label}"
+        f" --contract {bootloader_address}"
+    )
     # bootloader = pt.contract(bootloader_address)
 
     # print(bootloader.create_generator(
