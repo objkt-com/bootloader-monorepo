@@ -9,10 +9,12 @@ This module tests external dependencies and various edge cases:
 - Edge cases and boundary conditions
 """
 
-from bootloader import bootloader
-from randomiser import randomiser
-import smartpy as sp
 import os
+
+import smartpy as sp
+from bootloaders.svg_js import svg_js
+from randomiser import randomiser
+
 
 @sp.module
 def test_utils():
@@ -23,14 +25,15 @@ def test_utils():
     class MockRngContract(sp.Contract):
         def __init__(self):
             self.data = ()
-        
+
         @sp.onchain_view()
         def rb(self, seed: sp.bytes):
             return sp.bytes("0x1234567890abcdef1234567890abcdef")
-        
+
         @sp.entrypoint
         def default(self):
             pass
+
 
 @sp.add_test()
 def test_missing_fragments():
@@ -40,7 +43,7 @@ def test_missing_fragments():
     - Contract requires all necessary fragments
     - Fragment dependencies are properly checked
     """
-    scenario = sp.test_scenario("Missing Fragments", [bootloader, randomiser])
+    scenario = sp.test_scenario("Missing Fragments", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -49,22 +52,26 @@ def test_missing_fragments():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng.address, 
+        rng_contract=rng.address,
         contract_metadata=sp.big_map({}),
         ledger=sp.map({}),
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
     scenario.h2("Add bootloader with only first fragment")
     contract.add_bootloader(
         version=sp.bytes("0x302e302e31"),  # "0.0.1"
-        fragments=[sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e")],
-        fun=bootloader.v0_0_1,
+        fragments=[
+            sp.bytes(
+                "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+            )
+        ],
+        fun=svg_js.v0_0_1,
         storage_limits=sp.record(code=1000, name=1000, desc=1000, author=1000),
-        _sender=admin
+        _sender=admin,
     )
 
     # Create generator
@@ -75,7 +82,7 @@ def test_missing_fragments():
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=0,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
 
     contract.set_sale(
@@ -85,17 +92,18 @@ def test_missing_fragments():
         paused=False,
         editions=1,
         max_per_wallet=None,
-        _sender=alice
+        _sender=alice,
     )
 
     scenario.h2("Minting fails when fragments are missing")
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=bob,
         _amount=sp.mutez(0),
-        _valid=False
+        _valid=False,
     )
+
 
 @sp.add_test()
 def test_rng_contract_update():
@@ -106,7 +114,7 @@ def test_rng_contract_update():
     - Non-mods cannot update RNG contract
     - New RNG contract is used for subsequent operations
     """
-    scenario = sp.test_scenario("RNG Contract Update", [bootloader, randomiser])
+    scenario = sp.test_scenario("RNG Contract Update", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -115,16 +123,16 @@ def test_rng_contract_update():
 
     rng1 = randomiser.RandomiserMock()
     scenario += rng1
-    
+
     rng2 = test_utils.MockRngContract()
     scenario += rng2
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng1.address, 
+        rng_contract=rng1.address,
         contract_metadata=sp.big_map({}),
         ledger=sp.map({}),
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
@@ -144,11 +152,9 @@ def test_rng_contract_update():
 
     scenario.h2("Non-mod cannot update RNG contract")
     contract.set_rng_contract(
-        rng2.address,
-        _sender=alice,
-        _valid=False,
-        _exception="ONLY_MODS"
+        rng2.address, _sender=alice, _valid=False, _exception="ONLY_MODS"
     )
+
 
 @sp.add_test()
 def test_fragment_management():
@@ -158,7 +164,7 @@ def test_fragment_management():
     - Overwriting existing fragments
     - Fragment access control
     """
-    scenario = sp.test_scenario("Fragment Management", [bootloader, randomiser])
+    scenario = sp.test_scenario("Fragment Management", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -167,12 +173,12 @@ def test_fragment_management():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng.address, 
+        rng_contract=rng.address,
         contract_metadata=sp.big_map({}),
         ledger=sp.map({}),
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
@@ -182,23 +188,27 @@ def test_fragment_management():
     scenario.h2("Admin can add bootloader")
     contract.add_bootloader(
         version=sp.bytes("0x302e302e31"),  # "0.0.1"
-        fragments=[sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e")],
-        fun=bootloader.v0_0_1,
+        fragments=[
+            sp.bytes(
+                "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+            )
+        ],
+        fun=svg_js.v0_0_1,
         storage_limits=sp.record(code=1000, name=1000, desc=1000, author=1000),
-        _sender=admin
+        _sender=admin,
     )
-    
+
     scenario.verify(contract.data.bootloaders.contains(0))
 
     scenario.h2("Moderator can add bootloader")
     contract.add_bootloader(
         version=sp.bytes("0x302e302e32"),  # "0.0.2"
         fragments=[sp.bytes("0x3c2f7376673e")],
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=sp.record(code=1000, name=1000, desc=1000, author=1000),
-        _sender=admin  # Only admin can add bootloaders
+        _sender=admin,  # Only admin can add bootloaders
     )
-    
+
     scenario.verify(contract.data.bootloaders.contains(1))
 
     scenario.h2("Can add multiple bootloaders")
@@ -206,23 +216,24 @@ def test_fragment_management():
     contract.add_bootloader(
         version=sp.bytes("0x302e302e33"),  # "0.0.3"
         fragments=new_fragments,
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=sp.record(code=1000, name=1000, desc=1000, author=1000),
-        _sender=admin
+        _sender=admin,
     )
-    
+
     scenario.verify(contract.data.bootloaders.contains(2))
 
     scenario.h2("Non-admin cannot add bootloader")
     contract.add_bootloader(
         version=sp.bytes("0x302e302e34"),  # "0.0.4"
         fragments=[sp.bytes("0x3c672f3e")],
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=sp.record(code=1000, name=1000, desc=1000, author=1000),
         _sender=alice,
         _valid=False,
-        _exception="ONLY_ADMIN"
+        _exception="ONLY_ADMIN",
     )
+
 
 @sp.add_test()
 def test_contract_interaction_edge_cases():
@@ -232,7 +243,7 @@ def test_contract_interaction_edge_cases():
     - Large entropy values
     - Contract address generation
     """
-    scenario = sp.test_scenario("Contract Interaction Edge Cases", [bootloader, randomiser])
+    scenario = sp.test_scenario("Contract Interaction Edge Cases", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -241,26 +252,30 @@ def test_contract_interaction_edge_cases():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng.address, 
+        rng_contract=rng.address,
         contract_metadata=sp.big_map({}),
         ledger=sp.map({}),
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
     # Add bootloader with fragments for minting
     fragments = []
     for i in range(4):
-        fragments.append(sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"))
-    
+        fragments.append(
+            sp.bytes(
+                "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+            )
+        )
+
     contract.add_bootloader(
         version=sp.bytes("0x302e302e31"),  # "0.0.1"
         fragments=fragments,
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=sp.record(code=1000, name=1000, desc=1000, author=1000),
-        _sender=admin
+        _sender=admin,
     )
 
     # Create generator
@@ -271,7 +286,7 @@ def test_contract_interaction_edge_cases():
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=0,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
 
     contract.set_sale(
@@ -281,29 +296,24 @@ def test_contract_interaction_edge_cases():
         paused=False,
         editions=10,
         max_per_wallet=None,
-        _sender=alice
+        _sender=alice,
     )
 
     scenario.h2("Minting with empty entropy")
     contract.mint(
-        generator_id=0, 
-        entropy=sp.bytes("0x"),
-        _sender=bob,
-        _amount=sp.mutez(0)
+        generator_id=0, entropy=sp.bytes("0x"), _sender=bob, _amount=sp.mutez(0)
     )
-    
+
     scenario.verify(contract.data.next_token_id == 1)
 
     scenario.h2("Minting with large entropy")
     large_entropy = sp.bytes("0x" + "ff" * 100)  # 100 bytes of 0xff
     contract.mint(
-        generator_id=0, 
-        entropy=large_entropy,
-        _sender=bob,
-        _amount=sp.mutez(0)
+        generator_id=0, entropy=large_entropy, _sender=bob, _amount=sp.mutez(0)
     )
-    
+
     scenario.verify(contract.data.next_token_id == 2)
+
 
 @sp.add_test()
 def test_state_consistency():
@@ -313,7 +323,7 @@ def test_state_consistency():
     - Token counters are properly maintained
     - Reserved editions are properly tracked
     """
-    scenario = sp.test_scenario("State Consistency", [bootloader, randomiser])
+    scenario = sp.test_scenario("State Consistency", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -322,26 +332,30 @@ def test_state_consistency():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng.address, 
+        rng_contract=rng.address,
         contract_metadata=sp.big_map({}),
         ledger=sp.map({}),
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
     # Add bootloader with fragments for minting
     fragments = []
     for i in range(4):
-        fragments.append(sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"))
-    
+        fragments.append(
+            sp.bytes(
+                "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+            )
+        )
+
     contract.add_bootloader(
         version=sp.bytes("0x302e302e31"),  # "0.0.1"
         fragments=fragments,
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=sp.record(code=1000, name=1000, desc=1000, author=1000),
-        _sender=admin
+        _sender=admin,
     )
 
     scenario.h2("Initial state is consistent")
@@ -356,9 +370,9 @@ def test_state_consistency():
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=3,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
-    
+
     scenario.verify(contract.data.next_generator_id == 1)
     scenario.verify(contract.data.generators[0].n_tokens == 0)
     scenario.verify(contract.data.generators[0].reserved_editions == 3)
@@ -371,9 +385,9 @@ def test_state_consistency():
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=2,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
-    
+
     scenario.verify(contract.data.next_generator_id == 2)
     scenario.verify(contract.data.generators[1].n_tokens == 0)
     scenario.verify(contract.data.generators[1].reserved_editions == 2)
@@ -386,7 +400,7 @@ def test_state_consistency():
         paused=False,
         editions=10,
         max_per_wallet=None,
-        _sender=alice
+        _sender=alice,
     )
 
     contract.set_sale(
@@ -396,28 +410,28 @@ def test_state_consistency():
         paused=False,
         editions=5,
         max_per_wallet=None,
-        _sender=alice
+        _sender=alice,
     )
 
     scenario.h2("Minting updates correct generator counters")
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=bob,
-        _amount=sp.mutez(0)
+        _amount=sp.mutez(0),
     )
-    
+
     scenario.verify(contract.data.next_token_id == 1)
     scenario.verify(contract.data.generators[0].n_tokens == 1)
     scenario.verify(contract.data.generators[1].n_tokens == 0)
 
     contract.mint(
-        generator_id=1, 
+        generator_id=1,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=bob,
-        _amount=sp.mutez(0)
+        _amount=sp.mutez(0),
     )
-    
+
     scenario.verify(contract.data.next_token_id == 2)
     scenario.verify(contract.data.generators[0].n_tokens == 1)
     scenario.verify(contract.data.generators[1].n_tokens == 1)
@@ -427,13 +441,14 @@ def test_state_consistency():
         generator_id=0,
         recipient=bob.address,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
-        _sender=alice
+        _sender=alice,
     )
-    
+
     scenario.verify(contract.data.generators[0].reserved_editions == 2)
     scenario.verify(contract.data.generators[1].reserved_editions == 2)
     scenario.verify(contract.data.generators[0].n_tokens == 2)
     scenario.verify(contract.data.generators[1].n_tokens == 1)
+
 
 @sp.add_test()
 def test_complex_scenarios():
@@ -443,7 +458,7 @@ def test_complex_scenarios():
     - Generator updates during active sales
     - Multiple generators with different configurations
     """
-    scenario = sp.test_scenario("Complex Scenarios", [bootloader, randomiser])
+    scenario = sp.test_scenario("Complex Scenarios", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -453,26 +468,30 @@ def test_complex_scenarios():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng.address, 
+        rng_contract=rng.address,
         contract_metadata=sp.big_map({}),
         ledger=sp.map({}),
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
     # Add bootloader with fragments for minting
     fragments = []
     for i in range(4):
-        fragments.append(sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"))
-    
+        fragments.append(
+            sp.bytes(
+                "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+            )
+        )
+
     contract.add_bootloader(
         version=sp.bytes("0x302e302e31"),  # "0.0.1"
         fragments=fragments,
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=sp.record(code=1000, name=1000, desc=1000, author=1000),
-        _sender=admin
+        _sender=admin,
     )
 
     scenario.h2("Create multiple generators with different configurations")
@@ -484,7 +503,7 @@ def test_complex_scenarios():
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=2,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
 
     # Generator 1: Paid, unlimited, no reserved
@@ -495,7 +514,7 @@ def test_complex_scenarios():
         author_bytes=sp.bytes("0x426f62"),
         reserved_editions=0,
         bootloader_id=0,
-        _sender=bob
+        _sender=bob,
     )
 
     # Set different sale configurations
@@ -506,7 +525,7 @@ def test_complex_scenarios():
         paused=False,
         editions=5,
         max_per_wallet=sp.Some(2),
-        _sender=alice
+        _sender=alice,
     )
 
     contract.set_sale(
@@ -516,16 +535,16 @@ def test_complex_scenarios():
         paused=False,
         editions=100,
         max_per_wallet=None,
-        _sender=bob
+        _sender=bob,
     )
 
     scenario.h2("Mixed operations on different generators")
     # Mint from free generator
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=charlie,
-        _amount=sp.mutez(0)
+        _amount=sp.mutez(0),
     )
 
     # Airdrop from free generator
@@ -533,15 +552,15 @@ def test_complex_scenarios():
         generator_id=0,
         recipient=bob.address,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
-        _sender=alice
+        _sender=alice,
     )
 
     # Mint from paid generator
     contract.mint(
-        generator_id=1, 
+        generator_id=1,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=charlie,
-        _amount=sp.mutez(1000000)
+        _amount=sp.mutez(1000000),
     )
 
     scenario.h2("Verify state consistency across generators")
@@ -559,7 +578,7 @@ def test_complex_scenarios():
         code=sp.bytes("0x636f6e736f6c652e6c6f67282246726565205632"),
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=1,  # Reduce reserved editions
-        _sender=alice
+        _sender=alice,
     )
 
     scenario.verify(contract.data.generators[0].version == 2)
@@ -568,17 +587,17 @@ def test_complex_scenarios():
     scenario.h2("Continue operations after update")
     # Mint more from updated generator
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=bob,
-        _amount=sp.mutez(0)
+        _amount=sp.mutez(0),
     )
 
     # Should reach public limit (5 total - 1 reserved - 3 already minted = 1 remaining)
     scenario.verify(contract.data.generators[0].n_tokens == 3)
 
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=charlie,
         _amount=sp.mutez(0),
@@ -586,12 +605,12 @@ def test_complex_scenarios():
 
     # This should fail as we've reached public limit
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=charlie,
         _amount=sp.mutez(0),
         _valid=False,
-        _exception="PUBLIC_SOLD_OUT"
+        _exception="PUBLIC_SOLD_OUT",
     )
 
     # But airdrop should still work
@@ -599,7 +618,7 @@ def test_complex_scenarios():
         generator_id=0,
         recipient=charlie.address,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
-        _sender=alice
+        _sender=alice,
     )
 
     scenario.verify(contract.data.generators[0].n_tokens == 5)

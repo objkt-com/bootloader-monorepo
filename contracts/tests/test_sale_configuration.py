@@ -10,10 +10,12 @@ This module tests all sale-related functionality:
 - Zero editions edge case
 """
 
-from bootloader import bootloader
-from randomiser import randomiser
-import smartpy as sp
 import os
+
+import smartpy as sp
+from bootloaders.svg_js import svg_js
+from randomiser import randomiser
+
 
 @sp.add_test()
 def test_sale_configuration():
@@ -23,7 +25,7 @@ def test_sale_configuration():
     - Non-author cannot set sale
     - Sale parameters are stored correctly
     """
-    scenario = sp.test_scenario("Sale Configuration", [bootloader, randomiser])
+    scenario = sp.test_scenario("Sale Configuration", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -32,12 +34,12 @@ def test_sale_configuration():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng.address, 
+        rng_contract=rng.address,
         contract_metadata=sp.big_map({}),
         ledger={},
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
@@ -46,14 +48,16 @@ def test_sale_configuration():
     contract.add_bootloader(
         version=sp.bytes("0x76302e302e31"),
         fragments=[
-            sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"),
+            sp.bytes(
+                "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+            ),
             sp.bytes("0x3c2f7376673e"),
             sp.bytes("0x3c2f7376673e"),
-            sp.bytes("0x3c2f7376673e")
+            sp.bytes("0x3c2f7376673e"),
         ],
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=storage_limits,
-        _sender=admin
+        _sender=admin,
     )
 
     # Create a generator
@@ -64,7 +68,7 @@ def test_sale_configuration():
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=0,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
 
     scenario.h2("Author can set sale configuration")
@@ -75,9 +79,9 @@ def test_sale_configuration():
         paused=False,
         editions=100,
         max_per_wallet=sp.Some(5),
-        _sender=alice
+        _sender=alice,
     )
-    
+
     generator = contract.data.generators[0]
     sale = generator.sale.unwrap_some()
     scenario.verify(sale.start_time == sp.Some(sp.timestamp(100)))
@@ -96,8 +100,9 @@ def test_sale_configuration():
         max_per_wallet=None,
         _sender=bob,
         _valid=False,
-        _exception="ONLY_AUTHOR"
+        _exception="ONLY_AUTHOR",
     )
+
 
 @sp.add_test()
 def test_edition_limits_and_reductions():
@@ -107,7 +112,7 @@ def test_edition_limits_and_reductions():
     - Edition reduction is allowed when no tokens minted
     - Edition increment is not allowed after minting starts
     """
-    scenario = sp.test_scenario("Edition Limits and Reductions", [bootloader, randomiser])
+    scenario = sp.test_scenario("Edition Limits and Reductions", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -116,12 +121,12 @@ def test_edition_limits_and_reductions():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng.address, 
+        rng_contract=rng.address,
         contract_metadata=sp.big_map({}),
         ledger={},
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
@@ -130,14 +135,16 @@ def test_edition_limits_and_reductions():
     contract.add_bootloader(
         version=sp.bytes("0x76302e302e31"),
         fragments=[
-            sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"),
+            sp.bytes(
+                "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+            ),
             sp.bytes("0x3c2f7376673e"),
             sp.bytes("0x3c2f7376673e"),
-            sp.bytes("0x3c2f7376673e")
+            sp.bytes("0x3c2f7376673e"),
         ],
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=storage_limits,
-        _sender=admin
+        _sender=admin,
     )
 
     # Create generator with reserved editions
@@ -148,7 +155,7 @@ def test_edition_limits_and_reductions():
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=10,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
 
     scenario.h2("Can set initial sale with valid editions")
@@ -159,7 +166,7 @@ def test_edition_limits_and_reductions():
         paused=False,
         editions=100,
         max_per_wallet=None,
-        _sender=alice
+        _sender=alice,
     )
 
     scenario.h2("Can reduce editions when no tokens minted")
@@ -170,15 +177,15 @@ def test_edition_limits_and_reductions():
         paused=False,
         editions=50,
         max_per_wallet=None,
-        _sender=alice
+        _sender=alice,
     )
 
     scenario.h2("Mint a token")
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=bob,
-        _amount=sp.mutez(100000)
+        _amount=sp.mutez(100000),
     )
 
     scenario.h2("Can still reduce editions after minting")
@@ -189,7 +196,7 @@ def test_edition_limits_and_reductions():
         paused=False,
         editions=25,
         max_per_wallet=None,
-        _sender=alice
+        _sender=alice,
     )
 
     scenario.h2("Cannot increase editions after minting")
@@ -202,7 +209,7 @@ def test_edition_limits_and_reductions():
         max_per_wallet=None,
         _sender=alice,
         _valid=False,
-        _exception="NO_ED_INCREMENT"
+        _exception="NO_ED_INCREMENT",
     )
 
     scenario.h2("Cannot set editions below minted + reserved")
@@ -216,8 +223,9 @@ def test_edition_limits_and_reductions():
         max_per_wallet=None,
         _sender=alice,
         _valid=False,
-        _exception="ED_LT_MINTED"
+        _exception="ED_LT_MINTED",
     )
+
 
 @sp.add_test()
 def test_max_per_wallet():
@@ -227,7 +235,7 @@ def test_max_per_wallet():
     - Different wallets can mint independently
     - No limit when max_per_wallet is None
     """
-    scenario = sp.test_scenario("Max Per Wallet", [bootloader, randomiser])
+    scenario = sp.test_scenario("Max Per Wallet", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -237,12 +245,12 @@ def test_max_per_wallet():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng.address, 
+        rng_contract=rng.address,
         contract_metadata=sp.big_map({}),
         ledger={},
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
@@ -251,14 +259,16 @@ def test_max_per_wallet():
     contract.add_bootloader(
         version=sp.bytes("0x76302e302e31"),
         fragments=[
-            sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"),
+            sp.bytes(
+                "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+            ),
             sp.bytes("0x3c2f7376673e"),
             sp.bytes("0x3c2f7376673e"),
-            sp.bytes("0x3c2f7376673e")
+            sp.bytes("0x3c2f7376673e"),
         ],
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=storage_limits,
-        _sender=admin
+        _sender=admin,
     )
 
     # Create generator
@@ -269,7 +279,7 @@ def test_max_per_wallet():
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=0,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
 
     # Set sale with max per wallet limit
@@ -280,42 +290,43 @@ def test_max_per_wallet():
         paused=False,
         editions=10,
         max_per_wallet=sp.Some(2),
-        _sender=alice
+        _sender=alice,
     )
 
     scenario.h2("First mint should work")
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=bob,
-        _amount=sp.mutez(500000)
+        _amount=sp.mutez(500000),
     )
 
     scenario.h2("Second mint should work")
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=bob,
-        _amount=sp.mutez(500000)
+        _amount=sp.mutez(500000),
     )
 
     scenario.h2("Third mint should fail")
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=bob,
         _amount=sp.mutez(500000),
         _valid=False,
-        _exception="EXCEEDS_MAX_PER_WALLET"
+        _exception="EXCEEDS_MAX_PER_WALLET",
     )
 
     scenario.h2("Different wallet should work")
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=charlie,
-        _amount=sp.mutez(500000)
+        _amount=sp.mutez(500000),
     )
+
 
 @sp.add_test()
 def test_sale_states():
@@ -326,7 +337,7 @@ def test_sale_states():
     - Price mismatch rejection
     - No sale configuration rejection
     """
-    scenario = sp.test_scenario("Sale States", [bootloader, randomiser])
+    scenario = sp.test_scenario("Sale States", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -335,12 +346,12 @@ def test_sale_states():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng.address, 
+        rng_contract=rng.address,
         contract_metadata=sp.big_map({}),
         ledger={},
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
@@ -349,14 +360,16 @@ def test_sale_states():
     contract.add_bootloader(
         version=sp.bytes("0x76302e302e31"),
         fragments=[
-            sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"),
+            sp.bytes(
+                "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+            ),
             sp.bytes("0x3c2f7376673e"),
             sp.bytes("0x3c2f7376673e"),
-            sp.bytes("0x3c2f7376673e")
+            sp.bytes("0x3c2f7376673e"),
         ],
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=storage_limits,
-        _sender=admin
+        _sender=admin,
     )
 
     # Create generator
@@ -367,16 +380,16 @@ def test_sale_states():
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=0,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
 
     scenario.h2("Cannot mint without sale configuration")
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=bob,
         _valid=False,
-        _exception="NO_SALE_CONFIG"
+        _exception="NO_SALE_CONFIG",
     )
 
     scenario.h2("Cannot mint when sale is paused")
@@ -387,16 +400,16 @@ def test_sale_states():
         paused=True,
         editions=100,
         max_per_wallet=None,
-        _sender=alice
+        _sender=alice,
     )
-    
+
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=bob,
         _amount=sp.mutez(1000000),
         _valid=False,
-        _exception="SALE_PAUSED"
+        _exception="SALE_PAUSED",
     )
 
     scenario.h2("Cannot mint before sale starts")
@@ -404,45 +417,46 @@ def test_sale_states():
         generator_id=0,
         start_time=sp.Some(sp.timestamp(200)),
         price=sp.mutez(1000000),
-        paused=False,   
+        paused=False,
         editions=100,
         max_per_wallet=None,
-        _sender=alice
+        _sender=alice,
     )
-    
+
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=bob,
         _amount=sp.mutez(1000000),
         _now=sp.timestamp(150),
         _valid=False,
-        _exception="SALE_NOT_STARTED"
+        _exception="SALE_NOT_STARTED",
     )
 
     scenario.h2("Cannot mint with wrong price")
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=bob,
         _amount=sp.mutez(500000),
         _now=sp.timestamp(250),
         _valid=False,
-        _exception="PRICE_MISMATCH"
+        _exception="PRICE_MISMATCH",
     )
 
     scenario.h2("Can mint with correct conditions")
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=bob,
         _amount=sp.mutez(1000000),
-        _now=sp.timestamp(250)
+        _now=sp.timestamp(250),
     )
-    
+
     scenario.verify(contract.data.next_token_id == 1)
     scenario.verify(contract.data.ledger[0] == bob.address)
     scenario.verify(contract.data.generators[0].n_tokens == 1)
+
 
 @sp.add_test()
 def test_timestamp_boundaries():
@@ -451,7 +465,7 @@ def test_timestamp_boundaries():
     - Minting exactly at start time
     - Minting before and after start time
     """
-    scenario = sp.test_scenario("Timestamp Boundaries", [bootloader, randomiser])
+    scenario = sp.test_scenario("Timestamp Boundaries", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -460,12 +474,12 @@ def test_timestamp_boundaries():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng.address, 
+        rng_contract=rng.address,
         contract_metadata=sp.big_map({}),
         ledger={},
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
@@ -474,25 +488,29 @@ def test_timestamp_boundaries():
     contract.add_bootloader(
         version=sp.bytes("0x76302e302e31"),
         fragments=[
-            sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"),
+            sp.bytes(
+                "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+            ),
             sp.bytes("0x3c2f7376673e"),
             sp.bytes("0x3c2f7376673e"),
-            sp.bytes("0x3c2f7376673e")
+            sp.bytes("0x3c2f7376673e"),
         ],
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=storage_limits,
-        _sender=admin
+        _sender=admin,
     )
 
     # Create generator
     contract.create_generator(
         name=sp.bytes("0x54696d657374616d7020426f756e6461727920546573742020"),
-        description=sp.bytes("0x54657374696e672074696d657374616d7020626f756e6461726965732020"),
+        description=sp.bytes(
+            "0x54657374696e672074696d657374616d7020626f756e6461726965732020"
+        ),
         code=sp.bytes("0x636f6e736f6c652e6c6f67282254657374"),
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=0,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
 
     current_time = sp.timestamp(2000000)
@@ -503,17 +521,18 @@ def test_timestamp_boundaries():
         paused=False,
         editions=5,
         max_per_wallet=None,
-        _sender=alice
+        _sender=alice,
     )
 
     scenario.h2("Can mint exactly at start time")
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=bob,
         _amount=sp.mutez(1000000),
-        _now=current_time
+        _now=current_time,
     )
+
 
 @sp.add_test()
 def test_zero_editions_edge_case():
@@ -522,7 +541,7 @@ def test_zero_editions_edge_case():
     - Setting zero editions should prevent all public minting
     - Airdrop should still work if reserved editions available
     """
-    scenario = sp.test_scenario("Zero Editions Edge Case", [bootloader, randomiser])
+    scenario = sp.test_scenario("Zero Editions Edge Case", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -531,12 +550,12 @@ def test_zero_editions_edge_case():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng.address, 
+        rng_contract=rng.address,
         contract_metadata=sp.big_map({}),
         ledger={},
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
@@ -545,14 +564,16 @@ def test_zero_editions_edge_case():
     contract.add_bootloader(
         version=sp.bytes("0x76302e302e31"),
         fragments=[
-            sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"),
+            sp.bytes(
+                "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+            ),
             sp.bytes("0x3c2f7376673e"),
             sp.bytes("0x3c2f7376673e"),
-            sp.bytes("0x3c2f7376673e")
+            sp.bytes("0x3c2f7376673e"),
         ],
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=storage_limits,
-        _sender=admin
+        _sender=admin,
     )
 
     # Create generator
@@ -563,7 +584,7 @@ def test_zero_editions_edge_case():
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=0,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
 
     contract.set_sale(
@@ -573,18 +594,19 @@ def test_zero_editions_edge_case():
         paused=False,
         editions=0,
         max_per_wallet=None,
-        _sender=alice
+        _sender=alice,
     )
 
     scenario.h2("Cannot mint when editions is zero")
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=bob,
         _amount=sp.mutez(100000),
         _valid=False,
-        _exception="PUBLIC_SOLD_OUT"
+        _exception="PUBLIC_SOLD_OUT",
     )
+
 
 @sp.add_test()
 def test_large_sale_parameters():
@@ -594,7 +616,7 @@ def test_large_sale_parameters():
     - Large max per wallet values
     - Maximum reasonable values
     """
-    scenario = sp.test_scenario("Large Sale Parameters", [bootloader, randomiser])
+    scenario = sp.test_scenario("Large Sale Parameters", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -602,12 +624,12 @@ def test_large_sale_parameters():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng.address, 
+        rng_contract=rng.address,
         contract_metadata=sp.big_map({}),
         ledger={},
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
@@ -616,14 +638,16 @@ def test_large_sale_parameters():
     contract.add_bootloader(
         version=sp.bytes("0x76302e302e31"),
         fragments=[
-            sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"),
+            sp.bytes(
+                "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+            ),
             sp.bytes("0x3c2f7376673e"),
             sp.bytes("0x3c2f7376673e"),
-            sp.bytes("0x3c2f7376673e")
+            sp.bytes("0x3c2f7376673e"),
         ],
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=storage_limits,
-        _sender=admin
+        _sender=admin,
     )
 
     # Create generator
@@ -634,7 +658,7 @@ def test_large_sale_parameters():
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=999999,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
 
     scenario.h2("Can set large sale parameters")
@@ -645,12 +669,13 @@ def test_large_sale_parameters():
         paused=False,
         editions=1000000,
         max_per_wallet=sp.Some(999999),
-        _sender=alice
+        _sender=alice,
     )
-    
+
     sale = contract.data.generators[0].sale.unwrap_some()
     scenario.verify(sale.editions == 1000000)
     scenario.verify(sale.max_per_wallet == sp.Some(999999))
+
 
 @sp.add_test()
 def test_price_exactness():
@@ -660,7 +685,7 @@ def test_price_exactness():
     - Underpaying is not allowed
     - Exact payment works
     """
-    scenario = sp.test_scenario("Price Exactness", [bootloader, randomiser])
+    scenario = sp.test_scenario("Price Exactness", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -669,12 +694,12 @@ def test_price_exactness():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng.address, 
+        rng_contract=rng.address,
         contract_metadata=sp.big_map({}),
         ledger={},
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
@@ -683,14 +708,16 @@ def test_price_exactness():
     contract.add_bootloader(
         version=sp.bytes("0x76302e302e31"),
         fragments=[
-            sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"),
+            sp.bytes(
+                "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+            ),
             sp.bytes("0x3c2f7376673e"),
             sp.bytes("0x3c2f7376673e"),
-            sp.bytes("0x3c2f7376673e")
+            sp.bytes("0x3c2f7376673e"),
         ],
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=storage_limits,
-        _sender=admin
+        _sender=admin,
     )
 
     # Create generator
@@ -701,7 +728,7 @@ def test_price_exactness():
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=0,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
 
     contract.set_sale(
@@ -711,15 +738,15 @@ def test_price_exactness():
         paused=False,
         editions=5,
         max_per_wallet=None,
-        _sender=alice
+        _sender=alice,
     )
 
     scenario.h2("Overpaying is not allowed")
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=bob,
         _amount=sp.mutez(1500000),
         _valid=False,
-        _exception="PRICE_MISMATCH"
+        _exception="PRICE_MISMATCH",
     )

@@ -9,20 +9,23 @@ This module tests complex integration scenarios that involve multiple contract f
 - Performance and scalability scenarios
 """
 
-from bootloader import bootloader
-from randomiser import randomiser
-import smartpy as sp
 import os
+
+import smartpy as sp
+from bootloaders.svg_js import svg_js
+from randomiser import randomiser
+
 
 @sp.module
 def test_utils():
     class BalanceCounter(sp.Contract):
         def __init__(self):
             self.data = sp.mutez(0)
-    
+
         @sp.entrypoint
         def default(self):
             self.data = self.data + sp.amount
+
 
 @sp.add_test()
 def test_complete_platform_workflow():
@@ -34,7 +37,7 @@ def test_complete_platform_workflow():
     - Artist airdrops reserved editions
     - Tokens are transferred and regenerated
     """
-    scenario = sp.test_scenario("Complete Platform Workflow", [bootloader, randomiser])
+    scenario = sp.test_scenario("Complete Platform Workflow", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     artist = sp.test_account("Artist")
@@ -48,17 +51,17 @@ def test_complete_platform_workflow():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng.address, 
+        rng_contract=rng.address,
         contract_metadata=sp.big_map({}),
         ledger=sp.map({}),
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
     scenario.h1("Phase 1: Platform Setup")
-    
+
     scenario.h2("Admin sets up platform metadata")
     contract.set_metadata(
         {
@@ -66,7 +69,7 @@ def test_complete_platform_workflow():
             "description": sp.bytes("0x47656e657261746976652041727420506c6174666f726d"),
             "version": sp.bytes("0x76312e302e30"),
         },
-        _sender=admin
+        _sender=admin,
     )
 
     scenario.h2("Admin adds moderator")
@@ -78,18 +81,20 @@ def test_complete_platform_workflow():
 
     scenario.h2("Admin adds bootloader")
     test_fragments = [
-        sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"),
+        sp.bytes(
+            "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+        ),
         sp.bytes("0x3c2f7376673e"),
         sp.bytes("0x3c67207374796c653d2266696c6c3a7265643b223e"),
-        sp.bytes("0x3c2f673e")
+        sp.bytes("0x3c2f673e"),
     ]
 
     contract.add_bootloader(
         version=sp.bytes("0x76302e302e31"),
         fragments=test_fragments,
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=sp.record(code=30000, name=500, desc=8000, author=50),
-        _sender=admin
+        _sender=admin,
     )
 
     scenario.h1("Phase 2: Artist Creates Generator")
@@ -97,12 +102,14 @@ def test_complete_platform_workflow():
     scenario.h2("Artist creates generator with reserved editions")
     contract.create_generator(
         name=sp.bytes("0x4d79204172742047656e657261746f72"),
-        description=sp.bytes("0x412062656175746966756c2067656e657261746976652061727420636f6c6c656374696f6e"),
+        description=sp.bytes(
+            "0x412062656175746966756c2067656e657261746976652061727420636f6c6c656374696f6e"
+        ),
         code=sp.bytes("0x636f6e736f6c652e6c6f67282247656e657261746976652041727422"),
         author_bytes=sp.bytes("0x4172746973744e616d65"),
         reserved_editions=10,
         bootloader_id=0,
-        _sender=artist
+        _sender=artist,
     )
 
     scenario.h2("Artist configures sale")
@@ -113,7 +120,7 @@ def test_complete_platform_workflow():
         paused=False,
         editions=100,
         max_per_wallet=sp.Some(3),
-        _sender=artist
+        _sender=artist,
     )
 
     scenario.h1("Phase 3: Public Minting")
@@ -121,18 +128,18 @@ def test_complete_platform_workflow():
     scenario.h2("Collector 1 mints tokens")
     for i in range(2):
         contract.mint(
-            generator_id=0, 
+            generator_id=0,
             entropy=sp.bytes("0x" + f"{i:02x}" * 16),
             _sender=collector1,
-            _amount=sp.mutez(5000000)
+            _amount=sp.mutez(5000000),
         )
 
     scenario.h2("Collector 2 mints tokens")
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + "ff" * 16),
         _sender=collector2,
-        _amount=sp.mutez(5000000)
+        _amount=sp.mutez(5000000),
     )
 
     scenario.h2("Verify payments distributed correctly")
@@ -149,8 +156,8 @@ def test_complete_platform_workflow():
         contract.airdrop(
             generator_id=0,
             recipient=collector2.address,
-            entropy=sp.bytes("0x" + f"{i+10:02x}" * 16),
-            _sender=artist
+            entropy=sp.bytes("0x" + f"{i + 10:02x}" * 16),
+            _sender=artist,
         )
 
     scenario.verify(contract.data.generators[0].reserved_editions == 7)
@@ -159,12 +166,15 @@ def test_complete_platform_workflow():
     scenario.h1("Phase 5: Secondary Market Activity")
 
     scenario.h2("Collector transfers token")
-    contract.transfer([
-        sp.record(
-            from_=collector1.address,
-            txs=[sp.record(to_=collector2.address, token_id=0, amount=1)]
-        )
-    ], _sender=collector1)
+    contract.transfer(
+        [
+            sp.record(
+                from_=collector1.address,
+                txs=[sp.record(to_=collector2.address, token_id=0, amount=1)],
+            )
+        ],
+        _sender=collector1,
+    )
 
     scenario.verify(contract.data.ledger[0] == collector2.address)
 
@@ -174,11 +184,15 @@ def test_complete_platform_workflow():
     contract.update_generator(
         generator_id=0,
         name=sp.bytes("0x4d79204172742047656e657261746f72205632"),
-        description=sp.bytes("0x557064617465642067656e657261746f72207769746820696d70726f76656d656e7473"),
-        code=sp.bytes("0x636f6e736f6c652e6c6f67282247656e657261746976652041727420563222"),
+        description=sp.bytes(
+            "0x557064617465642067656e657261746f72207769746820696d70726f76656d656e7473"
+        ),
+        code=sp.bytes(
+            "0x636f6e736f6c652e6c6f67282247656e657261746976652041727420563222"
+        ),
         author_bytes=sp.bytes("0x4172746973744e616d65"),
         reserved_editions=7,
-        _sender=artist
+        _sender=artist,
     )
 
     scenario.h2("Token owners regenerate their tokens")
@@ -198,8 +212,9 @@ def test_complete_platform_workflow():
     contract.update_thumbnail(
         token_id=0,
         thumbnailUri=sp.bytes("0x68747470733a2f2f6e65772d7468756d626e61696c2e636f6d"),
-        _sender=moderator
+        _sender=moderator,
     )
+
 
 @sp.add_test()
 def test_multi_generator_ecosystem():
@@ -210,7 +225,7 @@ def test_multi_generator_ecosystem():
     - Cross-generator interactions
     - Platform fee distribution across multiple sales
     """
-    scenario = sp.test_scenario("Multi-Generator Ecosystem", [bootloader, randomiser])
+    scenario = sp.test_scenario("Multi-Generator Ecosystem", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     artist1 = sp.test_account("Artist1")
@@ -224,12 +239,12 @@ def test_multi_generator_ecosystem():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng.address, 
+        rng_contract=rng.address,
         contract_metadata=sp.big_map({}),
         ledger=sp.map({}),
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
@@ -239,18 +254,20 @@ def test_multi_generator_ecosystem():
 
     # Add bootloader
     test_fragments = [
-        sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"),
+        sp.bytes(
+            "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+        ),
         sp.bytes("0x3c2f7376673e"),
         sp.bytes("0x3c67207374796c653d2266696c6c3a7265643b223e"),
-        sp.bytes("0x3c2f673e")
+        sp.bytes("0x3c2f673e"),
     ]
 
     contract.add_bootloader(
         version=sp.bytes("0x76302e302e31"),
         fragments=test_fragments,
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=sp.record(code=30000, name=500, desc=8000, author=50),
-        _sender=admin
+        _sender=admin,
     )
 
     scenario.h2("Artist 1: Premium limited edition")
@@ -261,7 +278,7 @@ def test_multi_generator_ecosystem():
         author_bytes=sp.bytes("0x4172746973743120"),
         reserved_editions=5,
         bootloader_id=0,
-        _sender=artist1
+        _sender=artist1,
     )
 
     contract.set_sale(
@@ -271,18 +288,20 @@ def test_multi_generator_ecosystem():
         paused=False,
         editions=25,
         max_per_wallet=sp.Some(1),
-        _sender=artist1
+        _sender=artist1,
     )
 
     scenario.h2("Artist 2: Mid-tier open edition")
     contract.create_generator(
         name=sp.bytes("0x4d69642d5469657220417274"),
-        description=sp.bytes("0x4d69642d7469657220617274207769746820726561736f6e61626c652070726963696e67"),
+        description=sp.bytes(
+            "0x4d69642d7469657220617274207769746820726561736f6e61626c652070726963696e67"
+        ),
         code=sp.bytes("0x636f6e736f6c652e6c6f67282254696572322229"),
         author_bytes=sp.bytes("0x4172746973743220"),
         reserved_editions=0,
         bootloader_id=0,
-        _sender=artist2
+        _sender=artist2,
     )
 
     contract.set_sale(
@@ -292,7 +311,7 @@ def test_multi_generator_ecosystem():
         paused=False,
         editions=1000,
         max_per_wallet=None,
-        _sender=artist2
+        _sender=artist2,
     )
 
     scenario.h2("Artist 3: Free community art")
@@ -303,7 +322,7 @@ def test_multi_generator_ecosystem():
         author_bytes=sp.bytes("0x4172746973743320"),
         reserved_editions=50,
         bootloader_id=0,
-        _sender=artist3
+        _sender=artist3,
     )
 
     contract.set_sale(
@@ -313,34 +332,34 @@ def test_multi_generator_ecosystem():
         paused=False,
         editions=500,
         max_per_wallet=sp.Some(5),
-        _sender=artist3
+        _sender=artist3,
     )
 
     scenario.h2("Collector mints from all generators")
     # Premium art
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + "01" * 16),
         _sender=collector,
-        _amount=sp.mutez(10000000)
+        _amount=sp.mutez(10000000),
     )
 
     # Mid-tier art (multiple)
     for i in range(3):
         contract.mint(
-            generator_id=1, 
-            entropy=sp.bytes("0x" + f"{i+10:02x}" * 16),
+            generator_id=1,
+            entropy=sp.bytes("0x" + f"{i + 10:02x}" * 16),
             _sender=collector,
-            _amount=sp.mutez(2000000)
+            _amount=sp.mutez(2000000),
         )
 
     # Free art (multiple)
     for i in range(5):
         contract.mint(
-            generator_id=2, 
-            entropy=sp.bytes("0x" + f"{i+20:02x}" * 16),
+            generator_id=2,
+            entropy=sp.bytes("0x" + f"{i + 20:02x}" * 16),
             _sender=collector,
-            _amount=sp.mutez(0)
+            _amount=sp.mutez(0),
         )
 
     scenario.h2("Verify platform fees collected correctly")
@@ -357,7 +376,7 @@ def test_multi_generator_ecosystem():
         generator_id=0,
         recipient=collector.address,
         entropy=sp.bytes("0x" + "aa" * 16),
-        _sender=artist1
+        _sender=artist1,
     )
 
     # Artist 3 airdrops community pieces
@@ -365,8 +384,8 @@ def test_multi_generator_ecosystem():
         contract.airdrop(
             generator_id=2,
             recipient=collector.address,
-            entropy=sp.bytes("0x" + f"{i+30:02x}" * 16),
-            _sender=artist3
+            entropy=sp.bytes("0x" + f"{i + 30:02x}" * 16),
+            _sender=artist3,
         )
 
     scenario.h2("Verify final state")
@@ -374,6 +393,7 @@ def test_multi_generator_ecosystem():
     scenario.verify(contract.data.generators[0].n_tokens == 2)  # 1 mint + 1 airdrop
     scenario.verify(contract.data.generators[1].n_tokens == 3)  # 3 mints
     scenario.verify(contract.data.generators[2].n_tokens == 15)  # 5 mints + 10 airdrops
+
 
 @sp.add_test()
 def test_platform_evolution_scenario():
@@ -384,7 +404,7 @@ def test_platform_evolution_scenario():
     - Settings are updated as platform grows
     - Migration scenarios
     """
-    scenario = sp.test_scenario("Platform Evolution", [bootloader, randomiser])
+    scenario = sp.test_scenario("Platform Evolution", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     artist = sp.test_account("Artist")
@@ -392,22 +412,22 @@ def test_platform_evolution_scenario():
 
     treasury1 = test_utils.BalanceCounter()
     scenario += treasury1
-    
+
     treasury2 = test_utils.BalanceCounter()
     scenario += treasury2
 
     rng1 = randomiser.RandomiserMock()
     scenario += rng1
-    
+
     rng2 = randomiser.RandomiserMock()
     scenario += rng2
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng1.address, 
+        rng_contract=rng1.address,
         contract_metadata=sp.big_map({}),
         ledger=sp.map({}),
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
@@ -415,18 +435,20 @@ def test_platform_evolution_scenario():
 
     scenario.h2("Initial setup with basic bootloader")
     test_fragments = [
-        sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"),
+        sp.bytes(
+            "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+        ),
         sp.bytes("0x3c2f7376673e"),
         sp.bytes("0x3c67207374796c653d2266696c6c3a7265643b223e"),
-        sp.bytes("0x3c2f673e")
+        sp.bytes("0x3c2f673e"),
     ]
 
     contract.add_bootloader(
         version=sp.bytes("0x76302e312e30"),  # v0.1.0
         fragments=test_fragments,
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=sp.record(code=10000, name=100, desc=1000, author=30),
-        _sender=admin
+        _sender=admin,
     )
 
     contract.set_treasury(treasury1.address, _sender=admin)
@@ -440,7 +462,7 @@ def test_platform_evolution_scenario():
         author_bytes=sp.bytes("0x4172746973742020"),
         reserved_editions=0,
         bootloader_id=0,
-        _sender=artist
+        _sender=artist,
     )
 
     contract.set_sale(
@@ -450,14 +472,14 @@ def test_platform_evolution_scenario():
         paused=False,
         editions=10,
         max_per_wallet=None,
-        _sender=artist
+        _sender=artist,
     )
 
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + "01" * 16),
         _sender=collector,
-        _amount=sp.mutez(1000000)
+        _amount=sp.mutez(1000000),
     )
 
     scenario.h1("Phase 2: Platform Growth")
@@ -469,20 +491,22 @@ def test_platform_evolution_scenario():
     contract.add_bootloader(
         version=sp.bytes("0x76312e302e30"),  # v1.0.0
         fragments=test_fragments,
-        fun=bootloader.v0_0_1_shadownet,
+        fun=svg_js.v0_0_1_shadownet,
         storage_limits=sp.record(code=30000, name=500, desc=8000, author=50),
-        _sender=admin
+        _sender=admin,
     )
 
     scenario.h2("Artist creates more sophisticated generator")
     contract.create_generator(
         name=sp.bytes("0x416476616e6365642041727420436f6c6c656374696f6e"),
-        description=sp.bytes("0x4d6f726520736f70686973746963617465642067656e657261746f72207769746820616476616e63656420666561747572657320616e64206c6f6e67657220646573637269707469"),
+        description=sp.bytes(
+            "0x4d6f726520736f70686973746963617465642067656e657261746f72207769746820616476616e63656420666561747572657320616e64206c6f6e67657220646573637269707469"
+        ),
         code=sp.bytes("0x636f6e736f6c652e6c6f67282241647620417274222020"),
         author_bytes=sp.bytes("0x4172746973744e616d6520"),
         reserved_editions=20,
         bootloader_id=1,  # Use new bootloader
-        _sender=artist
+        _sender=artist,
     )
 
     contract.set_sale(
@@ -492,14 +516,14 @@ def test_platform_evolution_scenario():
         paused=False,
         editions=100,
         max_per_wallet=sp.Some(2),
-        _sender=artist
+        _sender=artist,
     )
 
     contract.mint(
-        generator_id=1, 
+        generator_id=1,
         entropy=sp.bytes("0x" + "02" * 16),
         _sender=collector,
-        _amount=sp.mutez(3000000)
+        _amount=sp.mutez(3000000),
     )
 
     scenario.h1("Phase 3: Platform Maturity")
@@ -515,10 +539,10 @@ def test_platform_evolution_scenario():
 
     scenario.h2("New mints use updated settings")
     contract.mint(
-        generator_id=1, 
+        generator_id=1,
         entropy=sp.bytes("0x" + "03" * 16),
         _sender=collector,
-        _amount=sp.mutez(3000000)
+        _amount=sp.mutez(3000000),
     )
 
     scenario.h2("Verify treasury distribution")
@@ -526,17 +550,20 @@ def test_platform_evolution_scenario():
     # Second mint: 3 XTZ * 10% = 0.3 XTZ to treasury1
     # Third mint: 3 XTZ * 5% = 0.15 XTZ to treasury2
     scenario.verify(treasury1.data == sp.mutez(500000))  # 0.2 + 0.3
-    scenario.verify(treasury2.data == sp.mutez(150000))   # 0.15
+    scenario.verify(treasury2.data == sp.mutez(150000))  # 0.15
 
     scenario.h2("Update platform metadata")
     contract.set_metadata(
         {
             "name": sp.bytes("0x426f6f746c6f61646572204e4654205632"),
             "version": sp.bytes("0x76322e302e30"),
-            "features": sp.bytes("0x4d756c74692d626f6f746c6f616465722c20496d70726f76656420524e47"),
+            "features": sp.bytes(
+                "0x4d756c74692d626f6f746c6f616465722c20496d70726f76656420524e47"
+            ),
         },
-        _sender=admin
+        _sender=admin,
     )
+
 
 @sp.add_test()
 def test_edge_case_combinations():
@@ -547,7 +574,7 @@ def test_edge_case_combinations():
     - Complex sale configurations
     - Boundary condition interactions
     """
-    scenario = sp.test_scenario("Edge Case Combinations", [bootloader, randomiser])
+    scenario = sp.test_scenario("Edge Case Combinations", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     artist = sp.test_account("Artist")
@@ -556,40 +583,44 @@ def test_edge_case_combinations():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng.address, 
+        rng_contract=rng.address,
         contract_metadata=sp.big_map({}),
         ledger=sp.map({}),
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
     # Setup
     test_fragments = [
-        sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"),
+        sp.bytes(
+            "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+        ),
         sp.bytes("0x3c2f7376673e"),
         sp.bytes("0x3c67207374796c653d2266696c6c3a7265643b223e"),
-        sp.bytes("0x3c2f673e")
+        sp.bytes("0x3c2f673e"),
     ]
 
     contract.add_bootloader(
         version=sp.bytes("0x76302e302e31"),
         fragments=test_fragments,
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=sp.record(code=30000, name=500, desc=8000, author=50),
-        _sender=admin
+        _sender=admin,
     )
 
     scenario.h2("Generator with only reserved editions")
     contract.create_generator(
         name=sp.bytes("0x526573657276656420456467652043617365"),
-        description=sp.bytes("0x47656e657261746f72207769746820f6e6c7920726573657276656420656469746f6e7"),
+        description=sp.bytes(
+            "0x47656e657261746f72207769746820f6e6c7920726573657276656420656469746f6e7"
+        ),
         code=sp.bytes("0x636f6e736f6c652e6c6f67282252657365727665642229"),
         author_bytes=sp.bytes("0x4172746973742020"),
         reserved_editions=5,
         bootloader_id=0,
-        _sender=artist
+        _sender=artist,
     )
 
     # Set sale with editions equal to reserved editions
@@ -600,17 +631,17 @@ def test_edge_case_combinations():
         paused=False,
         editions=5,  # Same as reserved editions
         max_per_wallet=None,
-        _sender=artist
+        _sender=artist,
     )
 
     scenario.h2("Public minting should fail immediately")
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + "01" * 16),
         _sender=collector,
         _amount=sp.mutez(1000000),
         _valid=False,
-        _exception="PUBLIC_SOLD_OUT"
+        _exception="PUBLIC_SOLD_OUT",
     )
 
     scenario.h2("But airdrop should work")
@@ -618,7 +649,7 @@ def test_edge_case_combinations():
         generator_id=0,
         recipient=collector.address,
         entropy=sp.bytes("0x" + "02" * 16),
-        _sender=artist
+        _sender=artist,
     )
 
     scenario.verify(contract.data.generators[0].n_tokens == 1)
@@ -631,12 +662,14 @@ def test_edge_case_combinations():
             generator_id=0,
             name=sp.bytes("0x526573657276656420456467652043617365205632"),
             description=sp.bytes("0x557064617465642067656e657261746f72"),
-            code=sp.bytes("0x636f6e736f6c652e6c6f67282256" + f"{version}".encode().hex() + "22"),
+            code=sp.bytes(
+                "0x636f6e736f6c652e6c6f67282256" + f"{version}".encode().hex() + "22"
+            ),
             author_bytes=sp.bytes("0x4172746973742020"),
             reserved_editions=4,
-            _sender=artist
+            _sender=artist,
         )
-        
+
         # Regenerate token with new version
         contract.regenerate_token(0, _sender=collector)
         scenario.verify(contract.data.token_extra[0].generator_version == version)

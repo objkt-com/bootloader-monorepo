@@ -10,10 +10,12 @@ This module tests all FA2-related functionality:
 - Owner-only operations
 """
 
-from bootloader import bootloader
-from randomiser import randomiser
-import smartpy as sp
 import os
+
+import smartpy as sp
+from bootloaders.svg_js import svg_js
+from randomiser import randomiser
+
 
 @sp.add_test()
 def test_token_transfers():
@@ -23,7 +25,7 @@ def test_token_transfers():
     - Transfer ownership changes
     - Transfer validation
     """
-    scenario = sp.test_scenario("Token Transfers", [bootloader, randomiser])
+    scenario = sp.test_scenario("Token Transfers", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -33,26 +35,30 @@ def test_token_transfers():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng.address, 
+        rng_contract=rng.address,
         contract_metadata=sp.big_map({}),
         ledger=sp.map({}),
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
     # Add bootloader with fragments for minting
     fragments = []
     for i in range(4):
-        fragments.append(sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"))
-    
+        fragments.append(
+            sp.bytes(
+                "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+            )
+        )
+
     contract.add_bootloader(
         version=sp.bytes("0x302e302e31"),  # "0.0.1"
         fragments=fragments,
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=sp.record(code=1000, name=1000, desc=1000, author=1000),
-        _sender=admin
+        _sender=admin,
     )
 
     # Create generator and mint token
@@ -63,7 +69,7 @@ def test_token_transfers():
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=0,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
 
     contract.set_sale(
@@ -73,28 +79,32 @@ def test_token_transfers():
         paused=False,
         editions=10,
         max_per_wallet=None,
-        _sender=alice
+        _sender=alice,
     )
 
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=bob,
-        _amount=sp.mutez(0)
+        _amount=sp.mutez(0),
     )
 
     scenario.h2("Token is initially owned by minter")
     scenario.verify(contract.data.ledger[0] == bob.address)
 
     scenario.h2("Owner can transfer token")
-    contract.transfer([
-        sp.record(
-            from_=bob.address,
-            txs=[sp.record(to_=charlie.address, token_id=0, amount=1)]
-        )
-    ], _sender=bob)
+    contract.transfer(
+        [
+            sp.record(
+                from_=bob.address,
+                txs=[sp.record(to_=charlie.address, token_id=0, amount=1)],
+            )
+        ],
+        _sender=bob,
+    )
 
     scenario.verify(contract.data.ledger[0] == charlie.address)
+
 
 @sp.add_test()
 def test_token_burning():
@@ -104,7 +114,7 @@ def test_token_burning():
     - Non-owner cannot burn tokens
     - Token removal from ledger
     """
-    scenario = sp.test_scenario("Token Burning", [bootloader, randomiser])
+    scenario = sp.test_scenario("Token Burning", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -114,26 +124,30 @@ def test_token_burning():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng.address, 
+        rng_contract=rng.address,
         contract_metadata=sp.big_map({}),
         ledger=sp.map({}),
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
     # Add bootloader with fragments for minting
     fragments = []
     for i in range(4):
-        fragments.append(sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"))
-    
+        fragments.append(
+            sp.bytes(
+                "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+            )
+        )
+
     contract.add_bootloader(
         version=sp.bytes("0x302e302e31"),  # "0.0.1"
         fragments=fragments,
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=sp.record(code=1000, name=1000, desc=1000, author=1000),
-        _sender=admin
+        _sender=admin,
     )
 
     # Create generator and mint tokens
@@ -144,7 +158,7 @@ def test_token_burning():
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=0,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
 
     contract.set_sale(
@@ -154,22 +168,22 @@ def test_token_burning():
         paused=False,
         editions=10,
         max_per_wallet=None,
-        _sender=alice
+        _sender=alice,
     )
 
     # Mint two tokens
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=bob,
-        _amount=sp.mutez(0)
+        _amount=sp.mutez(0),
     )
 
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=charlie,
-        _amount=sp.mutez(0)
+        _amount=sp.mutez(0),
     )
 
     scenario.h2("Tokens exist in ledger")
@@ -177,15 +191,18 @@ def test_token_burning():
     scenario.verify(contract.data.ledger[1] == charlie.address)
 
     scenario.h2("Non-owner cannot burn token")
-    contract.burn([sp.record(from_=bob.address, token_id=0, amount=1)], 
-                  _sender=charlie, _valid=False)
+    contract.burn(
+        [sp.record(from_=bob.address, token_id=0, amount=1)],
+        _sender=charlie,
+        _valid=False,
+    )
 
     scenario.h2("Owner can burn their token")
-    contract.burn([sp.record(from_=bob.address, token_id=0, amount=1)], 
-                  _sender=bob)
+    contract.burn([sp.record(from_=bob.address, token_id=0, amount=1)], _sender=bob)
 
     scenario.verify(~contract.data.ledger.contains(0))
     scenario.verify(contract.data.ledger[1] == charlie.address)
+
 
 @sp.add_test()
 def test_token_regeneration():
@@ -196,7 +213,7 @@ def test_token_regeneration():
     - Generator version tracking
     - No regeneration when no update available
     """
-    scenario = sp.test_scenario("Token Regeneration", [bootloader, randomiser])
+    scenario = sp.test_scenario("Token Regeneration", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -205,37 +222,43 @@ def test_token_regeneration():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng.address, 
+        rng_contract=rng.address,
         contract_metadata=sp.big_map({}),
         ledger=sp.map({}),
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
     # Add bootloader with fragments for minting
     fragments = []
     for i in range(4):
-        fragments.append(sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"))
-    
+        fragments.append(
+            sp.bytes(
+                "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+            )
+        )
+
     contract.add_bootloader(
         version=sp.bytes("0x302e302e31"),  # "0.0.1"
         fragments=fragments,
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=sp.record(code=1000, name=1000, desc=1000, author=1000),
-        _sender=admin
+        _sender=admin,
     )
 
     # Create generator and mint token
     contract.create_generator(
         name=sp.bytes("0x56657273696f6e696e672054657374"),
-        description=sp.bytes("0x54657374696e672067656e657261746f722076657273696f6e696e67"),
+        description=sp.bytes(
+            "0x54657374696e672067656e657261746f722076657273696f6e696e67"
+        ),
         code=sp.bytes("0x636f6e736f6c652e6c6f67282256657273696f6e203122"),
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=0,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
 
     contract.set_sale(
@@ -245,14 +268,14 @@ def test_token_regeneration():
         paused=False,
         editions=5,
         max_per_wallet=None,
-        _sender=alice
+        _sender=alice,
     )
 
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=bob,
-        _amount=sp.mutez(100000)
+        _amount=sp.mutez(100000),
     )
 
     token_id = 0
@@ -268,7 +291,7 @@ def test_token_regeneration():
         code=sp.bytes("0x636f6e736f6c652e6c6f67282256657273696f6e203222"),
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=0,
-        _sender=alice
+        _sender=alice,
     )
 
     scenario.verify(contract.data.generators[0].version == 2)
@@ -279,19 +302,14 @@ def test_token_regeneration():
 
     scenario.h2("Non-owner cannot regenerate token")
     contract.regenerate_token(
-        token_id,
-        _sender=alice,
-        _valid=False,
-        _exception="ONLY_OWNER"
+        token_id, _sender=alice, _valid=False, _exception="ONLY_OWNER"
     )
 
     scenario.h2("Cannot regenerate when no update available")
     contract.regenerate_token(
-        token_id,
-        _sender=bob,
-        _valid=False,
-        _exception="NO_UPDATE_POSSIBLE"
+        token_id, _sender=bob, _valid=False, _exception="NO_UPDATE_POSSIBLE"
     )
+
 
 @sp.add_test()
 def test_thumbnail_updates():
@@ -302,7 +320,7 @@ def test_thumbnail_updates():
     - Admin can update thumbnails
     - Non-privileged users cannot update thumbnails
     """
-    scenario = sp.test_scenario("Thumbnail Updates", [bootloader, randomiser])
+    scenario = sp.test_scenario("Thumbnail Updates", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -312,12 +330,12 @@ def test_thumbnail_updates():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng.address, 
+        rng_contract=rng.address,
         contract_metadata=sp.big_map({}),
         ledger=sp.map({}),
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
@@ -327,14 +345,18 @@ def test_thumbnail_updates():
     # Add bootloader with fragments for minting
     fragments = []
     for i in range(4):
-        fragments.append(sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"))
-    
+        fragments.append(
+            sp.bytes(
+                "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+            )
+        )
+
     contract.add_bootloader(
         version=sp.bytes("0x302e302e31"),  # "0.0.1"
         fragments=fragments,
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=sp.record(code=1000, name=1000, desc=1000, author=1000),
-        _sender=admin
+        _sender=admin,
     )
 
     # Create generator and mint token
@@ -345,7 +367,7 @@ def test_thumbnail_updates():
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=0,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
 
     contract.set_sale(
@@ -355,14 +377,14 @@ def test_thumbnail_updates():
         paused=False,
         editions=1,
         max_per_wallet=None,
-        _sender=alice
+        _sender=alice,
     )
 
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=bob,
-        _amount=sp.mutez(0)
+        _amount=sp.mutez(0),
     )
 
     thumbnail_token_id = 0
@@ -370,23 +392,23 @@ def test_thumbnail_updates():
 
     scenario.h2("Author can update thumbnail")
     contract.update_thumbnail(
-        token_id=thumbnail_token_id,
-        thumbnailUri=new_thumbnail,
-        _sender=alice
+        token_id=thumbnail_token_id, thumbnailUri=new_thumbnail, _sender=alice
     )
 
     scenario.h2("Moderator can update thumbnail")
     contract.update_thumbnail(
         token_id=thumbnail_token_id,
         thumbnailUri=sp.bytes("0x68747470733a2f2f6d6f642d7468756d626e61696c2e636f6d"),
-        _sender=moderator
+        _sender=moderator,
     )
 
     scenario.h2("Admin can update thumbnail")
     contract.update_thumbnail(
         token_id=thumbnail_token_id,
-        thumbnailUri=sp.bytes("0x68747470733a2f2f61646d696e2d7468756d626e61696c2e636f6d"),
-        _sender=admin
+        thumbnailUri=sp.bytes(
+            "0x68747470733a2f2f61646d696e2d7468756d626e61696c2e636f6d"
+        ),
+        _sender=admin,
     )
 
     scenario.h2("Non-privileged user cannot update thumbnail")
@@ -395,8 +417,9 @@ def test_thumbnail_updates():
         thumbnailUri=new_thumbnail,
         _sender=bob,
         _valid=False,
-        _exception="ONLY_AUTHOR_OR_MODS"
+        _exception="ONLY_AUTHOR_OR_MODS",
     )
+
 
 @sp.add_test()
 def test_token_metadata_creation():
@@ -406,7 +429,7 @@ def test_token_metadata_creation():
     - Iteration numbers are tracked correctly
     - Token metadata structure is correct
     """
-    scenario = sp.test_scenario("Token Metadata Creation", [bootloader, randomiser])
+    scenario = sp.test_scenario("Token Metadata Creation", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -415,26 +438,30 @@ def test_token_metadata_creation():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng.address, 
+        rng_contract=rng.address,
         contract_metadata=sp.big_map({}),
         ledger=sp.map({}),
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
     # Add bootloader with fragments for minting
     fragments = []
     for i in range(4):
-        fragments.append(sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"))
-    
+        fragments.append(
+            sp.bytes(
+                "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+            )
+        )
+
     contract.add_bootloader(
         version=sp.bytes("0x302e302e31"),  # "0.0.1"
         fragments=fragments,
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=sp.record(code=1000, name=1000, desc=1000, author=1000),
-        _sender=admin
+        _sender=admin,
     )
 
     # Create generator
@@ -445,7 +472,7 @@ def test_token_metadata_creation():
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=0,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
 
     contract.set_sale(
@@ -455,15 +482,15 @@ def test_token_metadata_creation():
         paused=False,
         editions=5,
         max_per_wallet=None,
-        _sender=alice
+        _sender=alice,
     )
 
     scenario.h2("First token has iteration 1")
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=bob,
-        _amount=sp.mutez(0)
+        _amount=sp.mutez(0),
     )
 
     scenario.verify(contract.data.token_extra[0].iteration_number == 1)
@@ -472,15 +499,16 @@ def test_token_metadata_creation():
 
     scenario.h2("Second token has iteration 2")
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=bob,
-        _amount=sp.mutez(0)
+        _amount=sp.mutez(0),
     )
 
     scenario.verify(contract.data.token_extra[1].iteration_number == 2)
     scenario.verify(contract.data.token_extra[1].generator_id == 0)
     scenario.verify(contract.data.token_extra[1].generator_version == 1)
+
 
 @sp.add_test()
 def test_multiple_token_operations():
@@ -490,7 +518,7 @@ def test_multiple_token_operations():
     - Multiple burns in single transaction
     - Mixed token operations
     """
-    scenario = sp.test_scenario("Multiple Token Operations", [bootloader, randomiser])
+    scenario = sp.test_scenario("Multiple Token Operations", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -500,26 +528,30 @@ def test_multiple_token_operations():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng.address, 
+        rng_contract=rng.address,
         contract_metadata=sp.big_map({}),
         ledger=sp.map({}),
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
     # Add bootloader with fragments for minting
     fragments = []
     for i in range(4):
-        fragments.append(sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"))
-    
+        fragments.append(
+            sp.bytes(
+                "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+            )
+        )
+
     contract.add_bootloader(
         version=sp.bytes("0x302e302e31"),  # "0.0.1"
         fragments=fragments,
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=sp.record(code=1000, name=1000, desc=1000, author=1000),
-        _sender=admin
+        _sender=admin,
     )
 
     # Create generator and mint multiple tokens
@@ -530,7 +562,7 @@ def test_multiple_token_operations():
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=0,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
 
     contract.set_sale(
@@ -540,16 +572,16 @@ def test_multiple_token_operations():
         paused=False,
         editions=10,
         max_per_wallet=None,
-        _sender=alice
+        _sender=alice,
     )
 
     # Mint multiple tokens to bob
     for i in range(3):
         contract.mint(
-            generator_id=0, 
+            generator_id=0,
             entropy=sp.bytes("0x" + os.urandom(16).hex()),
             _sender=bob,
-            _amount=sp.mutez(0)
+            _amount=sp.mutez(0),
         )
 
     scenario.h2("Bob owns multiple tokens")
@@ -558,29 +590,36 @@ def test_multiple_token_operations():
     scenario.verify(contract.data.ledger[2] == bob.address)
 
     scenario.h2("Multiple transfers in single transaction")
-    contract.transfer([
-        sp.record(
-            from_=bob.address,
-            txs=[
-                sp.record(to_=charlie.address, token_id=0, amount=1),
-                sp.record(to_=charlie.address, token_id=1, amount=1)
-            ]
-        )
-    ], _sender=bob)
+    contract.transfer(
+        [
+            sp.record(
+                from_=bob.address,
+                txs=[
+                    sp.record(to_=charlie.address, token_id=0, amount=1),
+                    sp.record(to_=charlie.address, token_id=1, amount=1),
+                ],
+            )
+        ],
+        _sender=bob,
+    )
 
     scenario.verify(contract.data.ledger[0] == charlie.address)
     scenario.verify(contract.data.ledger[1] == charlie.address)
     scenario.verify(contract.data.ledger[2] == bob.address)
 
     scenario.h2("Multiple burns in single transaction")
-    contract.burn([
-        sp.record(from_=charlie.address, token_id=0, amount=1),
-        sp.record(from_=charlie.address, token_id=1, amount=1)
-    ], _sender=charlie)
+    contract.burn(
+        [
+            sp.record(from_=charlie.address, token_id=0, amount=1),
+            sp.record(from_=charlie.address, token_id=1, amount=1),
+        ],
+        _sender=charlie,
+    )
 
     scenario.verify(~contract.data.ledger.contains(0))
     scenario.verify(~contract.data.ledger.contains(1))
     scenario.verify(contract.data.ledger[2] == bob.address)
+
 
 @sp.add_test()
 def test_token_ownership_validation():
@@ -590,7 +629,7 @@ def test_token_ownership_validation():
     - Ownership changes are properly tracked
     - Operations fail with correct errors for non-owners
     """
-    scenario = sp.test_scenario("Token Ownership Validation", [bootloader, randomiser])
+    scenario = sp.test_scenario("Token Ownership Validation", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -600,26 +639,30 @@ def test_token_ownership_validation():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng.address, 
+        rng_contract=rng.address,
         contract_metadata=sp.big_map({}),
         ledger=sp.map({}),
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
     # Add bootloader with fragments for minting
     fragments = []
     for i in range(4):
-        fragments.append(sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"))
-    
+        fragments.append(
+            sp.bytes(
+                "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+            )
+        )
+
     contract.add_bootloader(
         version=sp.bytes("0x302e302e31"),  # "0.0.1"
         fragments=fragments,
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=sp.record(code=1000, name=1000, desc=1000, author=1000),
-        _sender=admin
+        _sender=admin,
     )
 
     # Create generator and mint token
@@ -630,7 +673,7 @@ def test_token_ownership_validation():
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=0,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
 
     contract.set_sale(
@@ -640,14 +683,14 @@ def test_token_ownership_validation():
         paused=False,
         editions=5,
         max_per_wallet=None,
-        _sender=alice
+        _sender=alice,
     )
 
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=bob,
-        _amount=sp.mutez(0)
+        _amount=sp.mutez(0),
     )
 
     # Update generator to enable regeneration testing
@@ -658,7 +701,7 @@ def test_token_ownership_validation():
         code=sp.bytes("0x636f6e736f6c652e6c6f67282256322054657374"),
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=0,
-        _sender=alice
+        _sender=alice,
     )
 
     token_id = 0
@@ -675,23 +718,23 @@ def test_token_ownership_validation():
         code=sp.bytes("0x636f6e736f6c652e6c6f67282256332054657374"),
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=0,
-        _sender=alice
+        _sender=alice,
     )
 
     contract.regenerate_token(
-        token_id,
-        _sender=charlie,
-        _valid=False,
-        _exception="ONLY_OWNER"
+        token_id, _sender=charlie, _valid=False, _exception="ONLY_OWNER"
     )
 
     scenario.h2("Transfer changes ownership")
-    contract.transfer([
-        sp.record(
-            from_=bob.address,
-            txs=[sp.record(to_=charlie.address, token_id=token_id, amount=1)]
-        )
-    ], _sender=bob)
+    contract.transfer(
+        [
+            sp.record(
+                from_=bob.address,
+                txs=[sp.record(to_=charlie.address, token_id=token_id, amount=1)],
+            )
+        ],
+        _sender=bob,
+    )
 
     scenario.h2("New owner can regenerate token")
     contract.regenerate_token(token_id, _sender=charlie)
@@ -705,12 +748,9 @@ def test_token_ownership_validation():
         code=sp.bytes("0x636f6e736f6c652e6c6f67282256342054657374"),
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=0,
-        _sender=alice
+        _sender=alice,
     )
 
     contract.regenerate_token(
-        token_id,
-        _sender=bob,
-        _valid=False,
-        _exception="ONLY_OWNER"
+        token_id, _sender=bob, _valid=False, _exception="ONLY_OWNER"
     )

@@ -10,28 +10,31 @@ This module tests all payment-related functionality:
 - Zero payment handling
 """
 
-from bootloader import bootloader
-from randomiser import randomiser
-import smartpy as sp
 import os
+
+import smartpy as sp
+from bootloaders.svg_js import svg_js
+from randomiser import randomiser
+
 
 @sp.module
 def test_utils():
     class BalanceCounter(sp.Contract):
         def __init__(self):
             self.data = sp.mutez(0)
-    
+
         @sp.entrypoint
         def default(self):
             self.data = self.data + sp.amount
-    
+
     class FailingTreasury(sp.Contract):
         def __init__(self):
             self.data = ()
-        
+
         @sp.entrypoint
         def default(self):
             raise "TREASURY_REJECTED"
+
 
 @sp.add_test()
 def test_platform_fee_calculation():
@@ -42,7 +45,7 @@ def test_platform_fee_calculation():
     - Remaining amount sent to author
     - Fee calculation with different percentages
     """
-    scenario = sp.test_scenario("Platform Fee Calculation", [bootloader, randomiser])
+    scenario = sp.test_scenario("Platform Fee Calculation", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -50,22 +53,22 @@ def test_platform_fee_calculation():
 
     treasury_counter = test_utils.BalanceCounter()
     scenario += treasury_counter
-    
+
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng.address, 
+        rng_contract=rng.address,
         contract_metadata=sp.big_map({}),
         ledger={},
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
     # Set treasury to counter contract
     contract.set_treasury(treasury_counter.address, _sender=admin)
-    
+
     # Set platform fee to 25% (2500 BPS)
     contract.set_platform_fee_bps(2500, _sender=admin)
 
@@ -74,14 +77,16 @@ def test_platform_fee_calculation():
     contract.add_bootloader(
         version=sp.bytes("0x76302e302e31"),
         fragments=[
-            sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"),
+            sp.bytes(
+                "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+            ),
             sp.bytes("0x3c2f7376673e"),
             sp.bytes("0x3c2f7376673e"),
-            sp.bytes("0x3c2f7376673e")
+            sp.bytes("0x3c2f7376673e"),
         ],
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=storage_limits,
-        _sender=admin
+        _sender=admin,
     )
 
     # Create generator
@@ -92,7 +97,7 @@ def test_platform_fee_calculation():
         author_bytes=sp.bytes("0x426f62"),
         reserved_editions=0,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
 
     # Set sale
@@ -103,20 +108,21 @@ def test_platform_fee_calculation():
         paused=False,
         editions=10,
         max_per_wallet=None,
-        _sender=alice
+        _sender=alice,
     )
 
     scenario.h2("Platform fee calculated correctly")
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=bob,
-        _amount=sp.mutez(10000000)
+        _amount=sp.mutez(10000000),
     )
-    
+
     # Expected: 25% of 10 XTZ = 2.5 XTZ to treasury
     expected_platform_fee = sp.mutez(2500000)
     scenario.verify(treasury_counter.data == expected_platform_fee)
+
 
 @sp.add_test()
 def test_maximum_platform_fee():
@@ -125,7 +131,7 @@ def test_maximum_platform_fee():
     - All payment goes to treasury when fee is 100%
     - Author receives nothing when fee is 100%
     """
-    scenario = sp.test_scenario("Maximum Platform Fee", [bootloader, randomiser])
+    scenario = sp.test_scenario("Maximum Platform Fee", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -133,16 +139,16 @@ def test_maximum_platform_fee():
 
     treasury_counter = test_utils.BalanceCounter()
     scenario += treasury_counter
-    
+
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng.address, 
+        rng_contract=rng.address,
         contract_metadata=sp.big_map({}),
         ledger={},
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
@@ -155,14 +161,16 @@ def test_maximum_platform_fee():
     contract.add_bootloader(
         version=sp.bytes("0x76302e302e31"),
         fragments=[
-            sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"),
+            sp.bytes(
+                "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+            ),
             sp.bytes("0x3c2f7376673e"),
             sp.bytes("0x3c2f7376673e"),
-            sp.bytes("0x3c2f7376673e")
+            sp.bytes("0x3c2f7376673e"),
         ],
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=storage_limits,
-        _sender=admin
+        _sender=admin,
     )
 
     # Create generator
@@ -173,7 +181,7 @@ def test_maximum_platform_fee():
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=0,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
 
     # Set sale
@@ -184,7 +192,7 @@ def test_maximum_platform_fee():
         paused=False,
         editions=5,
         max_per_wallet=None,
-        _sender=alice
+        _sender=alice,
     )
 
     # Reset treasury counter
@@ -192,13 +200,14 @@ def test_maximum_platform_fee():
 
     scenario.h2("All payment goes to treasury with 100% fee")
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=bob,
-        _amount=sp.mutez(1000000)
+        _amount=sp.mutez(1000000),
     )
-    
+
     scenario.verify(treasury_counter.data == sp.mutez(1000000))
+
 
 @sp.add_test()
 def test_zero_platform_fee():
@@ -207,7 +216,7 @@ def test_zero_platform_fee():
     - All payment goes to author when fee is 0%
     - Treasury receives nothing when fee is 0%
     """
-    scenario = sp.test_scenario("Zero Platform Fee", [bootloader, randomiser])
+    scenario = sp.test_scenario("Zero Platform Fee", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -215,16 +224,16 @@ def test_zero_platform_fee():
 
     treasury_counter = test_utils.BalanceCounter()
     scenario += treasury_counter
-    
+
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng.address, 
+        rng_contract=rng.address,
         contract_metadata=sp.big_map({}),
         ledger={},
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
@@ -237,14 +246,16 @@ def test_zero_platform_fee():
     contract.add_bootloader(
         version=sp.bytes("0x76302e302e31"),
         fragments=[
-            sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"),
+            sp.bytes(
+                "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+            ),
             sp.bytes("0x3c2f7376673e"),
             sp.bytes("0x3c2f7376673e"),
-            sp.bytes("0x3c2f7376673e")
+            sp.bytes("0x3c2f7376673e"),
         ],
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=storage_limits,
-        _sender=admin
+        _sender=admin,
     )
 
     # Create generator
@@ -255,7 +266,7 @@ def test_zero_platform_fee():
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=0,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
 
     # Set sale
@@ -266,7 +277,7 @@ def test_zero_platform_fee():
         paused=False,
         editions=5,
         max_per_wallet=None,
-        _sender=alice
+        _sender=alice,
     )
 
     # Reset treasury counter
@@ -274,13 +285,14 @@ def test_zero_platform_fee():
 
     scenario.h2("Treasury receives nothing with 0% fee")
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=bob,
-        _amount=sp.mutez(1000000)
+        _amount=sp.mutez(1000000),
     )
-    
+
     scenario.verify(treasury_counter.data == sp.mutez(0))
+
 
 @sp.add_test()
 def test_free_minting_no_payments():
@@ -290,7 +302,7 @@ def test_free_minting_no_payments():
     - No payment to author for free mints
     - Zero amount handling
     """
-    scenario = sp.test_scenario("Free Minting No Payments", [bootloader, randomiser])
+    scenario = sp.test_scenario("Free Minting No Payments", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -298,16 +310,16 @@ def test_free_minting_no_payments():
 
     treasury_counter = test_utils.BalanceCounter()
     scenario += treasury_counter
-    
+
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng.address, 
+        rng_contract=rng.address,
         contract_metadata=sp.big_map({}),
         ledger={},
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
@@ -320,14 +332,16 @@ def test_free_minting_no_payments():
     contract.add_bootloader(
         version=sp.bytes("0x76302e302e31"),
         fragments=[
-            sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"),
+            sp.bytes(
+                "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+            ),
             sp.bytes("0x3c2f7376673e"),
             sp.bytes("0x3c2f7376673e"),
-            sp.bytes("0x3c2f7376673e")
+            sp.bytes("0x3c2f7376673e"),
         ],
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=storage_limits,
-        _sender=admin
+        _sender=admin,
     )
 
     # Create generator
@@ -338,7 +352,7 @@ def test_free_minting_no_payments():
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=0,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
 
     # Set free sale
@@ -349,7 +363,7 @@ def test_free_minting_no_payments():
         paused=False,
         editions=5,
         max_per_wallet=None,
-        _sender=alice
+        _sender=alice,
     )
 
     # Reset treasury counter
@@ -357,13 +371,14 @@ def test_free_minting_no_payments():
 
     scenario.h2("Free minting triggers no payments")
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=bob,
-        _amount=sp.mutez(0)
+        _amount=sp.mutez(0),
     )
-    
+
     scenario.verify(treasury_counter.data == sp.mutez(0))
+
 
 @sp.add_test()
 def test_treasury_payment_failure():
@@ -372,7 +387,7 @@ def test_treasury_payment_failure():
     - Minting fails when treasury rejects payment
     - Contract handles treasury rejection gracefully
     """
-    scenario = sp.test_scenario("Treasury Payment Failure", [bootloader, randomiser])
+    scenario = sp.test_scenario("Treasury Payment Failure", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -380,16 +395,16 @@ def test_treasury_payment_failure():
 
     failing_treasury = test_utils.FailingTreasury()
     scenario += failing_treasury
-    
+
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng.address, 
+        rng_contract=rng.address,
         contract_metadata=sp.big_map({}),
         ledger={},
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
@@ -401,14 +416,16 @@ def test_treasury_payment_failure():
     contract.add_bootloader(
         version=sp.bytes("0x76302e302e31"),
         fragments=[
-            sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"),
+            sp.bytes(
+                "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+            ),
             sp.bytes("0x3c2f7376673e"),
             sp.bytes("0x3c2f7376673e"),
-            sp.bytes("0x3c2f7376673e")
+            sp.bytes("0x3c2f7376673e"),
         ],
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=storage_limits,
-        _sender=admin
+        _sender=admin,
     )
 
     # Create generator
@@ -419,7 +436,7 @@ def test_treasury_payment_failure():
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=0,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
 
     # Set sale
@@ -430,18 +447,19 @@ def test_treasury_payment_failure():
         paused=False,
         editions=5,
         max_per_wallet=None,
-        _sender=alice
+        _sender=alice,
     )
 
     scenario.h2("Minting fails when treasury rejects payment")
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=bob,
         _amount=sp.mutez(1000000),
         _valid=False,
-        _exception="TREASURY_REJECTED"
+        _exception="TREASURY_REJECTED",
     )
+
 
 @sp.add_test()
 def test_fee_precision():
@@ -451,7 +469,7 @@ def test_fee_precision():
     - Large amounts with fees
     - Edge cases in fee calculation
     """
-    scenario = sp.test_scenario("Fee Precision", [bootloader, randomiser])
+    scenario = sp.test_scenario("Fee Precision", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -459,16 +477,16 @@ def test_fee_precision():
 
     treasury_counter = test_utils.BalanceCounter()
     scenario += treasury_counter
-    
+
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng.address, 
+        rng_contract=rng.address,
         contract_metadata=sp.big_map({}),
         ledger={},
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
@@ -481,14 +499,16 @@ def test_fee_precision():
     contract.add_bootloader(
         version=sp.bytes("0x76302e302e31"),
         fragments=[
-            sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"),
+            sp.bytes(
+                "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+            ),
             sp.bytes("0x3c2f7376673e"),
             sp.bytes("0x3c2f7376673e"),
-            sp.bytes("0x3c2f7376673e")
+            sp.bytes("0x3c2f7376673e"),
         ],
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=storage_limits,
-        _sender=admin
+        _sender=admin,
     )
 
     # Create generator
@@ -499,7 +519,7 @@ def test_fee_precision():
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=0,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
 
     # Set sale with small amount
@@ -510,7 +530,7 @@ def test_fee_precision():
         paused=False,
         editions=5,
         max_per_wallet=None,
-        _sender=alice
+        _sender=alice,
     )
 
     # Reset treasury counter
@@ -518,15 +538,16 @@ def test_fee_precision():
 
     scenario.h2("Small amount fee calculation")
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=bob,
-        _amount=sp.mutez(1000)
+        _amount=sp.mutez(1000),
     )
-    
+
     # With 333 BPS (3.33%) of 1000 mutez = 33.3 mutez, rounded down to 33
     expected_fee = sp.mutez(33)
     scenario.verify(treasury_counter.data == expected_fee)
+
 
 @sp.add_test()
 def test_multiple_payments_accumulation():
@@ -536,7 +557,7 @@ def test_multiple_payments_accumulation():
     - Multiple mints with different amounts
     - Fee accumulation over time
     """
-    scenario = sp.test_scenario("Multiple Payments Accumulation", [bootloader, randomiser])
+    scenario = sp.test_scenario("Multiple Payments Accumulation", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -544,16 +565,16 @@ def test_multiple_payments_accumulation():
 
     treasury_counter = test_utils.BalanceCounter()
     scenario += treasury_counter
-    
+
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng.address, 
+        rng_contract=rng.address,
         contract_metadata=sp.big_map({}),
         ledger={},
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
@@ -566,14 +587,16 @@ def test_multiple_payments_accumulation():
     contract.add_bootloader(
         version=sp.bytes("0x76302e302e31"),
         fragments=[
-            sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"),
+            sp.bytes(
+                "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+            ),
             sp.bytes("0x3c2f7376673e"),
             sp.bytes("0x3c2f7376673e"),
-            sp.bytes("0x3c2f7376673e")
+            sp.bytes("0x3c2f7376673e"),
         ],
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=storage_limits,
-        _sender=admin
+        _sender=admin,
     )
 
     # Create generator
@@ -584,7 +607,7 @@ def test_multiple_payments_accumulation():
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=0,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
 
     # Set sale
@@ -595,7 +618,7 @@ def test_multiple_payments_accumulation():
         paused=False,
         editions=10,
         max_per_wallet=None,
-        _sender=alice
+        _sender=alice,
     )
 
     # Reset treasury counter
@@ -603,25 +626,26 @@ def test_multiple_payments_accumulation():
 
     scenario.h2("First payment")
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=bob,
-        _amount=sp.mutez(1000000)
+        _amount=sp.mutez(1000000),
     )
-    
+
     # 10% of 1000000 = 100000
     scenario.verify(treasury_counter.data == sp.mutez(100000))
 
     scenario.h2("Second payment accumulates")
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=bob,
-        _amount=sp.mutez(1000000)
+        _amount=sp.mutez(1000000),
     )
-    
+
     # Total: 200000 (100000 + 100000)
     scenario.verify(treasury_counter.data == sp.mutez(200000))
+
 
 @sp.add_test()
 def test_dynamic_fee_changes():
@@ -631,7 +655,7 @@ def test_dynamic_fee_changes():
     - Different fees for different mints
     - Fee changes don't affect existing tokens
     """
-    scenario = sp.test_scenario("Dynamic Fee Changes", [bootloader, randomiser])
+    scenario = sp.test_scenario("Dynamic Fee Changes", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -639,16 +663,16 @@ def test_dynamic_fee_changes():
 
     treasury_counter = test_utils.BalanceCounter()
     scenario += treasury_counter
-    
+
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng.address, 
+        rng_contract=rng.address,
         contract_metadata=sp.big_map({}),
         ledger={},
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
@@ -661,14 +685,16 @@ def test_dynamic_fee_changes():
     contract.add_bootloader(
         version=sp.bytes("0x76302e302e31"),
         fragments=[
-            sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"),
+            sp.bytes(
+                "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+            ),
             sp.bytes("0x3c2f7376673e"),
             sp.bytes("0x3c2f7376673e"),
-            sp.bytes("0x3c2f7376673e")
+            sp.bytes("0x3c2f7376673e"),
         ],
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=storage_limits,
-        _sender=admin
+        _sender=admin,
     )
 
     # Create generator
@@ -679,7 +705,7 @@ def test_dynamic_fee_changes():
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=0,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
 
     # Set sale
@@ -690,7 +716,7 @@ def test_dynamic_fee_changes():
         paused=False,
         editions=10,
         max_per_wallet=None,
-        _sender=alice
+        _sender=alice,
     )
 
     # Reset treasury counter
@@ -698,12 +724,12 @@ def test_dynamic_fee_changes():
 
     scenario.h2("Mint with 10% fee")
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=bob,
-        _amount=sp.mutez(1000000)
+        _amount=sp.mutez(1000000),
     )
-    
+
     scenario.verify(treasury_counter.data == sp.mutez(100000))
 
     scenario.h2("Change fee to 20%")
@@ -711,11 +737,11 @@ def test_dynamic_fee_changes():
 
     scenario.h2("Mint with new 20% fee")
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + os.urandom(16).hex()),
         _sender=bob,
-        _amount=sp.mutez(1000000)
+        _amount=sp.mutez(1000000),
     )
-    
+
     # Total: 100000 (from first) + 200000 (from second) = 300000
     scenario.verify(treasury_counter.data == sp.mutez(300000))

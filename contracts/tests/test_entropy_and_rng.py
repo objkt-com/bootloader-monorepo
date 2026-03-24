@@ -9,17 +9,19 @@ This module tests entropy handling and RNG contract integration:
 - Edge cases and error conditions
 """
 
-from bootloader import bootloader
-from randomiser import randomiser
-import smartpy as sp
 import os
+
+import smartpy as sp
+from bootloaders.svg_js import svg_js
+from randomiser import randomiser
+
 
 @sp.module
 def test_utils():
     class MockRngContract(sp.Contract):
         def __init__(self):
             self.data = sp.cast(sp.big_map({}), sp.big_map[sp.nat, sp.bytes])
-        
+
         @sp.entrypoint
         def request_entropy(self, token_id, entropy):
             # Store the request and immediately respond with mock entropy
@@ -28,20 +30,20 @@ def test_utils():
             mock_entropy = sp.sha256(entropy + sp.pack(token_id))
             # SHA256 already returns 32 bytes, so we can use it directly
             contract = sp.contract(
-                sp.record(token_id=sp.nat, entropy=sp.bytes), 
-                sp.sender, 
-                entrypoint="set_entropy"
+                sp.record(token_id=sp.nat, entropy=sp.bytes),
+                sp.sender,
+                entrypoint="set_entropy",
             ).unwrap_some()
             sp.transfer(
-                sp.record(token_id=token_id, entropy=mock_entropy), 
-                sp.mutez(0), 
-                contract
+                sp.record(token_id=token_id, entropy=mock_entropy),
+                sp.mutez(0),
+                contract,
             )
 
     class BadRngContract(sp.Contract):
         def __init__(self):
             self.data = ()
-        
+
         @sp.entrypoint
         def request_entropy(self, token_id, entropy):
             # This contract doesn't call back, simulating a broken RNG
@@ -50,20 +52,21 @@ def test_utils():
     class InvalidSeedRngContract(sp.Contract):
         def __init__(self):
             self.data = ()
-        
+
         @sp.entrypoint
         def request_entropy(self, token_id, entropy):
             # Call back with invalid seed length
             contract = sp.contract(
-                sp.record(token_id=sp.nat, entropy=sp.bytes), 
-                sp.sender, 
-                entrypoint="set_entropy"
+                sp.record(token_id=sp.nat, entropy=sp.bytes),
+                sp.sender,
+                entrypoint="set_entropy",
             ).unwrap_some()
             sp.transfer(
                 sp.record(token_id=token_id, entropy=sp.bytes("0x1234")),  # Too short
-                sp.mutez(0), 
-                contract
+                sp.mutez(0),
+                contract,
             )
+
 
 @sp.add_test()
 def test_entropy_request_flow():
@@ -73,7 +76,7 @@ def test_entropy_request_flow():
     - RNG contract calls back with entropy
     - Token metadata is updated with final entropy
     """
-    scenario = sp.test_scenario("Entropy Request Flow", [bootloader, randomiser])
+    scenario = sp.test_scenario("Entropy Request Flow", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -82,29 +85,31 @@ def test_entropy_request_flow():
     mock_rng = test_utils.MockRngContract()
     scenario += mock_rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=mock_rng.address, 
+        rng_contract=mock_rng.address,
         contract_metadata=sp.big_map({}),
         ledger=sp.map({}),
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
     # Add bootloader
     test_fragments = [
-        sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"),
+        sp.bytes(
+            "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+        ),
         sp.bytes("0x3c2f7376673e"),
         sp.bytes("0x3c67207374796c653d2266696c6c3a7265643b223e"),
-        sp.bytes("0x3c2f673e")
+        sp.bytes("0x3c2f673e"),
     ]
 
     contract.add_bootloader(
         version=sp.bytes("0x76302e302e31"),
         fragments=test_fragments,
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=sp.record(code=30000, name=500, desc=8000, author=50),
-        _sender=admin
+        _sender=admin,
     )
 
     # Create generator
@@ -115,7 +120,7 @@ def test_entropy_request_flow():
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=0,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
 
     # Set sale
@@ -126,25 +131,23 @@ def test_entropy_request_flow():
         paused=False,
         editions=5,
         max_per_wallet=None,
-        _sender=alice
+        _sender=alice,
     )
 
     scenario.h2("Mint token with entropy")
     user_entropy = sp.bytes("0x" + "ab" * 16)  # 32 bytes of user entropy
     contract.mint(
-        generator_id=0, 
-        entropy=user_entropy,
-        _sender=bob,
-        _amount=sp.mutez(0)
+        generator_id=0, entropy=user_entropy, _sender=bob, _amount=sp.mutez(0)
     )
 
     scenario.h2("Token is created and entropy is set")
     scenario.verify(contract.data.next_token_id == 1)
     scenario.verify(contract.data.ledger[0] == bob.address)
     scenario.verify(contract.data.token_extra[0].seed.is_some())
-    
+
     # The mock RNG should have processed the entropy
     scenario.verify(mock_rng.data.contains(0))
+
 
 @sp.add_test()
 def test_set_entropy_validation():
@@ -154,7 +157,7 @@ def test_set_entropy_validation():
     - Entropy must be exactly 32 bytes
     - Cannot set entropy twice for same token
     """
-    scenario = sp.test_scenario("Set Entropy Validation", [bootloader, randomiser])
+    scenario = sp.test_scenario("Set Entropy Validation", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -163,29 +166,31 @@ def test_set_entropy_validation():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng.address, 
+        rng_contract=rng.address,
         contract_metadata=sp.big_map({}),
         ledger=sp.map({}),
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
     # Add bootloader
     test_fragments = [
-        sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"),
+        sp.bytes(
+            "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+        ),
         sp.bytes("0x3c2f7376673e"),
         sp.bytes("0x3c67207374796c653d2266696c6c3a7265643b223e"),
-        sp.bytes("0x3c2f673e")
+        sp.bytes("0x3c2f673e"),
     ]
 
     contract.add_bootloader(
         version=sp.bytes("0x76302e302e31"),
         fragments=test_fragments,
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=sp.record(code=30000, name=500, desc=8000, author=50),
-        _sender=admin
+        _sender=admin,
     )
 
     # Create generator and mint token
@@ -196,7 +201,7 @@ def test_set_entropy_validation():
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=0,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
 
     contract.set_sale(
@@ -206,14 +211,14 @@ def test_set_entropy_validation():
         paused=False,
         editions=5,
         max_per_wallet=None,
-        _sender=alice
+        _sender=alice,
     )
 
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + "cd" * 16),
         _sender=bob,
-        _amount=sp.mutez(0)
+        _amount=sp.mutez(0),
     )
 
     scenario.h2("Non-RNG contract cannot set entropy")
@@ -222,7 +227,7 @@ def test_set_entropy_validation():
         sp.record(token_id=0, entropy=valid_entropy),
         _sender=alice,
         _valid=False,
-        _exception="INVALID_RNG_CONTRACT"
+        _exception="INVALID_RNG_CONTRACT",
     )
 
     scenario.h2("Invalid entropy length fails")
@@ -231,7 +236,7 @@ def test_set_entropy_validation():
         sp.record(token_id=0, entropy=short_entropy),
         _sender=rng.address,
         _valid=False,
-        _exception="INVALID_SEED_LENGTH"
+        _exception="INVALID_SEED_LENGTH",
     )
 
     long_entropy = sp.bytes("0x" + "ab" * 40)  # Too long
@@ -239,8 +244,9 @@ def test_set_entropy_validation():
         sp.record(token_id=0, entropy=long_entropy),
         _sender=rng.address,
         _valid=False,
-        _exception="INVALID_SEED_LENGTH"
+        _exception="INVALID_SEED_LENGTH",
     )
+
 
 @sp.add_test()
 def test_airdrop_entropy_flow():
@@ -250,7 +256,7 @@ def test_airdrop_entropy_flow():
     - Entropy is set correctly for airdropped tokens
     - Token metadata is generated properly
     """
-    scenario = sp.test_scenario("Airdrop Entropy Flow", [bootloader, randomiser])
+    scenario = sp.test_scenario("Airdrop Entropy Flow", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -259,29 +265,31 @@ def test_airdrop_entropy_flow():
     mock_rng = test_utils.MockRngContract()
     scenario += mock_rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=mock_rng.address, 
+        rng_contract=mock_rng.address,
         contract_metadata=sp.big_map({}),
         ledger=sp.map({}),
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
     # Add bootloader
     test_fragments = [
-        sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"),
+        sp.bytes(
+            "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+        ),
         sp.bytes("0x3c2f7376673e"),
         sp.bytes("0x3c67207374796c653d2266696c6c3a7265643b223e"),
-        sp.bytes("0x3c2f673e")
+        sp.bytes("0x3c2f673e"),
     ]
 
     contract.add_bootloader(
         version=sp.bytes("0x76302e302e31"),
         fragments=test_fragments,
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=sp.record(code=30000, name=500, desc=8000, author=50),
-        _sender=admin
+        _sender=admin,
     )
 
     # Create generator with reserved editions
@@ -292,16 +300,13 @@ def test_airdrop_entropy_flow():
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=5,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
 
     scenario.h2("Airdrop token with entropy")
     airdrop_entropy = sp.bytes("0x" + "12" * 16)
     contract.airdrop(
-        generator_id=0,
-        recipient=bob.address,
-        entropy=airdrop_entropy,
-        _sender=alice
+        generator_id=0, recipient=bob.address, entropy=airdrop_entropy, _sender=alice
     )
 
     scenario.h2("Airdropped token has entropy set")
@@ -309,6 +314,7 @@ def test_airdrop_entropy_flow():
     scenario.verify(contract.data.ledger[0] == bob.address)
     scenario.verify(contract.data.token_extra[0].seed.is_some())
     scenario.verify(mock_rng.data.contains(0))
+
 
 @sp.add_test()
 def test_token_regeneration_with_entropy():
@@ -319,7 +325,7 @@ def test_token_regeneration_with_entropy():
     - Only token owner can regenerate
     - Cannot regenerate without generator update
     """
-    scenario = sp.test_scenario("Token Regeneration with Entropy", [bootloader, randomiser])
+    scenario = sp.test_scenario("Token Regeneration with Entropy", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -328,29 +334,31 @@ def test_token_regeneration_with_entropy():
     mock_rng = test_utils.MockRngContract()
     scenario += mock_rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=mock_rng.address, 
+        rng_contract=mock_rng.address,
         contract_metadata=sp.big_map({}),
         ledger=sp.map({}),
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
     # Add bootloader
     test_fragments = [
-        sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"),
+        sp.bytes(
+            "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+        ),
         sp.bytes("0x3c2f7376673e"),
         sp.bytes("0x3c67207374796c653d2266696c6c3a7265643b223e"),
-        sp.bytes("0x3c2f673e")
+        sp.bytes("0x3c2f673e"),
     ]
 
     contract.add_bootloader(
         version=sp.bytes("0x76302e302e31"),
         fragments=test_fragments,
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=sp.record(code=30000, name=500, desc=8000, author=50),
-        _sender=admin
+        _sender=admin,
     )
 
     # Create generator and mint token
@@ -361,7 +369,7 @@ def test_token_regeneration_with_entropy():
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=0,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
 
     contract.set_sale(
@@ -371,14 +379,14 @@ def test_token_regeneration_with_entropy():
         paused=False,
         editions=5,
         max_per_wallet=None,
-        _sender=alice
+        _sender=alice,
     )
 
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + "aa" * 16),
         _sender=bob,
-        _amount=sp.mutez(0)
+        _amount=sp.mutez(0),
     )
 
     scenario.h2("Token is created with version 1")
@@ -386,10 +394,7 @@ def test_token_regeneration_with_entropy():
 
     scenario.h2("Cannot regenerate without generator update")
     contract.regenerate_token(
-        0,
-        _sender=bob,
-        _valid=False,
-        _exception="NO_UPDATE_POSSIBLE"
+        0, _sender=bob, _valid=False, _exception="NO_UPDATE_POSSIBLE"
     )
 
     scenario.h2("Update generator to version 2")
@@ -400,14 +405,11 @@ def test_token_regeneration_with_entropy():
         code=sp.bytes("0x636f6e736f6c652e6c6f67282256322054657374"),
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=0,
-        _sender=alice
+        _sender=alice,
     )
 
     scenario.h2("Token owner can regenerate")
-    contract.regenerate_token(
-        0,
-        _sender=bob
-    )
+    contract.regenerate_token(0, _sender=bob)
 
     scenario.verify(contract.data.token_extra[0].generator_version == 2)
 
@@ -420,15 +422,11 @@ def test_token_regeneration_with_entropy():
         code=sp.bytes("0x636f6e736f6c652e6c6f67282256332054657374"),
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=0,
-        _sender=alice
+        _sender=alice,
     )
 
-    contract.regenerate_token(
-        0,
-        _sender=alice,
-        _valid=False,
-        _exception="ONLY_OWNER"
-    )
+    contract.regenerate_token(0, _sender=alice, _valid=False, _exception="ONLY_OWNER")
+
 
 @sp.add_test()
 def test_rng_contract_update():
@@ -438,7 +436,7 @@ def test_rng_contract_update():
     - New RNG contract is used for subsequent operations
     - Existing tokens are not affected
     """
-    scenario = sp.test_scenario("RNG Contract Update", [bootloader, randomiser])
+    scenario = sp.test_scenario("RNG Contract Update", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -446,33 +444,35 @@ def test_rng_contract_update():
 
     old_rng = test_utils.MockRngContract()
     scenario += old_rng
-    
+
     new_rng = test_utils.MockRngContract()
     scenario += new_rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=old_rng.address, 
+        rng_contract=old_rng.address,
         contract_metadata=sp.big_map({}),
         ledger=sp.map({}),
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
     # Add bootloader
     test_fragments = [
-        sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"),
+        sp.bytes(
+            "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+        ),
         sp.bytes("0x3c2f7376673e"),
         sp.bytes("0x3c67207374796c653d2266696c6c3a7265643b223e"),
-        sp.bytes("0x3c2f673e")
+        sp.bytes("0x3c2f673e"),
     ]
 
     contract.add_bootloader(
         version=sp.bytes("0x76302e302e31"),
         fragments=test_fragments,
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=sp.record(code=30000, name=500, desc=8000, author=50),
-        _sender=admin
+        _sender=admin,
     )
 
     # Create generator
@@ -483,7 +483,7 @@ def test_rng_contract_update():
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=0,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
 
     contract.set_sale(
@@ -493,15 +493,15 @@ def test_rng_contract_update():
         paused=False,
         editions=5,
         max_per_wallet=None,
-        _sender=alice
+        _sender=alice,
     )
 
     scenario.h2("Mint with old RNG contract")
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + "bb" * 16),
         _sender=bob,
-        _amount=sp.mutez(0)
+        _amount=sp.mutez(0),
     )
 
     scenario.verify(old_rng.data.contains(0))
@@ -513,14 +513,15 @@ def test_rng_contract_update():
 
     scenario.h2("Mint with new RNG contract")
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + "cc" * 16),
         _sender=bob,
-        _amount=sp.mutez(0)
+        _amount=sp.mutez(0),
     )
 
     scenario.verify(new_rng.data.contains(1))
     scenario.verify(~old_rng.data.contains(1))
+
 
 @sp.add_test()
 def test_entropy_edge_cases():
@@ -531,7 +532,7 @@ def test_entropy_edge_cases():
     - Duplicate entropy values
     - Token without seed cannot regenerate
     """
-    scenario = sp.test_scenario("Entropy Edge Cases", [bootloader, randomiser])
+    scenario = sp.test_scenario("Entropy Edge Cases", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -540,40 +541,44 @@ def test_entropy_edge_cases():
     mock_rng = test_utils.MockRngContract()
     scenario += mock_rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=mock_rng.address, 
+        rng_contract=mock_rng.address,
         contract_metadata=sp.big_map({}),
         ledger=sp.map({}),
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
     # Add bootloader
     test_fragments = [
-        sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"),
+        sp.bytes(
+            "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+        ),
         sp.bytes("0x3c2f7376673e"),
         sp.bytes("0x3c67207374796c653d2266696c6c3a7265643b223e"),
-        sp.bytes("0x3c2f673e")
+        sp.bytes("0x3c2f673e"),
     ]
 
     contract.add_bootloader(
         version=sp.bytes("0x76302e302e31"),
         fragments=test_fragments,
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=sp.record(code=30000, name=500, desc=8000, author=50),
-        _sender=admin
+        _sender=admin,
     )
 
     # Create generator
     contract.create_generator(
         name=sp.bytes("0x456467652043617365732054657374"),
-        description=sp.bytes("0x54657374696e6720656e74726f707920656467652063617365732020"),
+        description=sp.bytes(
+            "0x54657374696e6720656e74726f707920656467652063617365732020"
+        ),
         code=sp.bytes("0x636f6e736f6c652e6c6f67282254657374"),
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=0,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
 
     contract.set_sale(
@@ -583,15 +588,12 @@ def test_entropy_edge_cases():
         paused=False,
         editions=10,
         max_per_wallet=None,
-        _sender=alice
+        _sender=alice,
     )
 
     scenario.h2("Mint with empty entropy")
     contract.mint(
-        generator_id=0, 
-        entropy=sp.bytes("0x"),
-        _sender=bob,
-        _amount=sp.mutez(0)
+        generator_id=0, entropy=sp.bytes("0x"), _sender=bob, _amount=sp.mutez(0)
     )
 
     scenario.verify(contract.data.next_token_id == 1)
@@ -599,23 +601,21 @@ def test_entropy_edge_cases():
     scenario.h2("Mint with large entropy")
     large_entropy = sp.bytes("0x" + "ff" * 100)  # 100 bytes
     contract.mint(
-        generator_id=0, 
-        entropy=large_entropy,
-        _sender=bob,
-        _amount=sp.mutez(0)
+        generator_id=0, entropy=large_entropy, _sender=bob, _amount=sp.mutez(0)
     )
 
     scenario.verify(contract.data.next_token_id == 2)
 
     scenario.h2("Mint with same entropy (should work)")
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=large_entropy,  # Same entropy as before
         _sender=bob,
-        _amount=sp.mutez(0)
+        _amount=sp.mutez(0),
     )
 
     scenario.verify(contract.data.next_token_id == 3)
+
 
 @sp.add_test()
 def test_entropy_callback_security():
@@ -625,7 +625,7 @@ def test_entropy_callback_security():
     - Cannot set entropy for non-existent tokens
     - Cannot overwrite existing entropy
     """
-    scenario = sp.test_scenario("Entropy Callback Security", [bootloader, randomiser])
+    scenario = sp.test_scenario("Entropy Callback Security", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -635,29 +635,31 @@ def test_entropy_callback_security():
     mock_rng = test_utils.MockRngContract()
     scenario += mock_rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=mock_rng.address, 
+        rng_contract=mock_rng.address,
         contract_metadata=sp.big_map({}),
         ledger=sp.map({}),
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
     # Add bootloader
     test_fragments = [
-        sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"),
+        sp.bytes(
+            "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+        ),
         sp.bytes("0x3c2f7376673e"),
         sp.bytes("0x3c67207374796c653d2266696c6c3a7265643b223e"),
-        sp.bytes("0x3c2f673e")
+        sp.bytes("0x3c2f673e"),
     ]
 
     contract.add_bootloader(
         version=sp.bytes("0x76302e302e31"),
         fragments=test_fragments,
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=sp.record(code=30000, name=500, desc=8000, author=50),
-        _sender=admin
+        _sender=admin,
     )
 
     # Create generator and mint token
@@ -668,7 +670,7 @@ def test_entropy_callback_security():
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=0,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
 
     contract.set_sale(
@@ -678,14 +680,14 @@ def test_entropy_callback_security():
         paused=False,
         editions=5,
         max_per_wallet=None,
-        _sender=alice
+        _sender=alice,
     )
 
     contract.mint(
-        generator_id=0, 
+        generator_id=0,
         entropy=sp.bytes("0x" + "ee" * 16),
         _sender=bob,
-        _amount=sp.mutez(0)
+        _amount=sp.mutez(0),
     )
 
     scenario.h2("Attacker cannot set entropy")
@@ -694,14 +696,14 @@ def test_entropy_callback_security():
         sp.record(token_id=0, entropy=malicious_entropy),
         _sender=attacker,
         _valid=False,
-        _exception="INVALID_RNG_CONTRACT"
+        _exception="INVALID_RNG_CONTRACT",
     )
 
     scenario.h2("Cannot set entropy for non-existent token")
     contract.set_entropy(
         sp.record(token_id=999, entropy=malicious_entropy),
         _sender=mock_rng.address,
-        _valid=False
+        _valid=False,
     )
 
     scenario.h2("Token has entropy set by legitimate RNG")

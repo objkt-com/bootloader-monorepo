@@ -10,10 +10,12 @@ This module tests all generator-related functionality:
 - Generator flagging by moderators
 """
 
-from bootloader import bootloader
-from randomiser import randomiser
-import smartpy as sp
 import os
+
+import smartpy as sp
+from bootloaders.svg_js import svg_js
+from randomiser import randomiser
+
 
 @sp.add_test()
 def test_generator_creation():
@@ -24,7 +26,7 @@ def test_generator_creation():
     - Initial generator state
     - Author assignment
     """
-    scenario = sp.test_scenario("Generator Creation", [bootloader, randomiser])
+    scenario = sp.test_scenario("Generator Creation", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -32,12 +34,12 @@ def test_generator_creation():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng.address, 
+        rng_contract=rng.address,
         contract_metadata=sp.big_map({}),
         ledger={},
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
@@ -46,14 +48,16 @@ def test_generator_creation():
     contract.add_bootloader(
         version=sp.bytes("0x76302e302e31"),
         fragments=[
-            sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"),
+            sp.bytes(
+                "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+            ),
             sp.bytes("0x3c2f7376673e"),
             sp.bytes("0x3c2f7376673e"),
-            sp.bytes("0x3c2f7376673e")
+            sp.bytes("0x3c2f7376673e"),
         ],
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=storage_limits,
-        _sender=admin
+        _sender=admin,
     )
 
     scenario.h2("Create first generator")
@@ -64,9 +68,9 @@ def test_generator_creation():
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=0,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
-    
+
     scenario.verify(contract.data.next_generator_id == 1)
     scenario.verify(contract.data.generators.contains(0))
     generator = contract.data.generators[0]
@@ -86,11 +90,12 @@ def test_generator_creation():
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=10,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
-    
+
     scenario.verify(contract.data.next_generator_id == 2)
     scenario.verify(contract.data.generators[1].reserved_editions == 10)
+
 
 @sp.add_test()
 def test_generator_updates():
@@ -101,7 +106,7 @@ def test_generator_updates():
     - Version increment on update
     - Reserved editions validation with existing sales
     """
-    scenario = sp.test_scenario("Generator Updates", [bootloader, randomiser])
+    scenario = sp.test_scenario("Generator Updates", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -110,12 +115,12 @@ def test_generator_updates():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng.address, 
+        rng_contract=rng.address,
         contract_metadata=sp.big_map({}),
         ledger={},
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
@@ -124,14 +129,16 @@ def test_generator_updates():
     contract.add_bootloader(
         version=sp.bytes("0x76302e302e31"),
         fragments=[
-            sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"),
+            sp.bytes(
+                "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+            ),
             sp.bytes("0x3c2f7376673e"),
             sp.bytes("0x3c2f7376673e"),
-            sp.bytes("0x3c2f7376673e")
+            sp.bytes("0x3c2f7376673e"),
         ],
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=storage_limits,
-        _sender=admin
+        _sender=admin,
     )
 
     # Create a generator
@@ -142,7 +149,7 @@ def test_generator_updates():
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=0,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
 
     scenario.h2("Author can update their generator")
@@ -153,9 +160,9 @@ def test_generator_updates():
         code=sp.bytes("0x636f6e736f6c652e6c6f67282248656c6c6f20576f726c64205632"),
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=0,
-        _sender=alice
+        _sender=alice,
     )
-    
+
     generator = contract.data.generators[0]
     scenario.verify(generator.version == 2)
     scenario.verify(generator.name == sp.bytes("0x416c69636520417274205632"))
@@ -170,8 +177,9 @@ def test_generator_updates():
         reserved_editions=0,
         _sender=bob,
         _valid=False,
-        _exception="ONLY_AUTHOR"
+        _exception="ONLY_AUTHOR",
     )
+
 
 @sp.add_test()
 def test_reserved_editions_validation():
@@ -180,7 +188,7 @@ def test_reserved_editions_validation():
     - Reserved editions cannot exceed sale capacity
     - Reserved editions can be updated within limits
     """
-    scenario = sp.test_scenario("Reserved Editions Validation", [bootloader, randomiser])
+    scenario = sp.test_scenario("Reserved Editions Validation", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -188,12 +196,12 @@ def test_reserved_editions_validation():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng.address, 
+        rng_contract=rng.address,
         contract_metadata=sp.big_map({}),
         ledger={},
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
@@ -202,25 +210,29 @@ def test_reserved_editions_validation():
     contract.add_bootloader(
         version=sp.bytes("0x76302e302e31"),
         fragments=[
-            sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"),
+            sp.bytes(
+                "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+            ),
             sp.bytes("0x3c2f7376673e"),
             sp.bytes("0x3c2f7376673e"),
-            sp.bytes("0x3c2f7376673e")
+            sp.bytes("0x3c2f7376673e"),
         ],
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=storage_limits,
-        _sender=admin
+        _sender=admin,
     )
 
     # Create generator with reserved editions
     contract.create_generator(
         name=sp.bytes("0x526573657276652055706461746520546573742020"),
-        description=sp.bytes("0x54657374696e6720726573657276656420656469746f6e7320696e20757064617465"),
+        description=sp.bytes(
+            "0x54657374696e6720726573657276656420656469746f6e7320696e20757064617465"
+        ),
         code=sp.bytes("0x636f6e736f6c652e6c6f67282254657374"),
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=2,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
 
     # Set sale configuration
@@ -231,45 +243,50 @@ def test_reserved_editions_validation():
         paused=False,
         editions=10,
         max_per_wallet=None,
-        _sender=alice
+        _sender=alice,
     )
 
     scenario.h2("Can update reserved editions within capacity")
     contract.update_generator(
         generator_id=0,
         name=sp.bytes("0x526573657276652055706461746520546573742020"),
-        description=sp.bytes("0x54657374696e6720726573657276656420656469746f6e7320696e20757064617465"),
+        description=sp.bytes(
+            "0x54657374696e6720726573657276656420656469746f6e7320696e20757064617465"
+        ),
         code=sp.bytes("0x636f6e736f6c652e6c6f67282254657374"),
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=5,
-        _sender=alice
+        _sender=alice,
     )
 
     scenario.h2("Cannot update reserved editions beyond capacity")
     contract.update_generator(
         generator_id=0,
         name=sp.bytes("0x526573657276652055706461746520546573742020"),
-        description=sp.bytes("0x54657374696e6720726573657276656420656469746f6e7320696e20757064617465"),
+        description=sp.bytes(
+            "0x54657374696e6720726573657276656420656469746f6e7320696e20757064617465"
+        ),
         code=sp.bytes("0x636f6e736f6c652e6c6f67282254657374"),
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=15,
         _sender=alice,
         _valid=False,
-        _exception="RESERVE_EXCEEDS_CAPACITY"
+        _exception="RESERVE_EXCEEDS_CAPACITY",
     )
+
 
 @sp.add_test()
 def test_input_validation():
     """
     Tests input validation for generator creation and updates:
     - Name length limits
-    - Description length limits  
+    - Description length limits
     - Code length limits
     - Author bytes length limits
     - Empty bytes handling
     - Unknown bootloader validation
     """
-    scenario = sp.test_scenario("Input Validation", [bootloader, randomiser])
+    scenario = sp.test_scenario("Input Validation", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -277,12 +294,12 @@ def test_input_validation():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng.address, 
+        rng_contract=rng.address,
         contract_metadata=sp.big_map({}),
         ledger={},
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
@@ -291,14 +308,16 @@ def test_input_validation():
     contract.add_bootloader(
         version=sp.bytes("0x76302e302e31"),
         fragments=[
-            sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"),
+            sp.bytes(
+                "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+            ),
             sp.bytes("0x3c2f7376673e"),
             sp.bytes("0x3c2f7376673e"),
-            sp.bytes("0x3c2f7376673e")
+            sp.bytes("0x3c2f7376673e"),
         ],
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=storage_limits,
-        _sender=admin
+        _sender=admin,
     )
 
     scenario.h2("Unknown bootloader fails")
@@ -311,7 +330,7 @@ def test_input_validation():
         bootloader_id=999,
         _sender=alice,
         _valid=False,
-        _exception="UNKNOWN_BOOTLOADER"
+        _exception="UNKNOWN_BOOTLOADER",
     )
 
     scenario.h2("Name too long fails")
@@ -325,7 +344,7 @@ def test_input_validation():
         bootloader_id=0,
         _sender=alice,
         _valid=False,
-        _exception="NAME_TOO_LONG"
+        _exception="NAME_TOO_LONG",
     )
 
     scenario.h2("Description too long fails")
@@ -339,7 +358,7 @@ def test_input_validation():
         bootloader_id=0,
         _sender=alice,
         _valid=False,
-        _exception="DESC_TOO_LONG"
+        _exception="DESC_TOO_LONG",
     )
 
     scenario.h2("Code too long fails")
@@ -353,7 +372,7 @@ def test_input_validation():
         bootloader_id=0,
         _sender=alice,
         _valid=False,
-        _exception="CODE_TOO_LONG"
+        _exception="CODE_TOO_LONG",
     )
 
     scenario.h2("Author bytes too long fails")
@@ -367,7 +386,7 @@ def test_input_validation():
         bootloader_id=0,
         _sender=alice,
         _valid=False,
-        _exception="AUTHOR_TOO_LONG"
+        _exception="AUTHOR_TOO_LONG",
     )
 
     scenario.h2("Empty bytes are allowed")
@@ -378,14 +397,15 @@ def test_input_validation():
         author_bytes=sp.bytes("0x"),
         reserved_editions=0,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
-    
+
     generator = contract.data.generators[0]
     scenario.verify(generator.name == sp.bytes("0x"))
     scenario.verify(generator.description == sp.bytes("0x"))
     scenario.verify(generator.code == sp.bytes("0x"))
     scenario.verify(generator.author_bytes == sp.bytes("0x"))
+
 
 @sp.add_test()
 def test_generator_flagging():
@@ -396,7 +416,7 @@ def test_generator_flagging():
     - Non-mods cannot flag generators
     - Flag values are stored correctly
     """
-    scenario = sp.test_scenario("Generator Flagging", [bootloader, randomiser])
+    scenario = sp.test_scenario("Generator Flagging", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -406,30 +426,32 @@ def test_generator_flagging():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng.address, 
+        rng_contract=rng.address,
         contract_metadata=sp.big_map({}),
         ledger={},
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
     # Add moderator and bootloader
     contract.add_moderator(moderator.address, _sender=admin)
-    
+
     storage_limits = sp.record(code=30000, name=500, desc=8000, author=50)
     contract.add_bootloader(
         version=sp.bytes("0x76302e302e31"),
         fragments=[
-            sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"),
+            sp.bytes(
+                "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+            ),
             sp.bytes("0x3c2f7376673e"),
             sp.bytes("0x3c2f7376673e"),
-            sp.bytes("0x3c2f7376673e")
+            sp.bytes("0x3c2f7376673e"),
         ],
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=storage_limits,
-        _sender=admin
+        _sender=admin,
     )
 
     # Create a generator
@@ -440,7 +462,7 @@ def test_generator_flagging():
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=0,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
 
     scenario.h2("Moderator can flag generator")
@@ -453,12 +475,9 @@ def test_generator_flagging():
 
     scenario.h2("Non-mod cannot flag generator")
     contract.flag_generator(
-        generator_id=0,
-        flag=3,
-        _sender=bob,
-        _valid=False,
-        _exception="ONLY_MODS"
+        generator_id=0, flag=3, _sender=bob, _valid=False, _exception="ONLY_MODS"
     )
+
 
 @sp.add_test()
 def test_large_numbers_edge_case():
@@ -467,7 +486,7 @@ def test_large_numbers_edge_case():
     - Large reserved editions
     - Maximum values within reasonable limits
     """
-    scenario = sp.test_scenario("Large Numbers Edge Case", [bootloader, randomiser])
+    scenario = sp.test_scenario("Large Numbers Edge Case", [svg_js, randomiser])
 
     admin = sp.test_account("Admin")
     alice = sp.test_account("Alice")
@@ -475,12 +494,12 @@ def test_large_numbers_edge_case():
     rng = randomiser.RandomiserMock()
     scenario += rng
 
-    contract = bootloader.Bootloader(
+    contract = svg_js.Bootloader(
         admin_address=admin.address,
-        rng_contract=rng.address, 
+        rng_contract=rng.address,
         contract_metadata=sp.big_map({}),
         ledger={},
-        token_metadata=[]
+        token_metadata=[],
     )
     scenario += contract
 
@@ -489,14 +508,16 @@ def test_large_numbers_edge_case():
     contract.add_bootloader(
         version=sp.bytes("0x76302e302e31"),
         fragments=[
-            sp.bytes("0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"),
+            sp.bytes(
+                "0x3c73766720786d6c6e733d22687474703a2f2f7777772e77332e6f72672f323030302f737667222076696577426f783d22302030203130302031303022207374796c653d226261636b67726f756e642d636f6c6f723a77686974653b223e"
+            ),
             sp.bytes("0x3c2f7376673e"),
             sp.bytes("0x3c2f7376673e"),
-            sp.bytes("0x3c2f7376673e")
+            sp.bytes("0x3c2f7376673e"),
         ],
-        fun=bootloader.v0_0_1,
+        fun=svg_js.v0_0_1,
         storage_limits=storage_limits,
-        _sender=admin
+        _sender=admin,
     )
 
     scenario.h2("Can create generator with large reserved editions")
@@ -507,7 +528,7 @@ def test_large_numbers_edge_case():
         author_bytes=sp.bytes("0x416c696365"),
         reserved_editions=999999,
         bootloader_id=0,
-        _sender=alice
+        _sender=alice,
     )
-    
+
     scenario.verify(contract.data.generators[0].reserved_editions == 999999)
